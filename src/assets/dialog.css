@@ -1,0 +1,52 @@
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto;
+}
+
+.modal .container {
+    width: 40%; /* Hidden by default */
+    border: 1px solid #888; /* Stay in place */
+    margin: 5% auto 15% auto; /* Sit on top */
+    background-color: #fefefe;
+}
+
+.modal .container label{
+    width: 100%;
+    padding: 12px 20px;
+}
+
+.modal .container input[type=text]{
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;  
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+.modal .container input[type=color]{
+    width: 10%;
+    padding: 12px 0px;
+    /* margin-top: 8px; */
+    height: 43px;
+    display: inline-block;
+    /* border: 1px solid #ccc; */
+    box-sizing: border-box;
+}
+
+.modal .container button {
+    width: 50%;
+    cursor: pointer;
+    padding: 14px 20px;
+    margin: 8px 0;  
+    display: inline-block;
+    border: 1px solid #ccc;
+    color: white;
+    background-color: green;
+}

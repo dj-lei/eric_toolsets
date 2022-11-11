@@ -1,0 +1,19 @@
+.buttomNav {
+
+}
+
+.slider {
+    -webkit-appearance: slider-vertical;
+    -webkit-transform: rotateX(180deg);
+    direction: rtl;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+  }
+  
+  .slider:hover {
+    opacity: 1;
+  }
+
