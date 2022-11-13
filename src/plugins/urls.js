@@ -1,6 +1,7 @@
 export const urls = {
-    open_file: "open_file",
+    new: "new",
     search: "search",
+    scroll: "scroll",
     sort: "sort",
     global_sort: "global_sort",
   }

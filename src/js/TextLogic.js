@@ -5,8 +5,7 @@ import service from '@/plugins/http'
 import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
-import * as PIXI from 'pixi.js'
-const Hypergrid = require('fin-hypergrid')
+
 
 class TextLogicView
 {
@@ -31,7 +30,6 @@ class TextLogicView
         var screen = document.getElementById('screen')
         screen.append(this.tablinks)
         screen.append(this.tabcontents)
-        // init search atom viewer
     }
 
     openPage(name, element)
@@ -50,15 +48,17 @@ class TextLogicView
         this.activeFile = name.replace('-tabcontent', '')
     }
 
+    deleteFile(uid){
+        // this.containerFiles[uid].delete()
+        // delete this.containerFiles[uid]
+    }
+
 }
 
 class TopMenu
 {
     constructor(parent){
-        // let that = this
         this.parent = parent
-        this.menu = ''
-        this.file = ''
         this.globalKeyValueTree = ''
         this.globalKeyValueSelect = {}
         this.globalSequentialChart = ''
@@ -71,7 +71,7 @@ class TopMenu
         ipcRenderer.on('open-file', async function () {
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
-                that.parent.containerFiles[file.filePaths[0]] = new FileViewer(that.parent, file)
+                new FileViewer(that.parent, file)
             }
         })
         ipcRenderer.on('save', async function () {
@@ -99,47 +99,6 @@ class TopMenu
         ipcRenderer.on('global-keyword-tree', () => {
             that.openGlobalKeyValueTree()
         })
-    }
-
-    addButton(name, func){
-        let that = this
-        var button = document.createElement('button')
-        button.setAttribute('id', name)
-        button.innerHTML = name
-        
-        if(name == 'OPEN'){
-            button.addEventListener('click', async () => {
-                let file = await window.openFile.open()
-                if(!file.canceled){
-                    that.parent.containerFiles[file.filePaths[0]] = new FileViewer(that.parent, file)
-                }
-            })
-        }else if(name == 'SAVE'){
-            button.addEventListener('click', async () => {
-                if (that.parent.containerFiles[that.parent.activeFile].configPath == ''){
-                    let file = await window.saveConfig.save(JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
-                    that.parent.containerFiles[that.parent.activeFile].configPath = file.filePaths[0]
-                }else{
-                    await window.saveConfig.saveAuto(that.parent.containerFiles[that.parent.activeFile].configPath, JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
-                }
-            })
-        }else if(name == 'SAVE AS'){
-            button.addEventListener('click', async () => {
-                let file = await window.saveConfig.save(JSON.stringify(that.parent.containerFiles[that.parent.activeFile].configContent))
-                that.parent.containerFiles[that.parent.activeFile].saveConfig(file)
-            })
-        }else if(name == 'LOAD'){
-            button.addEventListener('click', async () => {
-                let data = await window.openConfig.open()
-                that.parent.containerFiles[that.parent.activeFile].loadConfig(data)
-            })
-        }else{
-            button.addEventListener('click', function()
-            {
-                func(that)
-            })
-        }
-        this.menu.appendChild(button)
     }
 
     newSearchDialog(){
@@ -228,12 +187,13 @@ class FileViewer
 {
     constructor(parent, file){
         this.parent = parent
+        this.uid = ''
         this.file = file
         this.name = ''
         this.configPath = ''
         this.configContent = {'search': []}
         this.lines = []
-        this.invertedIndexTable = []
+        this.words = []
         this.searchContainer = {}
         this.originArea = ''
         this.searchArea = ''
@@ -253,31 +213,48 @@ class FileViewer
         let that = this
 
         var start = new Date()
-        await service.get(urls.open_file, {
-            params: {
-                filename: that.file.filePaths[0],
-            },
-            })
-            .then(
-            (response)=>{
-                var end   = new Date()
-                console.log((end.getTime() - start.getTime()) / 1000)
-                that.name = response.data.filename
-                that.lines = response.data.lines
-                that.invertedIndexTable = response.data.invertedIndexTable
-                that.init()
-                end   = new Date()
-                console.log((end.getTime() - start.getTime()) / 1000)
-                document.getElementById(that.name+'-tablink').click()
-            }, (error) => {
-                alert("Log File Format ERROR or Not Support Currently!", error)
-            })
+        await service.emit('new', this.file.filePaths[0], (res) => {
+            var response = res
+            that.uid = response.uid
+            that.name = response.filename
+            that.lines = response.lines
+            that.words = response.words
+            that.parent.containerFiles[that.uid] = that
+            that.init()
+            var end   = new Date()
+            console.log((end.getTime() - start.getTime()) / 1000)
+            document.getElementById(that.uid+'-tablink').click()
+        })
+        // await service.get(urls.new, {
+        //     params: {
+        //         path: that.file.filePaths[0],
+        //         point: 0,
+        //         range: 50
+        //     },
+        //     })
+        //     .then(
+        //     (response)=>{
+        //         var end   = new Date()
+        //         console.log((end.getTime() - start.getTime()) / 1000)
+        //         console.log(response)
+        //         that.uid = response.data.uid
+        //         that.name = response.data.filename
+        //         that.lines = response.data.lines
+        //         that.words = response.data.words
+        //         that.parent.containerFiles[that.uid] = that
+        //         that.init()
+        //         end   = new Date()
+        //         console.log((end.getTime() - start.getTime()) / 1000)
+        //         document.getElementById(that.name+'-tablink').click()
+        //     }, (error) => {
+        //         alert("Log File Format ERROR or Not Support Currently!", error)
+        //     })
     }
 
     init(){
         let that = this
         var tablink = document.createElement('button')
-        tablink.setAttribute('id', this.name+'-tablink')
+        tablink.setAttribute('id', this.uid+'-tablink')
         tablink.style.backgroundColor = '#555'
         tablink.style.color = 'white'
         // tablink.style.float = 'left'
@@ -291,27 +268,27 @@ class FileViewer
 
         tablink.addEventListener('click', function()
         {
-            that.parent.openPage(that.name+'-tabcontent', tablink)
+            that.parent.openPage(that.uid+'-tabcontent', tablink)
         })
     
         this.tabcontent = document.createElement('div')
-        this.tabcontent.setAttribute('id', this.name+'-tabcontent')
+        this.tabcontent.setAttribute('id', this.uid+'-tabcontent')
         this.tabcontent.style.display = 'none'
         this.tabcontent.style.color = 'white'
         this.tabcontent.className = "tabcontent"
     
         this.originArea = document.createElement('div')
-        this.originArea.setAttribute('id', this.name+'-tabcontent-origin')
+        this.originArea.setAttribute('id', this.uid+'-tabcontent-origin')
         this.originArea.style.width = '100%'
         this.originArea.style.overflowY = 'hidden'
         // this.originArea.style.overflow = 'auto'
         this.originArea.style.border = '2px solid #ddd'
         this.originArea.style.height = `${document.body.offsetHeight - 50}px`
 
-        const table = new LazyLogTable(this.originArea, this.lines)
+        const table = new LazyLogTable(this.uid, this.originArea, this.lines)
 
         this.searchArea = document.createElement('div')
-        this.searchArea.setAttribute('id', this.name+'-tabcontent-search')
+        this.searchArea.setAttribute('id', this.uid+'-tabcontent-search')
 
         this.tabcontent.append(this.originArea)
         this.tabcontent.append(this.searchArea)
@@ -659,8 +636,8 @@ class SearchAtom extends SearchDialog
         let that = this
         await service.get(urls.search, {
         params: {
-            filename: that.parent.name,
-            uid: that.uid,
+            file_uid: that.parent.uid,
+            search_uid: that.uid,
             desc: that.desc.value,
             exp_search: that.expSearch.value,
             exp_regex: that.getRegexList(),
@@ -706,26 +683,19 @@ class SearchAtom extends SearchDialog
                 that.resButton.append(search)
                 that.resButton.append(collapsible)
         
-                that.resTable = document.createElement('table')
-                that.resTable.style.display = 'block'
-                that.resTable.className = 'content'
-                that.res.res_search_lines.forEach((line) => {
-                    var tr = that.addLine(line)
-                    tr.addEventListener('dblclick', function()
-                    {
-                        that.parent.scrollOriginJump(parseInt(this.getAttribute('line')))
-                    })
-                    tr.setAttribute('line', line)
-                    that.resTable.appendChild(tr)
-                })
-
-                // that.resTable = document.createElement('div')
-                // var data = []
+                that.resTable = document.createElement('div')
+                that.resTable.style.width = '100%'
+ 
+                const table = new LazyLogTable(that.resTable, that.res.res_search_lines)
                 // that.res.res_search_lines.forEach((line) => {
-                //     data.push({'log':that.parent.lines[line]})
+                //     var tr = that.addLine(line)
+                //     tr.addEventListener('dblclick', function()
+                //     {
+                //         that.parent.scrollOriginJump(parseInt(this.getAttribute('line')))
+                //     })
+                //     tr.setAttribute('line', line)
+                //     that.resTable.appendChild(tr)
                 // })
-                // new Hypergrid(that.resTable, data)
-
 
                 that.parent.shutAllSearch()
                 that.parent.searchArea.append(that.resButton)
@@ -1400,13 +1370,14 @@ class SequentialChart extends Chart
 
 class LazyLogTable
 {
-    constructor(position, lines){
+    constructor(uid, position, lines){
+        this.uid = uid
         this.table = ''
         this.slider = ''
         this.fontSize = 12
 
         this.lines = lines
-        this.downRange = 100
+        this.range = 100
         this.init(position)
     }
 
@@ -1423,7 +1394,7 @@ class LazyLogTable
         this.slider.style.float = 'left'
         this.slider.type = 'range'
         this.slider.min = 0
-        this.slider.max = this.lines.length - this.downRange + parseInt((document.body.offsetHeight - 50) / this.fontSize)
+        this.slider.max = this.lines.length - this.range + parseInt((document.body.offsetHeight - 50) / this.fontSize)
         this.slider.style.width = '1%'
         this.slider.style.height = `${document.body.offsetHeight - 50}px`
         this.slider.value=0
@@ -1437,7 +1408,7 @@ class LazyLogTable
             that.refresh(parseInt(event.target.value))
         })
 
-        this.table.addEventListener("wheel", function(e){
+        position.addEventListener("wheel", function(e){
             if (e.deltaY < 0){
                 that.slider.value = parseInt(that.slider.value) - 1
             }else{
@@ -1451,20 +1422,39 @@ class LazyLogTable
         this.refresh(0)
     }
 
-    refresh(value){
-        common.removeAllChild(this.table)
-        var start = value
-        var end = (start + this.downRange) >= this.lines.length ? this.lines.length : start + this.downRange
-        this.lines.slice(start, end).forEach((line) => {
-            var tr = document.createElement('tr')
-            var td = document.createElement('td')
-            td.style.color = '#FFF'
-            td.style.whiteSpace = 'nowrap'
-            td.style.textAlign = 'left'
-            td.style.fontSize = `${this.fontSize}px`
-            td.innerText = line
-            tr.appendChild(td)
-            this.table.appendChild(tr)
+    // refresh(value){
+    //     common.removeAllChild(this.table)
+    //     var start = value
+    //     var end = start + this.range
+    //     this.lines.slice(start, end).forEach((line) => {
+    //         var tr = document.createElement('tr')
+    //         var td = document.createElement('td')
+    //         td.style.color = '#FFF'
+    //         td.style.whiteSpace = 'nowrap'
+    //         td.style.textAlign = 'left'
+    //         td.style.fontSize = `${this.fontSize}px`
+    //         td.innerText = line
+    //         tr.appendChild(td)
+    //         this.table.appendChild(tr)
+    //     })
+    // }
+
+    refresh(point){
+        let that = this
+        service.emit('scroll', this.uid, point, this.range, (res) => {
+            common.removeAllChild(this.table)
+            that.lines = res.lines
+            that.lines.forEach((line) => {
+                var tr = document.createElement('tr')
+                var td = document.createElement('td')
+                td.style.color = '#FFF'
+                td.style.whiteSpace = 'nowrap'
+                td.style.textAlign = 'left'
+                td.style.fontSize = `${that.fontSize}px`
+                td.innerText = line
+                tr.appendChild(td)
+                that.table.appendChild(tr)
+            })
         })
     }
 
