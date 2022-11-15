@@ -1,9 +1,7 @@
 export const urls = {
-    new: "new",
-    search: "search",
-    scroll: "scroll",
-    sort: "sort",
-    global_sort: "global_sort",
+    query_themes: "query_themes",
+    save_theme: "save_theme",
+    download_theme: "download_theme"
   }
 
 export default urls

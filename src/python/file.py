@@ -7,6 +7,9 @@ cores = []
 for core in range(num_cpus):
     cores.append(Parallel.remote())
 
+color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
+        '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
+
 class FileContainer(object):
     def __init__(self):
         self.files = {}
@@ -25,13 +28,11 @@ class TextFile(object):
         self.path = path
         self.filename = path.split('\\')[-1]
 
-        self.lines = []
         self.inverted_index_table = {}
         self.searchs = {}
 
         with open(self.path, 'r') as f:
             self.lines = f.readlines()
-            self.count = len(self.lines)
             # self.extract_inverted_index()
             self.parallel_inverted_index_table()
 
@@ -61,6 +62,21 @@ class TextFile(object):
                 else:
                     self.inverted_index_table[key].extend(core[key])
 
+    def scroll(self, uid, point, range):
+        def word_color_replace(word):
+            return word.group(0).replace(word.group(1), '<span style="color:'+color[self.searchs[uid].cmd_words.index(word.group(1))]+'">'+word.group(1)+'</span>')
+
+        special_symbols = ['/','\*','\{','\}','\[','\]','\(','\)','#','+','-','!','=',':',',','"','\'','>','<','@','$','%','^','\&','\|',' ']
+        
+        lines = []
+        for line in self.lines[point:point+range]:
+            if uid == '':
+                lines.append('<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+            else:
+                reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.searchs[uid].cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
+                lines.append('<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
+        return lines
+
     def search(self, desc, exp_search, exp_regex, highlights):
         uid = str(uuid.uuid4()).replace('-','')
         self.searchs[uid] = SearchAtom(self, desc, exp_search, exp_regex, highlights)
@@ -74,10 +90,10 @@ class TextFile(object):
         for searchAtom in key_value_select['children']:
             for key in searchAtom['children']:
                 if key['check'] == True:
-                    data_type = self.searchs[searchAtom['uid']].res['res_kv'][key['name']][0]['type']
-                    selected_key[searchAtom['name']+'.'+data_type+'.'+key['name']] = self.searchs[searchAtom['uid']].res['res_kv'][key['name']]
-            for highlight in self.searchs[searchAtom['uid']].res['res_highlights'].keys():
-                selected_key[searchAtom['name']+'.highlight.'+highlight] = self.searchs[searchAtom['uid']].res['res_highlights'][highlight]
+                    data_type = self.searchs[searchAtom['uid']].res_kv[key['name']][0]['type']
+                    selected_key[searchAtom['name']+'.'+data_type+'.'+key['name']] = self.searchs[searchAtom['uid']].res_kv[key['name']]
+            for highlight in self.searchs[searchAtom['uid']].res_highlights.keys():
+                selected_key[searchAtom['name']+'.highlight.'+highlight] = self.searchs[searchAtom['uid']].res_highlights[highlight]
 
         final = {}
         for key in selected_key.keys():
@@ -95,7 +111,7 @@ class TextFile(object):
             res = res.loc[(res['full_name'] == key), :].reset_index()
             res = res.rename(columns={"index": "graph_index"})
             final[key] = json.loads(res.to_json(orient='records'))
-        return json.dumps(final)
+        return final
 
 
 class SearchAtom(object):
@@ -107,16 +123,33 @@ class SearchAtom(object):
         self.highlights = []
         self.retrieval_exp = {}
         self.cmd_words = []
-        self.res = {'res_search_lines': [], 'res_kv':{}, 'res_inverted_index_table':{}, 'res_highlights':{}}
-        
-        self.point = 0
-        self.range = 0
-        self.display_lines = []
+
+        self.res_search_lines = []
+        self.res_kv = {}
+        self.res_inverted_index_table = {}
+        self.res_highlights = {}
         
         self.change(desc, exp_search, exp_regex, highlights)
 
-    def scroll(self):
-        pass
+    def scroll(self, point, range):
+        regexs = []
+        v_regexs = []
+        for regex in self.exp_regex:
+            v_regex = regex
+            for i, r in enumerate(re.findall('%\{.*?\}', regex)):
+                regex = regex.replace(r, '(.*?)')
+                v_regex = v_regex.replace(r, '<span style="color:'+color[i]+'">'+"\\"+str(i+1)+'</span>')
+            regexs.append(regex)
+            v_regexs.append(v_regex)
+
+        lines = []
+        for line in self.res_search_lines[point:point+range]:
+            for n_regex, regex in enumerate(regexs):
+                regex_res = re.findall(regex, self.parent.lines[line])
+                if len(regex_res) > 0:
+                    lines.append('<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(regex, v_regexs[n_regex], self.parent.lines[line]).replace('\\','')+'</td>')
+                break
+        return lines
 
     def change(self, desc, exp_search, exp_regex, highlights):
         self.desc = desc
@@ -148,7 +181,7 @@ class SearchAtom(object):
         for exp in exp_res.keys():
             self.retrieval_exp[exp] = self.retrieval_words(exp_res[exp])
 
-        self.res['res_search_lines'] = sorted(self.retrieval_exp['@exp0_0'])
+        self.res_search_lines = sorted(self.retrieval_exp['@exp0_0'])
 
     def regex(self):
         def is_type_correct(_type, reg):
@@ -186,7 +219,7 @@ class SearchAtom(object):
                 regex = regex.replace(r, '(.*?)')
             regexs.append(regex)
             
-        for search_index, line in enumerate(self.res['res_search_lines']):
+        for search_index, line in enumerate(self.res_search_lines):
             for n_regex, regex in enumerate(regexs):
                 regex_res = re.findall(regex, self.parent.lines[line])
                 if len(regex_res) > 0:
@@ -200,12 +233,12 @@ class SearchAtom(object):
                     for word in set(clean_special_symbols(self.parent.lines[line],' ').split(' ')):
                         if len(word) > 0:
                             if not word[0].isdigit():
-                                if (word not in self.res['res_inverted_index_table']):
-                                    self.res['res_inverted_index_table'][word] = [{'name':word, 'type': 'word', 'global_index': line, 'search_index':search_index, 'value': word, 'timestamp': c_time}]
+                                if (word not in self.res_inverted_index_table):
+                                    self.res_inverted_index_table[word] = [{'name':word, 'type': 'word', 'global_index': line, 'search_index':search_index, 'value': word, 'timestamp': c_time}]
                                 else:
-                                    self.res['res_inverted_index_table'][word].append({'name':word, 'type': 'word', 'global_index': line, 'search_index':search_index, 'value': word, 'timestamp': c_time})
+                                    self.res_inverted_index_table[word].append({'name':word, 'type': 'word', 'global_index': line, 'search_index':search_index, 'value': word, 'timestamp': c_time})
                     break
-        self.res['res_kv'] = key_value
+        self.res_kv = key_value
 
     def highlight(self):
         def udpate_value(item, value):
@@ -215,13 +248,13 @@ class SearchAtom(object):
         res_highlights = {}
         for item in self.highlights:
             for word in item[0].split(','):
-                for ii_word in self.res['res_inverted_index_table'].keys():
+                for ii_word in self.res_inverted_index_table.keys():
                     if word.strip().lower() == ii_word.strip().lower():
                         if word.strip().lower() not in res_highlights:
-                            res_highlights[word.strip().lower()] = list(map(udpate_value, self.res['res_inverted_index_table'][ii_word], [item[1] for _ in range(len(self.res['res_inverted_index_table'][ii_word]))]))
+                            res_highlights[word.strip().lower()] = list(map(udpate_value, self.res_inverted_index_table[ii_word], [item[1] for _ in range(len(self.res_inverted_index_table[ii_word]))]))
                         else:
-                            res_highlights[word.strip().lower()] = res_highlights[word.strip().lower()].extend(list(map(udpate_value, self.res['res_inverted_index_table'][ii_word], [item[1] for _ in range(len(self.res['res_inverted_index_table'][ii_word]))])))
-        self.res['res_highlights'] = res_highlights
+                            res_highlights[word.strip().lower()] = res_highlights[word.strip().lower()].extend(list(map(udpate_value, self.res_inverted_index_table[ii_word], [item[1] for _ in range(len(self.res_inverted_index_table[ii_word]))])))
+        self.res_highlights = res_highlights
 
     def retrieval_words(self, express):
         params = []

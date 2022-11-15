@@ -1,7 +1,8 @@
 import * as d3 from "d3"
 import * as echarts from 'echarts'
 import urls from '@/plugins/urls'
-import service from '@/plugins/http'
+import service from '@/plugins/socket'
+import http from '@/plugins/http'
 import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
@@ -62,6 +63,7 @@ class TopMenu
         this.globalKeyValueTree = ''
         this.globalKeyValueSelect = {}
         this.globalSequentialChart = ''
+        this.shareDownload = ''
 
         this.init()
     }
@@ -74,20 +76,20 @@ class TopMenu
                 new FileViewer(that.parent, file)
             }
         })
-        ipcRenderer.on('save', async function () {
+        ipcRenderer.on('save-theme', async function () {
             if (that.parent.containerFiles[that.parent.activeFile].configPath == ''){
-                let file = await ipcRenderer.invoke('save-as', JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
+                let file = await ipcRenderer.invoke('export-theme', JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
                 that.parent.containerFiles[that.parent.activeFile].configPath = file.filePaths[0]
             }else{
-                await ipcRenderer.invoke('save-auto', that.parent.containerFiles[that.parent.activeFile].configPath, JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
+                await ipcRenderer.invoke('save-theme', that.parent.containerFiles[that.parent.activeFile].configPath, JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
             }
         })
-        ipcRenderer.on('save-as', async () => {
-            let file = await ipcRenderer.invoke('save-as', JSON.stringify(that.parent.containerFiles[that.parent.activeFile].configContent))
+        ipcRenderer.on('export-theme', async () => {
+            let file = await ipcRenderer.invoke('export-theme', JSON.stringify(that.parent.containerFiles[that.parent.activeFile].configContent))
             that.parent.containerFiles[that.parent.activeFile].saveConfig(file)
         })
-        ipcRenderer.on('load', async () => {
-            let content = await ipcRenderer.invoke('open-config')
+        ipcRenderer.on('import-theme', async () => {
+            let content = await ipcRenderer.invoke('import-theme')
             that.parent.containerFiles[that.parent.activeFile].loadConfig(content)
         })
         ipcRenderer.on('new-search', () => {
@@ -98,6 +100,24 @@ class TopMenu
         })
         ipcRenderer.on('global-keyword-tree', () => {
             that.openGlobalKeyValueTree()
+        })
+        ipcRenderer.on('share-upload', async () => {
+            let content = await ipcRenderer.invoke('open-config')
+            if(content[1] != ''){
+                await http.get(urls.save_theme, {
+                    params: {
+                        filename: content[0],
+                        theme: content[1]
+                    },
+                    })
+                  .then(response => {
+                        console.log(response.data)
+                })
+            }
+        })
+        ipcRenderer.on('share-download', async () => {
+            // await ipcRenderer.invoke('downloadURL', {url:'http://localhost:8001/download_theme/config.txt'})
+            that.openShareDownloadDialog()
         })
     }
 
@@ -125,7 +145,7 @@ class TopMenu
                         })
                         kvs.push({'uid': uid, 'name': this.parent.containerFiles[file].searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
                     })
-                    this.globalKeyValueSelect['children'].push({'uid': file, 'name': file, 'check': false, 'children': kvs})
+                    this.globalKeyValueSelect['children'].push({'uid': file, 'name': this.parent.containerFiles[file].name, 'check': false, 'children': kvs})
                 }
             })
         }else{
@@ -140,7 +160,7 @@ class TopMenu
                     })
                     kvs.push({'uid': uid, 'name': this.parent.containerFiles[file].searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
                 })
-                files.push({'uid': file, 'name': file, 'check': false, 'children': kvs})
+                files.push({'uid': file, 'name': this.parent.containerFiles[file].name, 'check': false, 'children': kvs})
             })
             this.globalKeyValueSelect['children'] = files
         }
@@ -162,13 +182,8 @@ class TopMenu
     async applyKeyValueTree(){
         let that = this
 
-        await service.get(urls.global_sort, {
-            params: {
-                globalKeyValueSelect: JSON.stringify(that.globalKeyValueSelect)
-            },
-            })
-            .then(response => {
-                that.globalSequentialChart = new SequentialChart(JSON.parse(response.data.content), this.parent.tabcontents)
+        await service.emit('global_sort', {'global_key_value_select':this.globalKeyValueSelect}, (res) => {
+                that.globalSequentialChart = new SequentialChart(res.content, this.parent.tabcontents)
                 that.closeGlobalKeyValueTree()
                 that.openGlobalSequentialChart()
             })
@@ -181,6 +196,21 @@ class TopMenu
     closeGlobalSequentialChart(){
         this.globalSequentialChart.close()
     }
+
+    generateShareDownloadDialog(){
+        this.shareDownload = new ShareDownloadDialog(this.parent.tabcontents)
+    }
+
+    openShareDownloadDialog(){
+        if (this.shareDownload == '') {
+            this.generateShareDownloadDialog()
+        }
+        this.shareDownload.open()
+    }
+
+    closeShareDownloadDialog(){
+        this.shareDownload.close()
+    }
 }
 
 class FileViewer
@@ -192,7 +222,7 @@ class FileViewer
         this.name = ''
         this.configPath = ''
         this.configContent = {'search': []}
-        this.lines = []
+        this.count = 0
         this.words = []
         this.searchContainer = {}
         this.originArea = ''
@@ -206,49 +236,26 @@ class FileViewer
         this.highlightTree = ''
         this.sequentialChart = ''
 
+        this.llt = ''
         this.openFile()
     }
 
     async openFile(){
         let that = this
 
-        var start = new Date()
+        // var start = new Date()
         await service.emit('new', this.file.filePaths[0], (res) => {
             var response = res
             that.uid = response.uid
             that.name = response.filename
-            that.lines = response.lines
+            that.count = response.count
             that.words = response.words
             that.parent.containerFiles[that.uid] = that
             that.init()
-            var end   = new Date()
-            console.log((end.getTime() - start.getTime()) / 1000)
+            // var end   = new Date()
+            // console.log((end.getTime() - start.getTime()) / 1000)
             document.getElementById(that.uid+'-tablink').click()
         })
-        // await service.get(urls.new, {
-        //     params: {
-        //         path: that.file.filePaths[0],
-        //         point: 0,
-        //         range: 50
-        //     },
-        //     })
-        //     .then(
-        //     (response)=>{
-        //         var end   = new Date()
-        //         console.log((end.getTime() - start.getTime()) / 1000)
-        //         console.log(response)
-        //         that.uid = response.data.uid
-        //         that.name = response.data.filename
-        //         that.lines = response.data.lines
-        //         that.words = response.data.words
-        //         that.parent.containerFiles[that.uid] = that
-        //         that.init()
-        //         end   = new Date()
-        //         console.log((end.getTime() - start.getTime()) / 1000)
-        //         document.getElementById(that.name+'-tablink').click()
-        //     }, (error) => {
-        //         alert("Log File Format ERROR or Not Support Currently!", error)
-        //     })
     }
 
     init(){
@@ -285,7 +292,7 @@ class FileViewer
         this.originArea.style.border = '2px solid #ddd'
         this.originArea.style.height = `${document.body.offsetHeight - 50}px`
 
-        const table = new LazyLogTable(this.uid, this.originArea, this.lines)
+        this.llt = new LazyLogTable('O/'+this.uid+'/', this.originArea, this.count)
 
         this.searchArea = document.createElement('div')
         this.searchArea.setAttribute('id', this.uid+'-tabcontent-search')
@@ -302,6 +309,8 @@ class FileViewer
             var ins = this.searchContainer[uid].ins
             this.configContent['search'].push({'desc': ins.desc.value, 'search': ins.expSearch.value, 'regexs': ins.getRegexList(), 'highlights': ins.getHighlightList()})
         })
+
+        this.configContent['select'] = this.keyValueSelect
         return this.configContent
     }
 
@@ -349,7 +358,6 @@ class FileViewer
 
     addSearch(searchAtom){
         this.searchContainer[searchAtom.uid] = {'ins': searchAtom, 'res': searchAtom.res}
-        console.log(searchAtom.res)
         this.originArea.style.height = `${parseInt(parseInt(document.body.offsetHeight - 50) / 2)}px`
         this.searchArea.style.width = '100%'
         this.searchArea.style.overflow = 'auto'
@@ -402,17 +410,10 @@ class FileViewer
     async applyKeyValueTree(){
         let that = this
 
-        await service.get(urls.sort, {
-            params: {
-                filename: that.name,
-                keyValueSelect: JSON.stringify(that.keyValueSelect)
-            },
-            })
-            .then(response => {
-                that.sequentialChart = new SequentialChart(JSON.parse(response.data.content), this.tabcontent)
+        await service.emit('sort', {'uid':this.uid, 'key_value_select':this.keyValueSelect}, (res) => {
+                that.sequentialChart = new SequentialChart(res.content, this.tabcontent)
                 that.closeKeyValueTree()
                 that.openSequentialChart()
-                that.configContent['select'] = that.keyValueSelect
             })
     }
 
@@ -612,6 +613,78 @@ class SearchDialog extends Dialog
     }
 }
 
+class ShareDownloadDialog extends Dialog
+{
+    constructor(position){
+        super()
+        this.register(position)
+        this.themes = []
+        this.ShareDownloadDialogInit()
+    }
+
+    register(position){
+        position.append(this.modal)
+    }
+
+    async ShareDownloadDialogInit(){
+        let that = this
+
+        await http.get(urls.query_themes, {
+            params: {
+            },
+            })
+          .then(response => {
+            this.themes = response.data.themes
+            this.themes.forEach((theme) => {
+                var div = document.createElement("div")
+                div.style.width = '100%'
+                div.style.display = 'block'
+                div.style.position = 'relative'
+                var input = document.createElement("input")
+                input.style.float = 'left'
+                input.style.cursor = 'pointer'
+                input.type = 'radio'
+                input.value = theme
+                input.name = 'share-download'
+                var label = document.createElement("label")
+                label.style.color = '#FFF'
+                label.innerHTML = theme
+                div.appendChild(input)
+                div.appendChild(label)
+                this.container.appendChild(div)
+            })
+
+            var download = document.createElement('button')
+            download.style.width = "33%"
+            download.innerHTML = 'DOWNLOAD'
+            download.onclick = function(){that.download()}
+            var refresh = document.createElement('button')
+            refresh.style.width = "33%"
+            refresh.innerHTML = 'REFRESH'
+            refresh.onclick = function(){that.refresh()}
+            var cancel = document.createElement('button')
+            cancel.style.width = "33%"
+            cancel.style.backgroundColor = 'red'
+            cancel.innerHTML = 'CANCEL'
+            cancel.onclick = function(){that.close()}
+
+            this.container.appendChild(download)
+            this.container.appendChild(refresh)
+            this.container.appendChild(cancel)
+            this.modal.appendChild(this.container)
+        })
+    }
+
+    async download(){
+        await ipcRenderer.invoke('downloadURL', {url:`http://localhost:8001/download_theme/${this.container.querySelector('input[name="share-download"]:checked').value}`})
+    }
+
+    refresh(){
+        common.removeAllChild(this.container)
+        this.ShareDownloadDialogInit()
+    }
+}
+
 class SearchAtom extends SearchDialog
 {
     constructor(parent, position){
@@ -623,6 +696,7 @@ class SearchAtom extends SearchDialog
         this.select = {}
         this.resButton = ''
         this.resTable = ''
+        this.llt = ''
         // this.desc.value = "search test"
         // this.expSearch.value = "txlProcBranchE & (pmb | txAtt)"
         // this.expRegex.value = "%{STRING:device}: \\[%{TIMESTAMP:time}\\] \\(%{STRING:cost}\\) %{STRING:name} %{STRING:trace}: %{DROP:tmp}txAtt:%{INT:txAtt}, txAttPeak:%{INT:txAttPeak},%{DROP:tmp}torTemperature:%{INT:torTemperature} "
@@ -632,22 +706,19 @@ class SearchAtom extends SearchDialog
         position.append(this.modal)
     }
 
-    async search(){
+    search(){
         let that = this
-        await service.get(urls.search, {
-        params: {
-            file_uid: that.parent.uid,
-            search_uid: that.uid,
-            desc: that.desc.value,
-            exp_search: that.expSearch.value,
-            exp_regex: that.getRegexList(),
-            highlights: JSON.stringify(that.getHighlightList())
-        },
-        })
-        .then(function (response) {
-            that.res = response.data.content
+        let params = {
+            uid: this.parent.uid + '/' + this.uid,
+            desc: this.desc.value,
+            exp_search: this.expSearch.value,
+            exp_regex: this.getRegexList(),
+            highlights: this.getHighlightList()
+        }
+        service.emit('search', params, (res) => {
+            that.res = res
             if (that.uid == ''){
-                that.uid = response.data.uid
+                that.uid = that.res.uid
 
                 that.resButton = document.createElement('div')
 
@@ -678,15 +749,16 @@ class SearchAtom extends SearchDialog
                 collapsible.style.cursor = 'pointer'
                 collapsible.fontSize = '15px'
                 collapsible.className = 'collapsible'
-                collapsible.innerHTML = '+ ' + that.desc.value + ` (${that.res.res_search_lines.length} hits)`
+                collapsible.innerHTML = '+ ' + that.desc.value + ` (${that.res.count} hits)`
                 that.resButton.append(del)
                 that.resButton.append(search)
                 that.resButton.append(collapsible)
         
                 that.resTable = document.createElement('div')
+                that.resTable.className = 'content'
                 that.resTable.style.width = '100%'
  
-                const table = new LazyLogTable(that.resTable, that.res.res_search_lines)
+                that.llt = new LazyLogTable('S/'+that.parent.uid + '/' + that.uid, that.resTable, that.res.count)
                 // that.res.res_search_lines.forEach((line) => {
                 //     var tr = that.addLine(line)
                 //     tr.addEventListener('dblclick', function()
@@ -712,30 +784,34 @@ class SearchAtom extends SearchDialog
                 })
 
                 collapsible.addEventListener("click", function() {
+                    that.parent.shutAllSearch()
                     if (that.resTable.style.display === "block") {
                         that.resTable.style.display = "none"
+                        that.parent.llt.uid = 'O/'+that.parent.uid+'/'
+                        that.parent.llt.refresh(that.parent.llt.point)
                     } else {
                         that.resTable.style.display = "block"
+                        that.parent.llt.uid = 'O/'+that.parent.uid+'/'+that.uid
+                        that.parent.llt.refresh(that.parent.llt.point)
                     }
                 })
                 that.parent.addSearch(that)
             }
             else{
                 //removeAllChild
-                common.removeAllChild(that.resTable)
-                that.res.res_search_lines.forEach((line) => {
-                    that.resTable.appendChild(that.addLine(line))
-                })
+                that.llt.count = that.res.count
+                that.llt.slider.max = that.res.count
+                that.llt.refresh(0)
+
                 that.parent.shutAllSearch()
                 that.resTable.style.display = "block"
-                that.resButton.lastChild.innerHTML = '+ ' + that.desc.value + ` (${that.res.res_search_lines.length} hits)`
+                that.resButton.lastChild.innerHTML = '+ ' + that.desc.value + ` (${that.res.count} hits)`
                 that.parent.updateSearch(that)
             }
+            // bind origin area color
+            that.parent.llt.uid = 'O/'+that.parent.uid+'/'+that.uid
+            that.parent.llt.refresh(that.parent.llt.point)
             that.close()
-        })
-        .catch(function (error) {
-        // handle error
-            console.log(error);
         })
     }
 
@@ -1182,7 +1258,6 @@ class SequentialChart extends Chart
 
     draw(){
         // let that = this
-        console.log(this.selectedLines)
         // package line
         var option = this.getSequentialChartConfig()
         option['title']['text'] = "Sequential"
@@ -1370,14 +1445,16 @@ class SequentialChart extends Chart
 
 class LazyLogTable
 {
-    constructor(uid, position, lines){
+    constructor(uid, position, count){
         this.uid = uid
+        this.count = count
         this.table = ''
         this.slider = ''
         this.fontSize = 12
 
-        this.lines = lines
-        this.range = 100
+        this.lines = []
+        this.point = 0
+        this.range = 50
         this.init(position)
     }
 
@@ -1394,7 +1471,8 @@ class LazyLogTable
         this.slider.style.float = 'left'
         this.slider.type = 'range'
         this.slider.min = 0
-        this.slider.max = this.lines.length - this.range + parseInt((document.body.offsetHeight - 50) / this.fontSize)
+        // this.slider.max = this.lines.length - this.range + parseInt((document.body.offsetHeight - 50) / this.fontSize)
+        this.slider.max = this.count
         this.slider.style.width = '1%'
         this.slider.style.height = `${document.body.offsetHeight - 50}px`
         this.slider.value=0
@@ -1405,7 +1483,8 @@ class LazyLogTable
         position.append(this.slider)
 
         this.slider.addEventListener('change', (event) => {
-            that.refresh(parseInt(event.target.value))
+            that.point = parseInt(event.target.value)
+            that.refresh(that.point)
         })
 
         position.addEventListener("wheel", function(e){
@@ -1414,45 +1493,23 @@ class LazyLogTable
             }else{
                 that.slider.value = parseInt(that.slider.value) + 1
             }
-            that.refresh(parseInt(that.slider.value))
+            that.point = parseInt(that.slider.value)
+            that.refresh(that.point)
             e.preventDefault()
             e.stopPropagation()
         })
 
-        this.refresh(0)
+        this.refresh(this.point)
     }
-
-    // refresh(value){
-    //     common.removeAllChild(this.table)
-    //     var start = value
-    //     var end = start + this.range
-    //     this.lines.slice(start, end).forEach((line) => {
-    //         var tr = document.createElement('tr')
-    //         var td = document.createElement('td')
-    //         td.style.color = '#FFF'
-    //         td.style.whiteSpace = 'nowrap'
-    //         td.style.textAlign = 'left'
-    //         td.style.fontSize = `${this.fontSize}px`
-    //         td.innerText = line
-    //         tr.appendChild(td)
-    //         this.table.appendChild(tr)
-    //     })
-    // }
 
     refresh(point){
         let that = this
-        service.emit('scroll', this.uid, point, this.range, (res) => {
+        service.emit('scroll', {'uid':this.uid, 'point':point, 'range':this.range}, (res) => {
             common.removeAllChild(this.table)
             that.lines = res.lines
             that.lines.forEach((line) => {
                 var tr = document.createElement('tr')
-                var td = document.createElement('td')
-                td.style.color = '#FFF'
-                td.style.whiteSpace = 'nowrap'
-                td.style.textAlign = 'left'
-                td.style.fontSize = `${that.fontSize}px`
-                td.innerText = line
-                tr.appendChild(td)
+                tr.insertAdjacentHTML('beforeend', line)
                 that.table.appendChild(tr)
             })
         })

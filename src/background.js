@@ -50,27 +50,30 @@ async function createWindow() {
               win.webContents.send('open-file')
             }
           },
+          { type: 'separator' },
           {
-            label: 'Save',
+            label: 'Save Theme',
             accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('save')
             }
           },
           {
-            label: 'Save As',
+            label: 'Export Theme',
             accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('save-as')
             }
           },
           {
-            label: 'Load',
+            label: 'Import Theme',
             accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('load')
             }
           },
+          { type: 'separator' },
+          { role: 'quit' }
         ]
       },
       // { role: 'editMenu' }
@@ -114,6 +117,25 @@ async function createWindow() {
           { role: 'togglefullscreen' }
         ]
       },
+      {
+        label: 'Share',
+        submenu: [
+          {
+            label: 'Upload Theme',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('share-upload')
+            }
+          },
+          {
+            label: 'Download Theme',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('share-download')
+            }
+          }
+        ]
+      },
   ]
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
@@ -138,7 +160,7 @@ async function createWindow() {
     return result
   })
 
-  ipcMain.handle('open-config', async () => {
+  ipcMain.handle('import-theme', async () => {
     const file = await dialog.showOpenDialog(win, options)
     var content = []
     if (!file.canceled) {
@@ -149,7 +171,7 @@ async function createWindow() {
     return content
   })
 
-  ipcMain.handle('save-as', async (event, config) => {
+  ipcMain.handle('export-theme', async (event, config) => {
     const file = await dialog.showSaveDialog(win, {
                     title: 'Select the Path to save config',
                     defaultPath: path.join(__dirname, './assets/config.txt'),
@@ -175,13 +197,17 @@ async function createWindow() {
     return file
   })
 
-  ipcMain.handle('save-auto', async (event, filepath, config) => {
+  ipcMain.handle('save-theme', async (event, filepath, config) => {
     fs.writeFile(filepath, 
       config, function (err) {
       if (err) throw err;
           console.log('Saved!')
       })
-    })
+  })
+
+  ipcMain.handle('downloadURL', (event, payload) => {
+    win.webContents.downloadURL(payload.url)
+  })
 }
 
 // Quit when all windows are closed.
