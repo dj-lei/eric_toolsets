@@ -30,9 +30,9 @@ def search(sid, params):
     file_uid = params['uid'].split('/')[0]
     search_uid = params['uid'].split('/')[1]
     if search_uid == '':
-        search_uid = container.files[file_uid].search(params['desc'], params['exp_search'], params['exp_regex'], params['highlights'])
+        search_uid = container.files[file_uid].search(params['desc'], params['exp_search'], params['exp_regex'], params['exp_condition'], params['highlights'])
     else:
-        container.files[file_uid].change(search_uid, params['desc'], params['exp_search'], params['exp_regex'], params['highlights'])
+        container.files[file_uid].change(search_uid, params['desc'], params['exp_search'], params['exp_regex'], params['exp_condition'], params['highlights'])
     return {'uid': search_uid, 'count': len(container.files[file_uid].searchs[search_uid].res_search_lines), 'res_kv': container.files[file_uid].searchs[search_uid].res_kv, 'res_highlights': container.files[file_uid].searchs[search_uid].res_highlights}
 
 @sio.on("sort")

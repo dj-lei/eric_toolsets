@@ -55,21 +55,21 @@ async function createWindow() {
             label: 'Save Theme',
             accelerator: 'CommandOrControl+C',
             click: () => {
-              win.webContents.send('save')
+              win.webContents.send('save-theme')
             }
           },
           {
             label: 'Export Theme',
             accelerator: 'CommandOrControl+C',
             click: () => {
-              win.webContents.send('save-as')
+              win.webContents.send('export-theme')
             }
           },
           {
             label: 'Import Theme',
             accelerator: 'CommandOrControl+C',
             click: () => {
-              win.webContents.send('load')
+              win.webContents.send('import-theme')
             }
           },
           { type: 'separator' },

@@ -50,8 +50,21 @@ class TextLogicView
     }
 
     deleteFile(uid){
-        // this.containerFiles[uid].delete()
-        // delete this.containerFiles[uid]
+        if (this.activeFile == uid) {
+            var uids = Object.keys(this.containerFiles)
+            var index = uids.indexOf(uid)
+            if((index == 0)&(uids.length == 1)){
+                null
+            }else if (index == 0){
+                index = index + 1
+                document.getElementById(uids[index]+'-tablink').click()
+            }else{
+                index = index - 1
+                document.getElementById(uids[index]+'-tablink').click()
+            }
+        }
+        this.containerFiles[uid].close()
+        delete this.containerFiles[uid]
     }
 
 }
@@ -227,6 +240,7 @@ class FileViewer
         this.searchContainer = {}
         this.originArea = ''
         this.searchArea = ''
+        this.tablink = ''
         this.tabcontent = ''
         this.keyValueSelect = {}
         this.highlightSelect = {}
@@ -260,23 +274,37 @@ class FileViewer
 
     init(){
         let that = this
-        var tablink = document.createElement('button')
-        tablink.setAttribute('id', this.uid+'-tablink')
-        tablink.style.backgroundColor = '#555'
-        tablink.style.color = 'white'
-        // tablink.style.float = 'left'
-        tablink.style.border = 'none'
-        tablink.style.cursor = 'pointer'
-        tablink.style.padding = '5px 8px'
-        tablink.style.fontSize = '15px'
-        tablink.style.width = '15%'
-        tablink.className = "tablink"
-        tablink.innerHTML = this.name
+        this.tablink = document.createElement('div')
+        this.tablink.style.float = 'left'
 
-        tablink.addEventListener('click', function()
+        var title = document.createElement('button')
+        title.setAttribute('id', this.uid+'-tablink')
+        title.style.backgroundColor = '#555'
+        title.style.color = 'white'
+        title.style.border = 'none'
+        title.style.cursor = 'pointer'
+        title.style.padding = '5px 8px'
+        title.style.fontSize = '12px'
+        title.style.width = `${this.name.length * 8}px`
+        title.className = "tablink"
+        title.innerHTML = this.name
+        title.addEventListener('click', function()
         {
-            that.parent.openPage(that.uid+'-tabcontent', tablink)
+            that.parent.openPage(that.uid+'-tabcontent', title)
         })
+
+        var close = document.createElement('button')
+        close.style.backgroundColor = 'red'
+        close.style.color = 'white'
+        close.style.cursor = 'pointer'
+        close.style.padding = '5px 8px'
+        close.style.fontSize = '12px'
+        close.innerHTML = 'X'
+        close.addEventListener("click", function() {
+            that.parent.deleteFile(that.uid)
+        })
+        this.tablink.appendChild(title)
+        this.tablink.appendChild(close)
     
         this.tabcontent = document.createElement('div')
         this.tabcontent.setAttribute('id', this.uid+'-tabcontent')
@@ -287,20 +315,78 @@ class FileViewer
         this.originArea = document.createElement('div')
         this.originArea.setAttribute('id', this.uid+'-tabcontent-origin')
         this.originArea.style.width = '100%'
-        this.originArea.style.overflowY = 'hidden'
+        this.originArea.style.overflow = 'hidden'
         // this.originArea.style.overflow = 'auto'
         this.originArea.style.border = '2px solid #ddd'
-        this.originArea.style.height = `${document.body.offsetHeight - 50}px`
+        this.originArea.style.height = `${document.body.offsetHeight - 20}px`
 
         this.llt = new LazyLogTable('O/'+this.uid+'/', this.originArea, this.count)
-
         this.searchArea = document.createElement('div')
         this.searchArea.setAttribute('id', this.uid+'-tabcontent-search')
+        this.searchArea.style.display = 'none'
+
+        var tab = document.createElement('div')
+        tab.style.backgroundColor = '#333'
+        tab.style.width = '100%'
+
+        var search = document.createElement('button')
+        search.style.color = '#FFF'
+        search.fontSize = '30px'
+        search.innerHTML = 'Search'
+        search.style.backgroundColor = '#333'
+        search.style.width = '33%'
+        var keyWordsTree = document.createElement('button')
+        keyWordsTree.style.color = '#FFF'
+        keyWordsTree.fontSize = '30px'
+        keyWordsTree.innerHTML = 'KeyWordsTree'
+        keyWordsTree.style.backgroundColor = '#555'
+        keyWordsTree.style.width = '33%'
+        var chart = document.createElement('button')
+        chart.style.color = '#FFF'
+        chart.fontSize = '30px'
+        chart.innerHTML = 'Chart'
+        chart.style.backgroundColor = '#555'
+        chart.style.width = '32%'
+
+        var hidden = document.createElement('button')
+        hidden.style.color = '#FFF'
+        hidden.style.backgroundColor = '#FF9900'
+        hidden.style.float = 'right'
+        hidden.style.width = '2%'
+        hidden.fontSize = '30px'
+        hidden.innerHTML = '-'
+        hidden.addEventListener("click", function() {
+            that.dragCanvas(0)
+        })
+
+        tab.append(search)
+        tab.append(keyWordsTree)
+        tab.append(chart)
+        tab.append(hidden)
+        this.searchArea.append(tab)
 
         this.tabcontent.append(this.originArea)
         this.tabcontent.append(this.searchArea)
-        this.parent.tablinks.append(tablink)
+        this.parent.tablinks.append(this.tablink)
         this.parent.tabcontents.append(this.tabcontent)
+        this.dragCanvas(0)
+    }
+
+    dragCanvas(rate){
+        if (rate == 0) {
+            this.searchArea.style.display = 'none'
+            this.originArea.style.height = `${parseInt(document.body.offsetHeight - 30)}px`
+            this.llt.slider.style.height = `${parseInt(document.body.offsetHeight - 30)}px`
+            this.llt.table.style.height = `${parseInt(document.body.offsetHeight - 30)}px`
+        }else{
+            this.originArea.style.height = `${parseInt(parseInt(document.body.offsetHeight - 30) * rate)}px`
+            this.searchArea.style.width = '100%'
+            this.searchArea.style.border = '2px solid #ddd'
+            this.searchArea.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
+            this.searchArea.style.display = 'block'
+            this.llt.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
+            this.llt.table.style.height = `${parseInt((document.body.offsetHeight - 30)  * rate)}px`
+        }
     }
 
     saveConfig(){
@@ -358,11 +444,7 @@ class FileViewer
 
     addSearch(searchAtom){
         this.searchContainer[searchAtom.uid] = {'ins': searchAtom, 'res': searchAtom.res}
-        this.originArea.style.height = `${parseInt(parseInt(document.body.offsetHeight - 50) / 2)}px`
-        this.searchArea.style.width = '100%'
-        this.searchArea.style.overflow = 'auto'
-        this.searchArea.style.border = '2px solid #ddd'
-        this.searchArea.style.height = `${parseInt(parseInt(document.body.offsetHeight - 50) / 2)}px`
+        this.dragCanvas(0.5)
         if (this.keyValueTree != ''){
             this.keyValueTree.delete()
             this.keyValueTree = ''
@@ -441,8 +523,8 @@ class FileViewer
     }
 
     close(){
-        document.getElementById(this.name+'-tablink').remove()
-        document.getElementById(this.name+'-tabcontent').remove()
+        common.removeAll(this.tablink)
+        common.removeAll(this.tabcontent)
     }
 
 }
@@ -713,6 +795,7 @@ class SearchAtom extends SearchDialog
             desc: this.desc.value,
             exp_search: this.expSearch.value,
             exp_regex: this.getRegexList(),
+            exp_condition: [],
             highlights: this.getHighlightList()
         }
         service.emit('search', params, (res) => {
@@ -721,9 +804,12 @@ class SearchAtom extends SearchDialog
                 that.uid = that.res.uid
 
                 that.resButton = document.createElement('div')
+                // that.resButton.style.position = 'fixed'
+                // that.resButton.style.zIndex = 0
+                that.resButton.style.width = '100%'
 
                 var del = document.createElement('button')
-                del.style.backgroundColor = '#777'
+                del.style.backgroundColor = 'red'
                 del.style.width = '2%'
                 del.style.border = '1px solid #ddd'
                 del.style.color = 'white'
@@ -732,7 +818,7 @@ class SearchAtom extends SearchDialog
                 del.innerHTML = 'X'
 
                 var search = document.createElement('button')
-                search.style.backgroundColor = '#777'
+                search.style.backgroundColor = 'green'
                 search.style.width = '2%'
                 search.style.border = '1px solid #ddd'
                 search.style.color = 'white'
@@ -742,7 +828,7 @@ class SearchAtom extends SearchDialog
 
                 var collapsible = document.createElement('button')
                 collapsible.style.backgroundColor = '#777'
-                collapsible.style.width = '96%'
+                collapsible.style.width = '94%'
                 collapsible.style.border = '1px solid #ddd'
                 collapsible.style.textAlign = 'left'
                 collapsible.style.color = 'white'
@@ -759,6 +845,7 @@ class SearchAtom extends SearchDialog
                 that.resTable.style.width = '100%'
  
                 that.llt = new LazyLogTable('S/'+that.parent.uid + '/' + that.uid, that.resTable, that.res.count)
+                that.llt.slider.style.height = `${parseInt((document.body.offsetHeight - 20)  / 2 - 20)}px`
                 // that.res.res_search_lines.forEach((line) => {
                 //     var tr = that.addLine(line)
                 //     tr.addEventListener('dblclick', function()
@@ -1461,26 +1548,33 @@ class LazyLogTable
     init(position){
         let that = this
         var div = document.createElement('div')
-        div.style.float = 'left'
-        div.style.width = '98%'
+        div.style.display = 'inline-block'
+        div.style.width = '100%'
 
         this.table = document.createElement('table')
+        this.table.style.display = 'inline-block'
+        this.table.style.width = '98%'
+        this.table.style.overflowX = 'scroll'
+        this.table.style.overflowY= 'hidden'
+        this.table.style.whiteSpace = 'nowrap'
         
         this.slider = document.createElement('input')
+        this.slider.style.display = 'inline-block'
         this.slider.className = 'slider'
-        this.slider.style.float = 'left'
+        this.slider.style.position = 'fixed'
+        this.slider.style.zIndex = 0
         this.slider.type = 'range'
         this.slider.min = 0
         // this.slider.max = this.lines.length - this.range + parseInt((document.body.offsetHeight - 50) / this.fontSize)
         this.slider.max = this.count
         this.slider.style.width = '1%'
-        this.slider.style.height = `${document.body.offsetHeight - 50}px`
         this.slider.value=0
         this.slider.step=1
 
         div.append(this.table)
+        div.append(this.slider)
         position.append(div)
-        position.append(this.slider)
+
 
         this.slider.addEventListener('change', (event) => {
             that.point = parseInt(event.target.value)

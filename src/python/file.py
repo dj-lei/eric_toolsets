@@ -1,11 +1,11 @@
 from utils import *
-from parallel import *
+# from parallel import *
 
-ray.init(ignore_reinit_error=True)
-num_cpus = int(ray.cluster_resources()["CPU"] / 4 * 3)
-cores = []
-for core in range(num_cpus):
-    cores.append(Parallel.remote())
+# ray.init(ignore_reinit_error=True)
+# num_cpus = int(ray.cluster_resources()["CPU"] / 4 * 3)
+# cores = []
+# for core in range(num_cpus):
+#     cores.append(Parallel.remote())
 
 color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
         '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
@@ -33,12 +33,13 @@ class TextFile(object):
 
         with open(self.path, 'r') as f:
             self.lines = f.readlines()
-            # self.extract_inverted_index()
-            self.parallel_inverted_index_table()
+            self.extract_inverted_index()
+            # self.parallel_inverted_index_table()
 
     def extract_inverted_index(self):
         for index, line in enumerate(self.lines):
             for word in set(clean_special_symbols(line,' ').split(' ')):
+                word = word.strip()
                 if len(word) > 0:
                     if not word[0].isdigit():
                         if (word not in self.inverted_index_table):
@@ -77,13 +78,13 @@ class TextFile(object):
                 lines.append('<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
         return lines
 
-    def search(self, desc, exp_search, exp_regex, highlights):
+    def search(self, desc, exp_search, exp_regex, exp_condition, highlights):
         uid = str(uuid.uuid4()).replace('-','')
-        self.searchs[uid] = SearchAtom(self, desc, exp_search, exp_regex, highlights)
+        self.searchs[uid] = SearchAtom(self, desc, exp_search, exp_regex, exp_condition, highlights)
         return uid
 
-    def change(self, uid, desc, exp_search, exp_regex, highlights):
-        self.searchs[uid].change(desc, exp_search, exp_regex, highlights)
+    def change(self, uid, desc, exp_search, exp_regex, exp_condition, highlights):
+        self.searchs[uid].change(desc, exp_search, exp_regex, exp_condition, highlights)
 
     def sort(self, key_value_select):
         selected_key = {}
@@ -115,11 +116,12 @@ class TextFile(object):
 
 
 class SearchAtom(object):
-    def __init__(self, parent, desc, exp_search, exp_regex, highlights):
+    def __init__(self, parent, desc, exp_search, exp_regex, exp_condition, highlights):
         self.parent = parent
         self.desc = ''
-        self.exp_search = ''
-        self.exp_regex = ''
+        self.exp_search = None
+        self.exp_regex = []
+        self.exp_condition = []
         self.highlights = []
         self.retrieval_exp = {}
         self.cmd_words = []
@@ -127,9 +129,10 @@ class SearchAtom(object):
         self.res_search_lines = []
         self.res_kv = {}
         self.res_inverted_index_table = {}
+        self.res_condition = {}
         self.res_highlights = {}
         
-        self.change(desc, exp_search, exp_regex, highlights)
+        self.change(desc, exp_search, exp_regex, exp_condition, highlights)
 
     def scroll(self, point, range):
         regexs = []
@@ -151,21 +154,33 @@ class SearchAtom(object):
                 break
         return lines
 
-    def change(self, desc, exp_search, exp_regex, highlights):
+    def change(self, desc, exp_search, exp_regex, exp_condition, highlights):
         self.desc = desc
 
         if self.exp_search != exp_search:
             self.exp_search = exp_search
             self.exp_regex = exp_regex
+            self.exp_condition = exp_condition
             self.highlights = highlights
             self.search()
             self.regex()
+            self.condition()
             self.highlight()
             return
 
         if self.exp_regex != exp_regex:
             self.exp_regex = exp_regex
+            self.exp_condition = exp_condition
+            self.highlights = highlights
             self.regex()
+            self.condition()
+            self.highlight()
+            return
+
+        if self.exp_condition != exp_condition:
+            self.exp_condition = exp_condition
+            self.highlights = highlights
+            self.condition()
             self.highlight()
             return
 
@@ -175,13 +190,10 @@ class SearchAtom(object):
             return
 
     def search(self):
-        exp_res = analysis_express(self.exp_search)
-
-        self.retrieval_exp = {}
-        for exp in exp_res.keys():
-            self.retrieval_exp[exp] = self.retrieval_words(exp_res[exp])
-
-        self.res_search_lines = sorted(self.retrieval_exp['@exp0_0'])
+        if self.exp_search == '':
+            self.res_search_lines = [i for i in range(len(self.parent.lines))]
+        else:
+            self.res_search_lines = self.search_unit(self.exp_search)
 
     def regex(self):
         def is_type_correct(_type, reg):
@@ -195,6 +207,9 @@ class SearchAtom(object):
                 return False, ''
             except:
                 return False, ''
+
+        if len(self.exp_regex) == 0:
+            return
 
         key_value = {}
         key_type = {}
@@ -218,7 +233,7 @@ class SearchAtom(object):
             for r in re.findall('%\{.*?\}', regex):
                 regex = regex.replace(r, '(.*?)')
             regexs.append(regex)
-            
+        
         for search_index, line in enumerate(self.res_search_lines):
             for n_regex, regex in enumerate(regexs):
                 regex_res = re.findall(regex, self.parent.lines[line])
@@ -240,6 +255,29 @@ class SearchAtom(object):
                     break
         self.res_kv = key_value
 
+    def condition(self):
+        for exp in self.exp_condition:
+            self.res_condition[exp] = []
+            if '@' in exp.lower():
+                pass
+            elif ((' in ' in exp.lower()) | (' not in ' in exp.lower())):
+                pass
+            elif(('>' in exp.lower()) | ('<' in exp.lower())):
+                if '>' in exp.lower():
+                    left_res = self.search_unit(exp.split('>')[0].strip())
+                    right_res = self.search_unit(exp.split('>')[1].strip())
+                    for l_item in left_res:
+                        for r_item in right_res:
+                            if l_item > r_item:
+                                self.res_condition[exp].append([left_res[0], right_res[0], l_item, r_item])
+                elif '<' in exp.lower():
+                    left_res = self.search_unit(exp.split('<')[0].strip())
+                    right_res = self.search_unit(exp.split('<')[1].strip())
+                    for l_item in left_res:
+                        for r_item in right_res:
+                            if l_item < r_item:
+                                self.res_condition[exp].append([left_res[0], right_res[0], l_item, r_item])
+
     def highlight(self):
         def udpate_value(item, value):
             item['value'] = value
@@ -256,7 +294,15 @@ class SearchAtom(object):
                             res_highlights[word.strip().lower()] = res_highlights[word.strip().lower()].extend(list(map(udpate_value, self.res_inverted_index_table[ii_word], [item[1] for _ in range(len(self.res_inverted_index_table[ii_word]))])))
         self.res_highlights = res_highlights
 
-    def retrieval_words(self, express):
+    def search_unit(self, express):
+        exp_res = analysis_express(express)
+        retrieval_exp = {}
+        for exp in exp_res.keys():
+            retrieval_exp[exp] = self.retrieval_words(exp_res[exp], retrieval_exp)
+
+        return sorted(retrieval_exp['@exp0_0'])
+
+    def retrieval_words(self, express, retrieval_exp):
         params = []
         if ('(' in express) & (')' in express):
             express = re.findall('\((.*?)\)', express)[0]
@@ -276,8 +322,8 @@ class SearchAtom(object):
         res = set()
         for param in params:
             global_index = set()
-            if  param['name'] in self.retrieval_exp:
-                global_index = set(self.retrieval_exp[param['name']])
+            if  param['name'] in retrieval_exp:
+                global_index = set(retrieval_exp[param['name']])
             else:
                 for keyword in self.parent.inverted_index_table.keys():
                     if keyword.lower() == param['name'].lower():
