@@ -12,7 +12,7 @@ export default {
     }
   },
   mounted () {
-    const test = new TextLogicView()
+    const test = new TextLogicView(document.getElementById('screen'))
     test.init()
   }
 }

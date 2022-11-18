@@ -151,7 +151,7 @@ class SearchAtom(object):
                 regex_res = re.findall(regex, self.parent.lines[line])
                 if len(regex_res) > 0:
                     lines.append('<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(regex, v_regexs[n_regex], self.parent.lines[line]).replace('\\','')+'</td>')
-                break
+                    break
         return lines
 
     def change(self, desc, exp_search, exp_regex, exp_condition, highlights):

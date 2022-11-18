@@ -52,6 +52,13 @@ async function createWindow() {
           },
           { type: 'separator' },
           {
+            label: 'Import Theme',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('import-theme')
+            }
+          },
+          {
             label: 'Save Theme',
             accelerator: 'CommandOrControl+C',
             click: () => {
@@ -63,13 +70,6 @@ async function createWindow() {
             accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('export-theme')
-            }
-          },
-          {
-            label: 'Import Theme',
-            accelerator: 'CommandOrControl+C',
-            click: () => {
-              win.webContents.send('import-theme')
             }
           },
           { type: 'separator' },
@@ -88,33 +88,27 @@ async function createWindow() {
             }
           },
           {
-            label: 'Keyword Tree',
+            label: 'Open Function Area',
             accelerator: 'CommandOrControl+C',
             click: () => {
-              win.webContents.send('keyword-tree')
+              win.webContents.send('open-func-area')
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Open Global KeyValue Tree',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('open-global-keyvalue-tree')
             }
           },
           {
-            label: 'Global Keyword Tree',
+            label: 'Open Global Chart',
             accelerator: 'CommandOrControl+C',
             click: () => {
-              win.webContents.send('global-keyword-tree')
+              win.webContents.send('open-global-chart')
             }
           },
-        ]
-      },
-      {
-        label: 'View',
-        submenu: [
-          { role: 'reload' },
-          { role: 'forceReload' },
-          { role: 'toggleDevTools' },
-          { type: 'separator' },
-          { role: 'resetZoom' },
-          { role: 'zoomIn' },
-          { role: 'zoomOut' },
-          { type: 'separator' },
-          { role: 'togglefullscreen' }
         ]
       },
       {
@@ -136,6 +130,33 @@ async function createWindow() {
           }
         ]
       },
+      {
+        label: 'EricssonPlug',
+        submenu: [
+          {
+            label: 'DCGM Analysis',
+            accelerator: 'CommandOrControl+C',
+          },
+          {
+            label: 'Work Flow',
+            accelerator: 'CommandOrControl+C',
+          }
+        ]
+      },
+      {
+        label: 'View',
+        submenu: [
+          { role: 'reload' },
+          { role: 'forceReload' },
+          { role: 'toggleDevTools' },
+          { type: 'separator' },
+          { role: 'resetZoom' },
+          { role: 'zoomIn' },
+          { role: 'zoomOut' },
+          { type: 'separator' },
+          { role: 'togglefullscreen' }
+        ]
+      }
   ]
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
