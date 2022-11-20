@@ -5,6 +5,7 @@ import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 const path = require('path')
 const fs = require('fs')
+const { spawn, exec }  = require("child_process")
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Scheme must be registered before the app is ready
@@ -29,6 +30,14 @@ async function createWindow() {
     }
   })
 
+  // child('C:\\Users\\LDJ\\Projects\\ericsson_toolsets\\src\\view.exe', [], {shell:true}, function(err, data) {
+  //   if(err){
+  //      console.error(err);
+  //      return
+  //   }
+  //   console.log(data.toString())
+  // })
+
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
     await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
@@ -37,6 +46,23 @@ async function createWindow() {
     createProtocol('app')
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
+  }
+  if (!process.env.WEBPACK_DEV_SERVER_URL) {
+    const bat = spawn('C:\\Users\\LDJ\\Projects\\ericsson_toolsets\\src\\view.exe', [], {shell: true, detached: true})
+    bat.stdout.on('data', (data) => {
+      console.log(data.toString());
+    });
+    bat.stderr.on('data', (data) => {
+      console.error(data.toString());
+    });
+    bat.on('exit', (code) => {
+      console.log(`Child exited with code ${code}`);
+    });
+    win.on("closed", function(){
+      console.log(bat.pid)
+      exec(`taskkill '/T' '/F' 'PID' ${bat.pid}`)
+      // bat.kill( "SIGKILL" )
+    })
   }
 
   let template = [
@@ -136,6 +162,9 @@ async function createWindow() {
           {
             label: 'DCGM Analysis',
             accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('test')
+            }
           },
           {
             label: 'Work Flow',

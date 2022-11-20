@@ -1,22 +1,16 @@
 from utils import *
-# from parallel import *
-
-# ray.init(ignore_reinit_error=True)
-# num_cpus = int(ray.cluster_resources()["CPU"] / 4 * 3)
-# cores = []
-# for core in range(num_cpus):
-#     cores.append(Parallel.remote())
 
 color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
         '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
 
 class FileContainer(object):
-    def __init__(self):
+    def __init__(self, parallel):
+        self.parallel = parallel
         self.files = {}
 
     def new(self, path):
         uid = str(uuid.uuid4()).replace('-','')
-        self.files[uid] = TextFile(path)
+        self.files[uid] = TextFile(self, path, uid)
         return uid
 
     def delete(self, uid):
@@ -24,17 +18,20 @@ class FileContainer(object):
 
 
 class TextFile(object):
-    def __init__(self, path):
+    def __init__(self, parent, path, uid):
+        self.parent = parent
+        self.uid = uid
         self.path = path
         self.filename = path.split('\\')[-1]
 
         self.inverted_index_table = {}
         self.searchs = {}
-
+        self.lines = []
         with open(self.path, 'r') as f:
-            self.lines = f.readlines()
-            self.extract_inverted_index()
-            # self.parallel_inverted_index_table()
+            # self.lines = f.readlines()
+            # self.extract_inverted_index()
+            self.parent.parallel.copy_to_shm(self.uid, np.array(f.readlines()))
+            self.parallel_inverted_index_table()
 
     def extract_inverted_index(self):
         for index, line in enumerate(self.lines):
@@ -48,20 +45,7 @@ class TextFile(object):
                             self.inverted_index_table[word].append(index)
 
     def parallel_inverted_index_table(self):
-        global cores
-
-        result = []
-        width = int(len(self.lines) / len(cores))
-        for cpu_n in range(len(cores)):
-            result.append(cores[cpu_n].extract.remote(self.lines[cpu_n*width : (cpu_n+1)*width], cpu_n*width, (cpu_n+1)*width))
-        tmp = ray.get(result)
-
-        for core in tmp:
-            for key in core.keys():
-                if key not in self.inverted_index_table:
-                    self.inverted_index_table[key] = core[key]
-                else:
-                    self.inverted_index_table[key].extend(core[key])
+        self.parent.parallel.extract_inverted_index_table(self.uid, self.inverted_index_table)
 
     def scroll(self, uid, point, range):
         def word_color_replace(word):

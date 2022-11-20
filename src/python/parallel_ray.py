@@ -1,6 +1,13 @@
 import re
 import ray
 
+ray.init(ignore_reinit_error=True)
+num_cpus = int(8)
+cores = []
+for core in range(num_cpus):
+    cores.append(Parallel.remote())
+
+
 def clean_special_symbols(text, symbol):
     for ch in ['/','*','{','}','[',']','(',')','#','+','-','!','=',':',',','"','\'','>','<','@','`','$','%','^','&','|']:
         if ch in text:

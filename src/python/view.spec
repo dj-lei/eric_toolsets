@@ -6,13 +6,14 @@ block_cipher = None
 
 a = Analysis(
     ['view.py'],
-    pathex=['file.py', 'parallel.py', 'utils.py'],
+    pathex=['file.py', 'parallel_self.py', 'utils.py'],
     binaries=[],
     datas=[],
     hiddenimports=[
         'eventlet.hubs.epolls', 
         'eventlet.hubs.kqueue', 
         'eventlet.hubs.selects',
+        'engineio.async_drivers.eventlet',
         'dns.asyncbackend',
         'dns.asyncquery',
         'dns.asyncresolver',
@@ -78,7 +79,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

@@ -136,6 +136,11 @@ class TopMenu
             // await ipcRenderer.invoke('downloadURL', {url:'http://localhost:8001/download_theme/config.txt'})
             that.openShareDownloadDialog()
         })
+        ipcRenderer.on('test', async () => {
+            await service.emit('test', {}, (res) => {
+                console.log(res)
+            })
+        })
     }
 
     newSearchDialog(){

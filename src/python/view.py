@@ -2,7 +2,11 @@ import eventlet
 import socketio
 from utils import *
 from file import FileContainer
+from parallel_shm import Parallel
 from engineio.payload import Payload
+
+import multiprocessing
+
 sio = socketio.Server()
 app = socketio.WSGIApp(sio)
 
@@ -70,9 +74,20 @@ def global_sort(sid, params):
         final[key] = json.loads(res.to_json(orient='records'))
     return {'content': final}
 
+@sio.on("shutdwon")
+def shutdwon(sid, params):
+    pass
+
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
+
+@sio.on("test")
+def test(sid, params):
+    pass
+
 if __name__ == '__main__':
-    container = FileContainer()
+    multiprocessing.freeze_support()
+    parallel = Parallel()
+    container = FileContainer(parallel)
     eventlet.wsgi.server(eventlet.listen(('127.0.0.1', 8000)), app)
