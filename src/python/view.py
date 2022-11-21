@@ -1,5 +1,6 @@
 import eventlet
 import socketio
+import sys
 from utils import *
 from file import FileContainer
 from parallel_shm import Parallel
@@ -17,8 +18,8 @@ def connect(sid, environ):
     print('connect ', sid)
 
 @sio.on('new')
-def new(sid, path):
-    uid = container.new(path)
+def new(sid, params):
+    uid = container.new(params['path'], params['handle_type'])
     return {'uid': uid, 'filename':container.files[uid].filename, 'count':len(container.files[uid].lines), 'words':list(container.files[uid].inverted_index_table.keys())}
 
 @sio.on('scroll')
@@ -37,11 +38,18 @@ def search(sid, params):
         search_uid = container.files[file_uid].search(params['desc'], params['exp_search'], params['exp_regex'], params['exp_condition'], params['highlights'])
     else:
         container.files[file_uid].change(search_uid, params['desc'], params['exp_search'], params['exp_regex'], params['exp_condition'], params['highlights'])
-    return {'uid': search_uid, 'count': len(container.files[file_uid].searchs[search_uid].res_search_lines), 'res_kv': container.files[file_uid].searchs[search_uid].res_kv, 'res_highlights': container.files[file_uid].searchs[search_uid].res_highlights}
+    return {'uid': search_uid, 'count': len(container.files[file_uid].searchs[search_uid].res_search_lines), 'res_kv': list(container.files[file_uid].searchs[search_uid].res_kv.keys())}
 
-@sio.on("sort")
+@sio.on('sort')
 def sort(sid, params):
     return {'content': container.files[params['uid']].sort(params['key_value_select'])}
+
+@sio.on('close')
+def close(sid, params):
+    try:
+        return {'status': container.delete(params['uid'])}
+    except:
+        return {'status': False}
 
 @sio.on("global_sort")
 def global_sort(sid, params):
@@ -74,9 +82,11 @@ def global_sort(sid, params):
         final[key] = json.loads(res.to_json(orient='records'))
     return {'content': final}
 
-@sio.on("shutdwon")
+@sio.on("shutdown_all")
 def shutdwon(sid, params):
-    pass
+    print('shutdown all shm and eventlet wsgi!', params)
+    container.shutdown()
+    sys.exit()
 
 @sio.event
 def disconnect(sid):

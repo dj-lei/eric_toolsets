@@ -3,6 +3,7 @@
 import { app, protocol, BrowserWindow, dialog, ipcMain, Menu} from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
+import service from '@/plugins/socket'
 const path = require('path')
 const fs = require('fs')
 const { spawn, exec }  = require("child_process")
@@ -58,12 +59,16 @@ async function createWindow() {
     bat.on('exit', (code) => {
       console.log(`Child exited with code ${code}`);
     });
-    win.on("closed", function(){
-      console.log(bat.pid)
-      exec(`taskkill '/T' '/F' 'PID' ${bat.pid}`)
-      // bat.kill( "SIGKILL" )
-    })
   }
+
+  win.on("closed", function(){
+    service.emit('shutdown_all', {}, (res) => {
+      console.log(res)
+    })
+    // console.log(bat.pid)
+    // exec(`taskkill '/T' '/F' 'PID' ${bat.pid}`)
+    // bat.kill( "SIGKILL" )
+  })
 
   let template = [
       {

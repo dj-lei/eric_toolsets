@@ -8,30 +8,46 @@ class FileContainer(object):
         self.parallel = parallel
         self.files = {}
 
-    def new(self, path):
+    def new(self, path, handle_type):
         uid = str(uuid.uuid4()).replace('-','')
-        self.files[uid] = TextFile(self, path, uid)
+        self.files[uid] = TextFile(self, path, uid, handle_type)
         return uid
 
     def delete(self, uid):
+        self.parallel.unlink_shm(uid)
         del self.files[uid]
+
+    def shutdown(self):
+        self.parallel.shutdown()
+        for uid in self.files.keys():
+            del self.files[uid]
 
 
 class TextFile(object):
-    def __init__(self, parent, path, uid):
+    def __init__(self, parent, path, uid, handle_type='parallel'):
         self.parent = parent
         self.uid = uid
         self.path = path
         self.filename = path.split('\\')[-1]
+        self.handle_type = handle_type
 
         self.inverted_index_table = {}
         self.searchs = {}
         self.lines = []
         with open(self.path, 'r') as f:
-            # self.lines = f.readlines()
-            # self.extract_inverted_index()
-            self.parent.parallel.copy_to_shm(self.uid, np.array(f.readlines()))
-            self.parallel_inverted_index_table()
+            if self.handle_type == 'parallel':
+                time1 = time.time()
+                self.lines = self.parent.parallel.copy_to_shm(self.uid, np.array(f.readlines()))
+                time2 = time.time()
+                print('copy_to_shm: ', time2 - time1)
+                self.parallel_extract_inverted_index_table()
+                print('parallel_extract_inverted_index_table: ', time.time() - time2)
+                f = open('test_inverted_index_table.txt', "w")
+                f.write(json.dumps(self.inverted_index_table))
+                f.close()
+            else:
+                self.lines = f.readlines()
+                self.extract_inverted_index()
 
     def extract_inverted_index(self):
         for index, line in enumerate(self.lines):
@@ -44,7 +60,7 @@ class TextFile(object):
                         else:
                             self.inverted_index_table[word].append(index)
 
-    def parallel_inverted_index_table(self):
+    def parallel_extract_inverted_index_table(self):
         self.parent.parallel.extract_inverted_index_table(self.uid, self.inverted_index_table)
 
     def scroll(self, uid, point, range):
@@ -146,10 +162,24 @@ class SearchAtom(object):
             self.exp_regex = exp_regex
             self.exp_condition = exp_condition
             self.highlights = highlights
+            start_time = time.time()
             self.search()
-            self.regex()
+            print(f'search: {time.time()-start_time:.3f}s')
+            start_time = time.time()
+            if self.parent.handle_type == 'parallel':
+                self.parallel_regex()
+            else:
+                self.regex()
+            print(f'regex: {time.time()-start_time:.3f}s')
+            start_time = time.time()
             self.condition()
+            print(f'condition: {time.time()-start_time:.3f}s')
+            start_time = time.time()
             self.highlight()
+            print(f'highlight: {time.time()-start_time:.3f}s')
+            # self.regex()
+            # self.condition()
+            # self.highlight()
             return
 
         if self.exp_regex != exp_regex:
@@ -200,7 +230,6 @@ class SearchAtom(object):
         key_name = {}
         time_index = {}
         regexs = []
-
         for n_regex, regex in enumerate(self.exp_regex):
             key_type[n_regex] = {}
             key_name[n_regex] = {}
@@ -216,11 +245,12 @@ class SearchAtom(object):
                     
             for r in re.findall('%\{.*?\}', regex):
                 regex = regex.replace(r, '(.*?)')
-            regexs.append(regex)
+            # compiled_regex = re.compile(regex, re.IGNORECASE)
+            regexs.append(re.compile(regex, re.IGNORECASE))
         
         for search_index, line in enumerate(self.res_search_lines):
             for n_regex, regex in enumerate(regexs):
-                regex_res = re.findall(regex, self.parent.lines[line])
+                regex_res = regex.findall(self.parent.lines[line])
                 if len(regex_res) > 0:
                     regex_res = regex_res[0]
                     c_time = regex_res[time_index[n_regex]]
@@ -228,7 +258,6 @@ class SearchAtom(object):
                         flag, value = is_type_correct(key_type[n_regex][index], reg)
                         if flag:
                             key_value[key_name[n_regex][index]].append({'name': key_name[n_regex][index], 'type': key_type[n_regex][index], 'global_index': line, 'search_index': search_index, 'value': value, 'timestamp': c_time})
-                    
                     for word in set(clean_special_symbols(self.parent.lines[line],' ').split(' ')):
                         if len(word) > 0:
                             if not word[0].isdigit():
@@ -238,6 +267,42 @@ class SearchAtom(object):
                                     self.res_inverted_index_table[word].append({'name':word, 'type': 'word', 'global_index': line, 'search_index':search_index, 'value': word, 'timestamp': c_time})
                     break
         self.res_kv = key_value
+
+    def parallel_regex(self):
+        if len(self.exp_regex) == 0:
+            return
+
+        key_value = {}
+        key_type = {}
+        key_name = {}
+        time_index = {}
+        regexs = []
+        for n_regex, regex in enumerate(self.exp_regex):
+            key_type[n_regex] = {}
+            key_name[n_regex] = {}
+            for index, item in enumerate(re.findall('%\{(.*?)\}', regex)):
+                if item.split(':')[0] == 'TIMESTAMP':
+                    time_index[n_regex] = index
+
+                if (item.split(':')[0] != 'DROP')&(item.split(':')[0] != 'TIMESTAMP'):
+                    key_value[item.split(':')[1]] = []
+
+                key_type[n_regex][index] = item.split(':')[0]
+                key_name[n_regex][index] = item.split(':')[1]
+                    
+            for r in re.findall('%\{.*?\}', regex):
+                regex = regex.replace(r, '(.*?)')
+            # compiled_regex = re.compile(regex, re.IGNORECASE)
+            regexs.append(re.compile(regex, re.IGNORECASE))
+
+        key_value, self.res_inverted_index_table = self.parent.parent.parallel.extract_regex(self.parent.uid, self.res_search_lines, key_value, key_type, key_name, time_index, regexs)
+        self.res_kv = key_value
+        f = open('test_res_kv.txt', "w")
+        f.write(json.dumps(self.res_kv))
+        f.close()
+        f = open('test_res_inverted_index_table.txt', "w")
+        f.write(json.dumps(self.res_inverted_index_table))
+        f.close()
 
     def condition(self):
         for exp in self.exp_condition:
@@ -275,7 +340,7 @@ class SearchAtom(object):
                         if word.strip().lower() not in res_highlights:
                             res_highlights[word.strip().lower()] = list(map(udpate_value, self.res_inverted_index_table[ii_word], [item[1] for _ in range(len(self.res_inverted_index_table[ii_word]))]))
                         else:
-                            res_highlights[word.strip().lower()] = res_highlights[word.strip().lower()].extend(list(map(udpate_value, self.res_inverted_index_table[ii_word], [item[1] for _ in range(len(self.res_inverted_index_table[ii_word]))])))
+                            res_highlights[word.strip().lower()].extend(list(map(udpate_value, self.res_inverted_index_table[ii_word], [item[1] for _ in range(len(self.res_inverted_index_table[ii_word]))])))
         self.res_highlights = res_highlights
 
     def search_unit(self, express):

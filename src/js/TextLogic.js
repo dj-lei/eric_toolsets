@@ -141,6 +141,11 @@ class TopMenu
                 console.log(res)
             })
         })
+        ipcRenderer.on('shutdown_all', () => {
+            service.emit('shutdown_all', {'shutdown':true}, (res) => {
+                console.log(res)
+            })
+        })
     }
 
     newSearchDialog(){
@@ -162,7 +167,7 @@ class TopMenu
                     var kvs = []
                     Object.keys(this.parent.containerFiles[file].searchContainer).forEach((uid) => {
                         var keys = []
-                        Object.keys(this.parent.containerFiles[file].searchContainer[uid].res.res_kv).forEach((key) => {
+                        this.parent.containerFiles[file].searchContainer[uid].res.res_kv.forEach((key) => {
                             keys.push({'name': key, 'check': false})
                         })
                         kvs.push({'uid': uid, 'name': this.parent.containerFiles[file].searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
@@ -177,7 +182,7 @@ class TopMenu
                 var kvs = []
                 Object.keys(this.parent.containerFiles[file].searchContainer).forEach((uid) => {
                     var keys = []
-                    Object.keys(this.parent.containerFiles[file].searchContainer[uid].res.res_kv).forEach((key) => {
+                    this.parent.containerFiles[file].searchContainer[uid].res.res_kv.forEach((key) => {
                         keys.push({'name': key, 'check': false})
                     })
                     kvs.push({'uid': uid, 'name': this.parent.containerFiles[file].searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
@@ -284,7 +289,7 @@ class FileViewer
         let that = this
 
         // var start = new Date()
-        await service.emit('new', this.file.filePaths[0], (res) => {
+        await service.emit('new', {'path':this.file.filePaths[0], 'handle_type':'parallel'}, (res) => {
             var response = res
             that.uid = response.uid
             that.name = response.filename
@@ -540,7 +545,7 @@ class FileViewer
             Object.keys(this.searchContainer).forEach((uid) => {
                 if (!ownChild.includes(uid)) {
                     var keys = []
-                    Object.keys(this.searchContainer[uid].res.res_kv).forEach((key) => {
+                    this.searchContainer[uid].res.res_kv.forEach((key) => {
                         keys.push({'name': key, 'check': false})
                     })
                     this.keyValueSelect['children'].push({'uid': uid, 'name': this.searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
@@ -551,7 +556,7 @@ class FileViewer
             var kvs = []
             Object.keys(this.searchContainer).forEach((uid) => {
                 var keys = []
-                Object.keys(this.searchContainer[uid].res.res_kv).forEach((key) => {
+                this.searchContainer[uid].res.res_kv.forEach((key) => {
                     keys.push({'name': key, 'check': false})
                 })
                 kvs.push({'uid': uid, 'name': this.searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
@@ -579,6 +584,7 @@ class FileViewer
         this.sequentialChart = new SequentialChart(selectedLines, this.chartArea)
         this.sequentialChart.cancelBtn.style.display = 'none'
     }
+    
     openKeyValueTree(){
         if (this.keyValueTree == '') {
             this.generateKeyValueTree()
@@ -599,8 +605,10 @@ class FileViewer
     // }
 
     close(){
-        common.removeAll(this.tablink)
-        common.removeAll(this.tabcontent)
+        service.emit('close', {'uid': this.uid}, (res) => {
+            common.removeAll(this.tablink)
+            common.removeAll(this.tabcontent)
+        })
     }
 
 }
@@ -626,7 +634,7 @@ class SearchAtom extends SearchDialog
         position.append(this.modal)
     }
 
-    search(){
+    async search(){
         let that = this
         let params = {
             uid: this.parent.uid + '/' + this.uid,
@@ -636,14 +644,14 @@ class SearchAtom extends SearchDialog
             exp_condition: [],
             highlights: this.getHighlightList()
         }
-        service.emit('search', params, (res) => {
+        await service.timeout(10000).emit('search', params, (err, res) => {
+            console.log(err)
             that.res = res
+            console.log(res)
             if (that.uid == ''){
                 that.uid = that.res.uid
 
                 that.resButton = document.createElement('div')
-                // that.resButton.style.position = 'fixed'
-                // that.resButton.style.zIndex = 0
                 that.resButton.style.width = '100%'
 
                 var del = document.createElement('button')
