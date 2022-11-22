@@ -43,9 +43,6 @@ class TextFile(object):
                 print('copy_to_shm: ', time2 - time1)
                 self.parallel_extract_inverted_index_table()
                 print('parallel_extract_inverted_index_table: ', time.time() - time2)
-                f = open('test_inverted_index_table.txt', "w")
-                f.write(json.dumps(self.inverted_index_table))
-                f.close()
             else:
                 self.lines = f.readlines()
                 self.extract_inverted_index()
@@ -337,12 +334,6 @@ class SearchAtom(object):
 
         key_value, self.res_inverted_index_table = self.parent.parent.parallel.extract_regex(self.parent.uid, self.res_search_lines, key_value, key_type, key_name, time_index, regexs)
         self.res_kv = key_value
-        f = open('test_res_kv.txt', "w")
-        f.write(json.dumps(self.res_kv))
-        f.close()
-        f = open('test_res_inverted_index_table.txt', "w")
-        f.write(json.dumps(self.res_inverted_index_table))
-        f.close()
 
     def condition(self):
         for exp in self.exp_condition:
