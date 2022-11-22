@@ -93,7 +93,7 @@ class TopMenu
         ipcRenderer.on('save-theme', async function () {
             if (that.parent.containerFiles[that.parent.activeFile].configPath == ''){
                 let file = await ipcRenderer.invoke('export-theme', JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
-                that.parent.containerFiles[that.parent.activeFile].configPath = file.filePaths[0]
+                that.parent.containerFiles[that.parent.activeFile].configPath = file.filePath.toString()
             }else{
                 await ipcRenderer.invoke('save-theme', that.parent.containerFiles[that.parent.activeFile].configPath, JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
             }
@@ -110,7 +110,8 @@ class TopMenu
             that.newSearchDialog()
         })
         ipcRenderer.on('open-func-area', () => {
-            that.openFunc('SEARCH')
+            that.parent.containerFiles[that.parent.activeFile].dragCanvas(0.5)
+            that.parent.containerFiles[that.parent.activeFile].openFunc('SEARCH')
         })
         ipcRenderer.on('open-global-keyvalue-tree', () => {
             that.openGlobalKeyValueTree()
@@ -350,7 +351,7 @@ class FileViewer
         this.originArea.style.border = '2px solid #ddd'
         this.originArea.style.height = `${document.body.offsetHeight - 20}px`
 
-        this.llt = new LazyLogTable('O/'+this.uid+'/', this.originArea, this.count)
+        this.llt = new LazyLogTable(this, 'O/'+this.uid+'/', this.originArea, this.count)
 
         var tab = document.createElement('div')
         tab.style.backgroundColor = '#333'
@@ -527,6 +528,7 @@ class FileViewer
             this.keyValueTree.delete()
             this.keyValueTree = ''
         }
+        this.openFunc('SEARCH')
     }
 
     shutAllSearch(){
@@ -581,15 +583,31 @@ class FileViewer
     }
 
     generateSequentialChart(selectedLines){
-        this.sequentialChart = new SequentialChart(selectedLines, this.chartArea)
+        var data = {}
+        Object.keys(selectedLines).forEach((key) => {
+            var searchUid = key.split('.')[1]
+            data[this.searchContainer[searchUid].ins.desc.value+'.'+key.split('.').slice(2).join('.')] = selectedLines[key]
+        })
+        this.sequentialChart = new SequentialChart(this, data, this.chartArea)
         this.sequentialChart.cancelBtn.style.display = 'none'
     }
-    
+
     openKeyValueTree(){
         if (this.keyValueTree == '') {
             this.generateKeyValueTree()
         }
         this.keyValueTree.open()
+    }
+
+    chartClickEvent(params){
+        this.refresh(parseInt(params.data.globalIndex))
+        this.searchContainer[params.data.searchUid].ins.refresh(parseInt(params.data.searchIndex))
+        this.searchContainer[params.data.searchUid].ins.collapsible.click()
+        this.openFunc('SEARCH')
+    }
+
+    refresh(point){
+        this.llt.refresh(point)
     }
 
     // closeKeyValueTree(){
@@ -624,6 +642,7 @@ class SearchAtom extends SearchDialog
         this.select = {}
         this.resButton = ''
         this.resTable = ''
+        this.collapsible = ''
         this.llt = ''
         // this.desc.value = "search test"
         // this.expSearch.value = "txlProcBranchE & (pmb | txAtt)"
@@ -641,13 +660,16 @@ class SearchAtom extends SearchDialog
             desc: this.desc.value,
             exp_search: this.expSearch.value,
             exp_regex: this.getRegexList(),
-            exp_condition: [],
+            exp_condition: this.getConditionList(),
             highlights: this.getHighlightList()
         }
         await service.timeout(10000).emit('search', params, (err, res) => {
-            console.log(err)
+            if(err){
+                console.log(err)
+                console.log(res)
+            }
+
             that.res = res
-            console.log(res)
             if (that.uid == ''){
                 that.uid = that.res.uid
 
@@ -672,19 +694,19 @@ class SearchAtom extends SearchDialog
                 search.fontSize = '15px'
                 search.innerHTML = 'O'
 
-                var collapsible = document.createElement('button')
-                collapsible.style.backgroundColor = '#777'
-                collapsible.style.width = '94%'
-                collapsible.style.border = '1px solid #ddd'
-                collapsible.style.textAlign = 'left'
-                collapsible.style.color = 'white'
-                collapsible.style.cursor = 'pointer'
-                collapsible.fontSize = '15px'
-                collapsible.className = 'collapsible'
-                collapsible.innerHTML = '+ ' + that.desc.value + ` (${that.res.count} hits)`
+                that.collapsible = document.createElement('button')
+                that.collapsible.style.backgroundColor = '#777'
+                that.collapsible.style.width = '94%'
+                that.collapsible.style.border = '1px solid #ddd'
+                that.collapsible.style.textAlign = 'left'
+                that.collapsible.style.color = 'white'
+                that.collapsible.style.cursor = 'pointer'
+                that.collapsible.fontSize = '15px'
+                that.collapsible.className = 'collapsible'
+                that.collapsible.innerHTML = '+ ' + that.desc.value + ` (${that.res.count} hits)`
                 that.resButton.append(del)
                 that.resButton.append(search)
-                that.resButton.append(collapsible)
+                that.resButton.append(that.collapsible)
         
                 that.resTable = document.createElement('div')
                 that.resTable.className = 'content'
@@ -693,20 +715,10 @@ class SearchAtom extends SearchDialog
                 that.parent.dragCanvas(0.5)
                 that.resTable.style.height = that.parent.funcArea.clientHeight
  
-                that.llt = new LazyLogTable('S/'+that.parent.uid + '/' + that.uid, that.resTable, that.res.count)
+                that.llt = new LazyLogTable(that, 'S/'+that.parent.uid + '/' + that.uid, that.resTable, that.res.count)
                 that.llt.range = 20
                 that.llt.refresh(0)
                 that.llt.slider.style.height = `${20 * 18}px`
-                // that.llt.table.style.height = `${that.parent.funcArea.clientHeight}px`
-                // that.res.res_search_lines.forEach((line) => {
-                //     var tr = that.addLine(line)
-                //     tr.addEventListener('dblclick', function()
-                //     {
-                //         that.parent.scrollOriginJump(parseInt(this.getAttribute('line')))
-                //     })
-                //     tr.setAttribute('line', line)
-                //     that.resTable.appendChild(tr)
-                // })
 
                 that.parent.shutAllSearch()
                 that.parent.searchArea.append(that.resButton)
@@ -722,7 +734,7 @@ class SearchAtom extends SearchDialog
                     that.open()
                 })
 
-                collapsible.addEventListener("click", function() {
+                that.collapsible.addEventListener("click", function() {
                     that.parent.shutAllSearch()
                     if (that.resTable.style.display === "block") {
                         that.resTable.style.display = "none"
@@ -780,6 +792,18 @@ class SearchAtom extends SearchDialog
         return highlights
     }
 
+    getConditionList(){
+        var conditions = []
+        for (const li of this.conditionUl.children) {
+            for (const elm of li.children) {
+                if (elm.tagName == 'INPUT'){
+                    conditions.push(elm.value)
+                }
+            }
+        }
+        return conditions
+    }
+
     addLine(line){
         var tr = document.createElement('tr')
         var td = document.createElement('td')
@@ -801,11 +825,16 @@ class SearchAtom extends SearchDialog
         })
         return tr
     }
+
+    refresh(point){
+        this.llt.refresh(point)
+    }
 }
 
 class LazyLogTable
 {
-    constructor(uid, position, count){
+    constructor(parent, uid, position, count){
+        this.parent = parent
         this.uid = uid
         this.count = count
         this.table = ''
@@ -814,7 +843,7 @@ class LazyLogTable
 
         this.lines = []
         this.point = 0
-        this.range = 80
+        this.range = 70
         this.init(position)
     }
 
@@ -850,8 +879,7 @@ class LazyLogTable
 
 
         this.slider.addEventListener('change', (event) => {
-            that.point = parseInt(event.target.value)
-            that.refresh(that.point)
+            that.refresh(parseInt(event.target.value))
         })
 
         position.addEventListener("wheel", function(e){
@@ -860,8 +888,7 @@ class LazyLogTable
             }else{
                 that.slider.value = parseInt(that.slider.value) + 1
             }
-            that.point = parseInt(that.slider.value)
-            that.refresh(that.point)
+            that.refresh(parseInt(that.slider.value))
             e.preventDefault()
             e.stopPropagation()
         })
@@ -871,6 +898,8 @@ class LazyLogTable
 
     refresh(point){
         let that = this
+        this.point = point
+        this.slider.value = point
         service.emit('scroll', {'uid':this.uid, 'point':point, 'range':this.range}, (res) => {
             common.removeAllChild(this.table)
             that.lines = res.lines
@@ -878,6 +907,12 @@ class LazyLogTable
             that.lines.forEach((line) => {
                 var tr = document.createElement('tr')
                 tr.insertAdjacentHTML('beforeend', line)
+                if(that.uid[0] == 'S'){
+                    tr.addEventListener('dblclick', function()
+                    {
+                        that.parent.parent.llt.refresh(parseInt(tr.firstChild.innerHTML))
+                    })
+                }
                 that.table.appendChild(tr)
             })
         })

@@ -40,9 +40,11 @@ class SearchDialog extends Dialog
         this.expSearch = ''
         this.expRegex = ''
         this.highlight = ''
+        this.condition = ''
         this.color = ''
         this.regexUl = ''
         this.highlightUl = ''
+        this.conditionUl = ''
         this.searchDialogInit()
     }
 
@@ -53,12 +55,14 @@ class SearchDialog extends Dialog
         var descL = document.createElement('h4')
         descL.innerHTML = 'Search Description'
         this.desc = document.createElement('input')
+        this.desc.spellcheck = false
         this.desc.type = 'text'
 
         // search express 
         var expSearchL = document.createElement('h4')
         expSearchL.innerHTML = 'Search Express'
         this.expSearch = document.createElement('input')
+        this.expSearch.spellcheck = false
         this.expSearch.type = 'text'
 
         // regex express
@@ -66,6 +70,7 @@ class SearchDialog extends Dialog
         expRegexL.innerHTML = 'Key Value Extract Regex Express'
         this.expRegex = document.createElement('input')
         this.expRegex.style.width = '85%'
+        this.expRegex.spellcheck = false
         this.expRegex.type = 'text'
         var addRegex = document.createElement('button')
         addRegex.style.width = '15%'
@@ -78,6 +83,7 @@ class SearchDialog extends Dialog
         highlightL.innerHTML = 'Highlight Word(comma separation between words)'
         this.highlight = document.createElement('input')
         this.highlight.style.width = '75%'
+        this.highlight.spellcheck = false
         this.highlight.type = 'text'
         this.color = document.createElement('input')
         this.color.type = 'color'
@@ -86,6 +92,19 @@ class SearchDialog extends Dialog
         addHighlight.innerHTML = 'ADD'
         addHighlight.onclick = function(){that.addHighlightItem()}
         this.highlightUl = document.createElement('ul')
+
+        // condition items
+        var conditionL = document.createElement('h4')
+        conditionL.innerHTML = 'Condition Judge'
+        this.condition = document.createElement('input')
+        this.condition.style.width = '85%'
+        this.condition.spellcheck = false
+        this.condition.type = 'text'
+        var addCondition = document.createElement('button')
+        addCondition.style.width = '15%'
+        addCondition.innerHTML = 'ADD'
+        addCondition.onclick = function(){that.addConditionItem()}
+        this.conditionUl = document.createElement('ul')
 
         // search and cancel button
         var apply = document.createElement('button')
@@ -111,6 +130,11 @@ class SearchDialog extends Dialog
         this.container.appendChild(this.color)
         this.container.appendChild(addHighlight)
         this.container.appendChild(this.highlightUl)
+
+        this.container.appendChild(conditionL)
+        this.container.appendChild(this.condition)
+        this.container.appendChild(addCondition)
+        this.container.appendChild(this.conditionUl)
 
         this.container.appendChild(apply)
         this.container.appendChild(cancel)
@@ -162,6 +186,26 @@ class SearchDialog extends Dialog
         li.appendChild(c)
         li.appendChild(x)
         this.highlightUl.append(li)
+    }
+
+    addConditionItem(){
+        let that = this
+        var li = document.createElement("li")
+        // li.style.listStyleType = 'none'
+
+        var t = document.createElement("input");
+        t.setAttribute('type', "text")
+        t.setAttribute('value', this.condition.value)
+        t.style.width = '92%'
+        var x = document.createElement("button")
+        x.style.width = '8%'
+        x.style.backgroundColor = 'red'
+        x.innerHTML = 'X'
+        x.onclick = function(){that.deleteItem(x)}
+
+        li.appendChild(t)
+        li.appendChild(x)
+        this.conditionUl.append(li)
     }
 
     deleteItem(b){

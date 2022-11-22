@@ -5,6 +5,9 @@ from multiprocessing import current_process, cpu_count
 from utils import *
 
 
+def work_init(cpu_num):
+    print(f'Init Cpu Num:{cpu_num} {current_process()=}')
+
 def work_extract_inverted_index_table(shm_name, shape, dtype, cpu_n, width):
     print(f'With SharedMemory: {current_process()=}')
     time1 = time.time()
@@ -75,22 +78,24 @@ class Parallel(object):
         self.smm.start()
 
         self.exe = ProcessPoolExecutor(self._cpu_count)
+        _ = [self.exe.submit(work_init, cpu_num) for cpu_num in range(self._cpu_count)]
         self.container = {}
 
 
 
     def shutdown(self):
         self.smm.shutdown()
+        self.container = {}
 
     def copy_to_shm(self, uid, data):
         self.container[uid] = {'shm':self.smm.SharedMemory(size=data.nbytes), 'shape':data.shape, 'dtype':data.dtype}
         shm_np_array = np.ndarray(data.shape, dtype=data.dtype, buffer=self.container[uid]['shm'].buf)
-        # np.copyto(shm_np_array, data)
         shm_np_array[:] = data[:]
         return shm_np_array
 
     def unlink_shm(self, uid):
         self.container[uid].unlink()
+        del self.container[uid]
 
     def extract_inverted_index_table(self, uid, inverted_index_table):
         start_time = time.time()

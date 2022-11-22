@@ -1,5 +1,6 @@
 from utils import *
 
+special_symbols = ['/','\*','\{','\}','\[','\]','\(','\)','#','+','-','!','=',':',',','"','\'','>','<','@','$','%','^','\&','\|',' ']
 color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
         '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
 
@@ -66,16 +67,29 @@ class TextFile(object):
     def scroll(self, uid, point, range):
         def word_color_replace(word):
             return word.group(0).replace(word.group(1), '<span style="color:'+color[self.searchs[uid].cmd_words.index(word.group(1))]+'">'+word.group(1)+'</span>')
-
-        special_symbols = ['/','\*','\{','\}','\[','\]','\(','\)','#','+','-','!','=',':',',','"','\'','>','<','@','$','%','^','\&','\|',' ']
         
         lines = []
-        for line in self.lines[point:point+range]:
-            if uid == '':
-                lines.append('<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
-            else:
+        if uid == '':
+            for index, line in enumerate(self.lines[point:point+range]):
+                num = str(point + index)
+                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
+                lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+        else:
+            highlights = pd.DataFrame()
+            for highlight in self.searchs[uid].res_highlights.keys():
+                highlights = pd.concat([highlights, pd.DataFrame(self.searchs[uid].res_highlights[highlight])])
+
+            for index, line in enumerate(self.lines[point:point+range]):
+                num = str(point + index)
+                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
+                if len(highlights) > 0:
+                    is_exsit = highlights.loc[(highlights['global_index'] == point + index), :]
+                    if len(is_exsit) > 0:
+                        lines.append(num+'<td style="color:'+is_exsit['value'].values[0]+';white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+                        continue
+
                 reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.searchs[uid].cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
-                lines.append('<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
+                lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
         return lines
 
     def search(self, desc, exp_search, exp_regex, exp_condition, highlights):
@@ -92,9 +106,9 @@ class TextFile(object):
             for key in searchAtom['children']:
                 if key['check'] == True:
                     data_type = self.searchs[searchAtom['uid']].res_kv[key['name']][0]['type']
-                    selected_key[searchAtom['name']+'.'+data_type+'.'+key['name']] = self.searchs[searchAtom['uid']].res_kv[key['name']]
+                    selected_key[self.uid+'.'+searchAtom['uid']+'.'+data_type+'.'+key['name']] = self.searchs[searchAtom['uid']].res_kv[key['name']]
             for highlight in self.searchs[searchAtom['uid']].res_highlights.keys():
-                selected_key[searchAtom['name']+'.highlight.'+highlight] = self.searchs[searchAtom['uid']].res_highlights[highlight]
+                selected_key[self.uid+'.'+searchAtom['uid']+'.highlight.'+highlight] = self.searchs[searchAtom['uid']].res_highlights[highlight]
 
         final = {}
         for key in selected_key.keys():
@@ -111,6 +125,8 @@ class TextFile(object):
             res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
             res = res.loc[(res['full_name'] == key), :].reset_index()
             res = res.rename(columns={"index": "graph_index"})
+            res['file_uid'] = key.split('.')[0]
+            res['search_uid'] = key.split('.')[1]
             final[key] = json.loads(res.to_json(orient='records'))
         return final
 
@@ -135,23 +151,47 @@ class SearchAtom(object):
         self.change(desc, exp_search, exp_regex, exp_condition, highlights)
 
     def scroll(self, point, range):
-        regexs = []
-        v_regexs = []
-        for regex in self.exp_regex:
-            v_regex = regex
-            for i, r in enumerate(re.findall('%\{.*?\}', regex)):
-                regex = regex.replace(r, '(.*?)')
-                v_regex = v_regex.replace(r, '<span style="color:'+color[i]+'">'+"\\"+str(i+1)+'</span>')
-            regexs.append(regex)
-            v_regexs.append(v_regex)
-
+        def word_color_replace(word):
+            return word.group(0).replace(word.group(1), '<span style="color:'+color[self.cmd_words.index(word.group(1))]+'">'+word.group(1)+'</span>')
+  
         lines = []
-        for line in self.res_search_lines[point:point+range]:
-            for n_regex, regex in enumerate(regexs):
-                regex_res = re.findall(regex, self.parent.lines[line])
-                if len(regex_res) > 0:
-                    lines.append('<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(regex, v_regexs[n_regex], self.parent.lines[line]).replace('\\','')+'</td>')
-                    break
+        if len(self.exp_regex) == 0:
+            for line in self.res_search_lines[point:point+range]:
+                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+str(line)+'</td>'
+                reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
+                lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, self.parent.lines[line])+'</td>')
+        else:
+            regexs = []
+            v_regexs = []
+            for regex in self.exp_regex:
+                v_regex = regex
+                for i, r in enumerate(re.findall('%\{.*?\}', regex)):
+                    regex = regex.replace(r, '(.*?)')
+                    if r.split(':')[0] == '%{DROP':
+                        v_regex = v_regex.replace(r, '<span style="color:#FFFFFF">'+"\\"+str(i+1)+'</span>')
+                    else:
+                        v_regex = v_regex.replace(r, '<span style="color:'+color[i]+'">'+"\\"+str(i+1)+'</span>')
+                regexs.append(regex)
+                v_regexs.append(v_regex)
+
+            highlights = pd.DataFrame()
+            for highlight in self.res_highlights.keys():
+                highlights = pd.concat([highlights, pd.DataFrame(self.res_highlights[highlight])])
+
+            for line in self.res_search_lines[point:point+range]:
+                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+str(line)+'</td>'
+
+                if len(highlights) > 0:
+                    is_exsit = highlights.loc[(highlights['global_index'] == line), :]
+                    if len(is_exsit) > 0:
+                        lines.append(num + '<td style="color:'+is_exsit['value'].values[0]+';white-space:nowrap;font-size:12px;text-align:left">'+self.parent.lines[line]+'</td>')
+                        continue
+                
+                for n_regex, regex in enumerate(regexs):
+                    regex_res = re.findall(regex, self.parent.lines[line])
+                    if len(regex_res) > 0:
+                        lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(regex, v_regexs[n_regex], self.parent.lines[line]).replace('\\','')+'</td>')
+                        break
         return lines
 
     def change(self, desc, exp_search, exp_regex, exp_condition, highlights):

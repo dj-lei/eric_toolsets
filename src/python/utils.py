@@ -9,7 +9,7 @@ import pandas as pd
 
 
 def clean_special_symbols(text, symbol):
-    for ch in ['/','*','{','}','[',']','(',')','#','+','-','!','=',';',':',',','"','\'','>','<','@','`','$','^','&','|','\n']:
+    for ch in ['/','*','{','}','[',']','(',')','#','+','-','!','=',';',':',',','.','"','\'','>','<','@','`','$','^','&','|','\n']:
         if ch in text:
             text = text.replace(ch,symbol)
     return re.sub(symbol+"+", symbol, text)

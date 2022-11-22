@@ -131,8 +131,9 @@ class Chart
 
 class SequentialChart extends Chart
 {
-    constructor(selectedLine, position){
+    constructor(parent, selectedLine, position){
         super()
+        this.parent = parent
         this.register(position)
         this.selectedLines = selectedLine
         this.draw()
@@ -144,7 +145,7 @@ class SequentialChart extends Chart
     }
 
     draw(){
-        // let that = this
+        let that = this
         // package line
         var option = this.getSequentialChartConfig()
         option['title']['text'] = "Sequential"
@@ -227,7 +228,7 @@ class SequentialChart extends Chart
     
                 // package xaxis data
                 this.selectedLines[line].forEach((item) => {
-                    d.push({'value': [item.graph_index, item.value], 'origin':item.value, 'timestamp':item.timestamp})
+                    d.push({'value': [item.graph_index, item.value], 'fileUid':item.file_uid, 'searchUid':item.search_uid, 'globalIndex':item.global_index, 'searchIndex':item.search_index, 'origin':item.value, 'timestamp':item.timestamp})
                 })
                 
                 option['series'].push(
@@ -304,14 +305,7 @@ class SequentialChart extends Chart
         // }
         this.chart.setOption(option)
         this.chart.on('click', function(params) {
-          if(params['componentType'] != 'markLine'){
-            // that.numLine = params.data.processIndex
-            // that.process = params.seriesName.split('.')[0]
-            // that.$common.removeAllChildDom('content-standard')
-            // that.graphLogData = that.originLogs[that.process]
-            // that.openLogDetail(that.numLine, false)
-            // that.openSnackbar()
-          }
+          that.parent.chartClickEvent(params)
         });
         // this.chart.on('legendselectchanged', function(params){
         // //   that.selectedLinesOnGraph = params.selected
