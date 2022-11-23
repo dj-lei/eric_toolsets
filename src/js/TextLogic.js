@@ -305,6 +305,7 @@ class FileViewer
 
     init(){
         let that = this
+        this.keyValueSelect = {'name': this.name, 'check': false, 'children': []}
         this.tablink = document.createElement('div')
         this.tablink.style.float = 'left'
 
@@ -406,6 +407,7 @@ class FileViewer
         this.searchArea = document.createElement('div')
         this.searchArea.style.display = 'none'
         this.searchArea.style.width = '100%'
+        // this.searchArea.style.overflowY = 'auto'
         // this.searchArea.style.border = '2px solid #ddd'
 
         this.keyValueTreeArea = document.createElement('div')
@@ -443,9 +445,10 @@ class FileViewer
             this.originArea.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
             this.llt.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
             this.llt.table.style.height = `${parseInt((document.body.offsetHeight - 30)  * rate)}px`
-            this.searchArea.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
-            this.keyValueTreeArea.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
-            this.chartArea.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
+            this.funcArea.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
+            // this.searchArea.style.height = `${parseInt((document.body.offsetHeight - 30) * rate)}px`
+            this.keyValueTreeArea.style.height = `${parseInt((document.body.offsetHeight - 80) * rate)}px`
+            this.chartArea.style.height = `${parseInt((document.body.offsetHeight - 80) * rate)}px`
         }
     }
 
@@ -456,7 +459,6 @@ class FileViewer
             this.keyValueTreeArea.style.display = 'none'
             this.chartArea.style.display = 'none'
         }else if(activeFunc == 'KEYVALUETREE'){
-            this.openKeyValueTree()
             this.keyValueTreeArea.style.display = 'block'
             this.searchArea.style.display = 'none'
             this.chartArea.style.display = 'none'
@@ -480,7 +482,6 @@ class FileViewer
 
     loadConfig(content){
         this.searchContainer = {}
-        this.keyValueSelect = {}
         this.configPath = content[0]
         this.configContent = JSON.parse(content[1])
         this.configContent['search'].forEach((search) => {
@@ -512,16 +513,14 @@ class FileViewer
 
     updateSearch(searchAtom){
         this.searchContainer[searchAtom.uid].res = searchAtom.res
+        this.generateKeyValueTree()
     }
 
     addSearch(searchAtom){
         this.searchContainer[searchAtom.uid] = {'ins': searchAtom, 'res': searchAtom.res}
         this.dragCanvas(0.5)
-        if (this.keyValueTree != ''){
-            this.keyValueTree.delete()
-            this.keyValueTree = ''
-        }
         this.openFunc('SEARCH')
+        this.generateKeyValueTree()
     }
 
     shutAllSearch(){
@@ -532,32 +531,17 @@ class FileViewer
     }
 
     generateKeyValueTree(){
-        if ('children' in this.keyValueSelect) {
-            var ownChild = []
-            this.keyValueSelect['children'].forEach((child) => {
-                ownChild.push(child.uid)
-            })
-            Object.keys(this.searchContainer).forEach((uid) => {
-                if (!ownChild.includes(uid)) {
-                    var keys = []
-                    this.searchContainer[uid].res.res_kv.forEach((key) => {
-                        keys.push({'name': key, 'check': false})
-                    })
-                    this.keyValueSelect['children'].push({'uid': uid, 'name': this.searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
-                }
-            })
-        }else{
-            this.keyValueSelect = {'name': this.name, 'check': false}
-            var kvs = []
-            Object.keys(this.searchContainer).forEach((uid) => {
-                var keys = []
-                this.searchContainer[uid].res.res_kv.forEach((key) => {
-                    keys.push({'name': key, 'check': false})
-                })
-                kvs.push({'uid': uid, 'name': this.searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
-            })
-            this.keyValueSelect['children'] = kvs
+        if (this.keyValueTree != ''){
+            this.keyValueTree.delete()
         }
+        this.keyValueSelect = {'name': this.name, 'check': false, 'children': []}
+        Object.keys(this.searchContainer).forEach((uid) => {
+            var keys = []
+            this.searchContainer[uid].res.res_kv.forEach((key) => {
+                keys.push({'name': key, 'check': false})
+            })
+            this.keyValueSelect['children'].push({'uid': uid, 'name': this.searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
+        })
         this.keyValueTree = new TreeSelect(this.keyValueSelect, this, this.keyValueTreeArea)
         this.keyValueTree.cancelBtn.style.display = 'none'
     }
@@ -586,11 +570,9 @@ class FileViewer
     }
 
     openKeyValueTree(){
-        if (this.keyValueTree != '') {
-            this.keyValueTree.delete()
+        if (this.keyValueTree == '') {
+            this.generateKeyValueTree()
         }
-        this.generateKeyValueTree()
-        this.keyValueTree.open()
     }
 
     chartClickEvent(params){
@@ -720,6 +702,13 @@ class SearchAtom extends SearchDialog
         
                 // bind button click event
                 del.addEventListener("click", function() {
+                    that.parent.keyValueSelect['children'].forEach((child, index) => {
+                        if (child.uid == that.uid) {
+                            that.parent.keyValueSelect['children'].splice(index,1)
+                        }
+                    })
+                    delete that.parent.searchContainer[that.uid]
+                    that.parent.generateKeyValueTree()
                     common.removeAll(that.resTable)
                     common.removeAll(that.resButton)
                 })
@@ -837,7 +826,7 @@ class LazyLogTable
 
         this.lines = []
         this.point = 0
-        this.range = 70
+        this.range = 50
         this.init(position)
     }
 
@@ -873,7 +862,7 @@ class LazyLogTable
         position.append(div)
 
 
-        this.slider.addEventListener('change', (event) => {
+        this.slider.addEventListener('input', (event) => {
             that.refresh(parseInt(event.target.value))
         })
 

@@ -104,8 +104,8 @@ class TextFile(object):
                 if key['check'] == True:
                     data_type = self.searchs[searchAtom['uid']].res_kv[key['name']][0]['type']
                     selected_key[self.uid+'.'+searchAtom['uid']+'.'+data_type+'.'+key['name']] = self.searchs[searchAtom['uid']].res_kv[key['name']]
-            for highlight in self.searchs[searchAtom['uid']].res_highlights.keys():
-                selected_key[self.uid+'.'+searchAtom['uid']+'.highlight.'+highlight] = self.searchs[searchAtom['uid']].res_highlights[highlight]
+                    for highlight in self.searchs[searchAtom['uid']].res_highlights.keys():
+                        selected_key[self.uid+'.'+searchAtom['uid']+'.highlight.'+highlight] = self.searchs[searchAtom['uid']].res_highlights[highlight]
 
         final = {}
         for key in selected_key.keys():
@@ -193,51 +193,26 @@ class SearchAtom(object):
     def change(self, desc, exp_search, exp_regex, exp_condition, highlights):
         self.desc = desc
 
-        if self.exp_search != exp_search:
-            self.exp_search = exp_search
-            self.exp_regex = exp_regex
-            self.exp_condition = exp_condition
-            self.highlights = highlights
-            # start_time = time.time()
-            self.search()
-            # print(f'search: {time.time()-start_time:.3f}s')
-            # start_time = time.time()
-            if self.parent.handle_type == 'parallel':
-                self.parallel_regex()
-            else:
-                self.regex()
-            # print(f'regex: {time.time()-start_time:.3f}s')
-            # start_time = time.time()
-            self.condition()
-            # print(f'condition: {time.time()-start_time:.3f}s')
-            # start_time = time.time()
-            self.highlight()
-            # print(f'highlight: {time.time()-start_time:.3f}s')
-            # self.regex()
-            # self.condition()
-            # self.highlight()
-            return
-
-        if self.exp_regex != exp_regex:
-            self.exp_regex = exp_regex
-            self.exp_condition = exp_condition
-            self.highlights = highlights
+        self.exp_search = exp_search
+        self.exp_regex = exp_regex
+        self.exp_condition = exp_condition
+        self.highlights = highlights
+        # start_time = time.time()
+        self.search()
+        # print(f'search: {time.time()-start_time:.3f}s')
+        # start_time = time.time()
+        if self.parent.handle_type == 'parallel':
+            self.parallel_regex()
+        else:
             self.regex()
-            self.condition()
-            self.highlight()
-            return
-
-        if self.exp_condition != exp_condition:
-            self.exp_condition = exp_condition
-            self.highlights = highlights
-            self.condition()
-            self.highlight()
-            return
-
-        if self.highlights != highlights:
-            self.highlights = highlights
-            self.highlight()
-            return
+        # print(f'regex: {time.time()-start_time:.3f}s')
+        # start_time = time.time()
+        self.condition()
+        # print(f'condition: {time.time()-start_time:.3f}s')
+        # start_time = time.time()
+        self.highlight()
+        # print(f'highlight: {time.time()-start_time:.3f}s')
+        return
 
     def search(self):
         if self.exp_search == '':
