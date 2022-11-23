@@ -31,16 +31,13 @@ def work_extract_inverted_index_table(shm_name, shape, dtype, cpu_n, width):
 
 def work_extract_regex(shm_name, shape, dtype, cpu_n, width, res_search_lines, key_value, key_type, key_name, time_index, regexs):
     def is_type_correct(_type, reg):
-        try:
-            if _type == 'STRING':
-                return True, reg
-            elif _type == 'INT':
-                return True, int(reg)
-            elif _type == 'FLOAT':
-                return True, float(reg)
-            return False, ''
-        except:
-            return False, ''
+        if _type == 'STRING':
+            return True, reg
+        elif _type == 'INT':
+            return True, int(reg)
+        elif _type == 'FLOAT':
+            return True, float(reg)
+        return False, ''
 
     print(f'With SharedMemory: {current_process()=}')
     time1 = time.time()

@@ -290,7 +290,7 @@ class FileViewer
         let that = this
 
         // var start = new Date()
-        await service.emit('new', {'path':this.file.filePaths[0], 'handle_type':'single'}, (res) => {
+        await service.emit('new', {'path':this.file.filePaths[0], 'handle_type':'parallel'}, (res) => {
             var response = res
             that.uid = response.uid
             that.name = response.filename
@@ -407,7 +407,7 @@ class FileViewer
         this.searchArea = document.createElement('div')
         this.searchArea.style.display = 'none'
         this.searchArea.style.width = '100%'
-        this.searchArea.style.border = '2px solid #ddd'
+        // this.searchArea.style.border = '2px solid #ddd'
 
         this.keyValueTreeArea = document.createElement('div')
         this.keyValueTreeArea.style.display = 'none'
@@ -859,12 +859,13 @@ class LazyLogTable
         this.table.style.overflowX = 'scroll'
         this.table.style.overflowY= 'hidden'
         this.table.style.whiteSpace = 'nowrap'
+        this.table.style.border = 'none'
         
         this.slider = document.createElement('input')
         this.slider.style.display = 'inline-block'
         this.slider.className = 'slider'
-        this.slider.style.position = 'fixed'
-        this.slider.style.zIndex = 0
+        // this.slider.style.position = 'fixed'
+        // this.slider.style.zIndex = 0
         this.slider.type = 'range'
         this.slider.min = 0
         // this.slider.max = this.lines.length - this.range + parseInt((document.body.offsetHeight - 50) / this.fontSize)

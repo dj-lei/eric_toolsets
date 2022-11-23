@@ -175,7 +175,6 @@ class SearchAtom(object):
             highlights = pd.DataFrame()
             for highlight in self.res_highlights.keys():
                 highlights = pd.concat([highlights, pd.DataFrame(self.res_highlights[highlight])])
-
             for line in self.res_search_lines[point:point+range]:
                 num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+str(line)+'</td>'
 
@@ -249,16 +248,13 @@ class SearchAtom(object):
 
     def regex(self):
         def is_type_correct(_type, reg):
-            try:
-                if _type == 'STRING':
-                    return True, reg
-                elif _type == 'INT':
-                    return True, int(reg)
-                elif _type == 'FLOAT':
-                    return True, float(reg)
-                return False, ''
-            except:
-                return False, ''
+            if _type == 'STRING':
+                return True, reg
+            elif _type == 'INT':
+                return True, int(reg)
+            elif _type == 'FLOAT':
+                return True, float(reg)
+            return False, ''
 
         if len(self.exp_regex) == 0:
             return
@@ -287,14 +283,12 @@ class SearchAtom(object):
             regexs.append(re.compile(regex, re.IGNORECASE))
         for search_index, line in enumerate(self.res_search_lines):
             for n_regex, regex in enumerate(regexs):
-                print(self.parent.lines[line])
                 regex_res = regex.findall(self.parent.lines[line])
                 if len(regex_res) > 0:
                     regex_res = regex_res[0]
                     c_time = regex_res[time_index[n_regex]]
                     for index, reg in enumerate(regex_res):
                         flag, value = is_type_correct(key_type[n_regex][index], reg)
-                        print(index, reg, flag, value)
                         if flag:
                             key_value[key_name[n_regex][index]].append({'name': key_name[n_regex][index], 'type': key_type[n_regex][index], 'global_index': line, 'search_index': search_index, 'value': value, 'timestamp': c_time})
                     for word in set(clean_special_symbols(self.parent.lines[line],' ').split(' ')):
