@@ -86,7 +86,7 @@ def global_sort(sid, params):
 def shutdwon(sid, params):
     print('shutdown all shm and eventlet wsgi!', params)
     container.shutdown()
-    sys.exit()
+    proc.close()
 
 @sio.event
 def disconnect(sid):
@@ -100,4 +100,5 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()
     parallel = Parallel()
     container = FileContainer(parallel)
-    eventlet.wsgi.server(eventlet.listen(('127.0.0.1', 8000)), app)
+    proc = eventlet.listen(('127.0.0.1', 8000))
+    eventlet.wsgi.server(proc, app)

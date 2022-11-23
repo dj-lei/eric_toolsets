@@ -6,7 +6,7 @@ block_cipher = None
 
 a = Analysis(
     ['view.py'],
-    pathex=['file.py', 'parallel_self.py', 'utils.py'],
+    pathex=['file.py', 'parallel_shm.py', 'utils.py'],
     binaries=[],
     datas=[],
     hiddenimports=[

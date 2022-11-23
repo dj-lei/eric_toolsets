@@ -20,8 +20,7 @@ class FileContainer(object):
 
     def shutdown(self):
         self.parallel.shutdown()
-        for uid in self.files.keys():
-            del self.files[uid]
+        self.files = {}
 
 
 class TextFile(object):

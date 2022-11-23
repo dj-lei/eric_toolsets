@@ -48,8 +48,10 @@ async function createWindow() {
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
   }
+
   if (!process.env.WEBPACK_DEV_SERVER_URL) {
-    const bat = spawn('C:\\Users\\LDJ\\Projects\\ericsson_toolsets\\src\\view.exe', [], {shell: true, detached: true})
+    // const bat = spawn('C:\\Users\\LDJ\\Projects\\ericsson_toolsets\\src\\view.exe', [], {shell: true, detached: true})
+    const bat = spawn(path.join(__dirname).replace("app.asar", "view.exe"), [], {shell: true})
     bat.stdout.on('data', (data) => {
       console.log(data.toString());
     });

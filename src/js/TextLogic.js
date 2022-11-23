@@ -8,7 +8,6 @@ import { SearchDialog, ShareDownloadDialog } from './dialog'
 import { SequentialChart } from './chart'
 import { TreeSelect } from './svg'
 
-
 class TextLogicView
 {
     constructor(screen){
