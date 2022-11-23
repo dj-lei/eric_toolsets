@@ -456,6 +456,7 @@ class FileViewer
             this.keyValueTreeArea.style.display = 'none'
             this.chartArea.style.display = 'none'
         }else if(activeFunc == 'KEYVALUETREE'){
+            this.openKeyValueTree()
             this.keyValueTreeArea.style.display = 'block'
             this.searchArea.style.display = 'none'
             this.chartArea.style.display = 'none'
@@ -479,6 +480,7 @@ class FileViewer
 
     loadConfig(content){
         this.searchContainer = {}
+        this.keyValueSelect = {}
         this.configPath = content[0]
         this.configContent = JSON.parse(content[1])
         this.configContent['search'].forEach((search) => {
@@ -498,14 +500,6 @@ class FileViewer
         })
         this.openFunc('SEARCH')
     }
-
-    scrollOriginJump(index){
-        this.originArea.querySelectorAll(`[id=origin-line${index}]`)[0].scrollIntoView(true)
-    }
-
-    // scrollSearchJump(line){
-
-    // }
 
     newSearch(){
         this.tmpSearch = new SearchAtom(this, this.tabcontent)
@@ -592,9 +586,10 @@ class FileViewer
     }
 
     openKeyValueTree(){
-        if (this.keyValueTree == '') {
-            this.generateKeyValueTree()
+        if (this.keyValueTree != '') {
+            this.keyValueTree.delete()
         }
+        this.generateKeyValueTree()
         this.keyValueTree.open()
     }
 
