@@ -290,7 +290,7 @@ class FileViewer
         let that = this
 
         // var start = new Date()
-        await service.emit('new', {'path':this.file.filePaths[0], 'handle_type':'parallel'}, (res) => {
+        await service.emit('new', {'path':this.file.filePaths[0], 'handle_type':'single'}, (res) => {
             var response = res
             that.uid = response.uid
             that.name = response.filename

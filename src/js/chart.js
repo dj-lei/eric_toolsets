@@ -38,10 +38,10 @@ class Chart
             text: 'Stacked Line'
           },
           // backgroundColor:'#3F3F3F',
-          toolbox:{
-            feature:{
-            }
-          },
+          // toolbox:{
+          //   feature:{
+          //   }
+          // },
           tooltip: {
             trigger: 'axis',
             show: true,
@@ -59,6 +59,13 @@ class Chart
               return ret;
               
             },
+            feature: {
+              saveAsImage: {
+                show: true,
+                excludeComponents: ['toolbox'],
+                pixelRatio: 2
+              }
+            }
           },
           legend: {
             data: [],
@@ -126,6 +133,10 @@ class Chart
 
     close(that){
         that.canvas.style.display = "none"
+    }
+
+    delete(){
+      common.removeAll(this.canvas)
     }
 }
 
@@ -218,7 +229,7 @@ class SequentialChart extends Chart
                     type: this.selectedLines[line][0].type == 'STRING' ? 'category' : 'value',
                     name: line,
                     nameTextStyle: {
-                        fontSize:'7',
+                        fontSize:'8',
                         padding:[0, 0, -7 * offsetNum, 0],
                     },
                     position: index % 2 == 0 ? 'left' : 'right', // left or right

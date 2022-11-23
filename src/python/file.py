@@ -99,6 +99,7 @@ class TextFile(object):
 
     def sort(self, key_value_select):
         selected_key = {}
+        
         for searchAtom in key_value_select['children']:
             for key in searchAtom['children']:
                 if key['check'] == True:
@@ -199,21 +200,21 @@ class SearchAtom(object):
             self.exp_regex = exp_regex
             self.exp_condition = exp_condition
             self.highlights = highlights
-            start_time = time.time()
+            # start_time = time.time()
             self.search()
-            print(f'search: {time.time()-start_time:.3f}s')
-            start_time = time.time()
+            # print(f'search: {time.time()-start_time:.3f}s')
+            # start_time = time.time()
             if self.parent.handle_type == 'parallel':
                 self.parallel_regex()
             else:
                 self.regex()
-            print(f'regex: {time.time()-start_time:.3f}s')
-            start_time = time.time()
+            # print(f'regex: {time.time()-start_time:.3f}s')
+            # start_time = time.time()
             self.condition()
-            print(f'condition: {time.time()-start_time:.3f}s')
-            start_time = time.time()
+            # print(f'condition: {time.time()-start_time:.3f}s')
+            # start_time = time.time()
             self.highlight()
-            print(f'highlight: {time.time()-start_time:.3f}s')
+            # print(f'highlight: {time.time()-start_time:.3f}s')
             # self.regex()
             # self.condition()
             # self.highlight()
@@ -284,15 +285,16 @@ class SearchAtom(object):
                 regex = regex.replace(r, '(.*?)')
             # compiled_regex = re.compile(regex, re.IGNORECASE)
             regexs.append(re.compile(regex, re.IGNORECASE))
-        
         for search_index, line in enumerate(self.res_search_lines):
             for n_regex, regex in enumerate(regexs):
+                print(self.parent.lines[line])
                 regex_res = regex.findall(self.parent.lines[line])
                 if len(regex_res) > 0:
                     regex_res = regex_res[0]
                     c_time = regex_res[time_index[n_regex]]
                     for index, reg in enumerate(regex_res):
                         flag, value = is_type_correct(key_type[n_regex][index], reg)
+                        print(index, reg, flag, value)
                         if flag:
                             key_value[key_name[n_regex][index]].append({'name': key_name[n_regex][index], 'type': key_type[n_regex][index], 'global_index': line, 'search_index': search_index, 'value': value, 'timestamp': c_time})
                     for word in set(clean_special_symbols(self.parent.lines[line],' ').split(' ')):
