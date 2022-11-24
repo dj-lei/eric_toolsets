@@ -58,11 +58,10 @@ def global_sort(sid, params):
         for searchAtom in file['children']:
             for key in searchAtom['children']:
                 if key['check'] == True:
-                    # selected_key[file['name']+'.'+searchAtom['name']+'.'+key['name']] = files[file['uid']].search_atoms[searchAtom['uid']].res['res_kv'][key['name']]
                     data_type = container.files[file['uid']].searchs[searchAtom['uid']].res_kv[key['name']][0]['type']
-                    selected_key[file['name']+'.'+searchAtom['name']+'.'+data_type+'.'+key['name']] = container.files[file['uid']].searchs[searchAtom['uid']].res_kv[key['name']]
-            for highlight in container.files[file['uid']].searchs[searchAtom['uid']].res_highlights.keys():
-                selected_key[file['name']+'.'+searchAtom['name']+'.highlight.'+highlight] = container.files[file['uid']].searchs[searchAtom['uid']].res_highlights[highlight]
+                    selected_key[file['uid']+'.'+searchAtom['uid']+'.'+data_type+'.'+key['name']] = container.files[file['uid']].searchs[searchAtom['uid']].res_kv[key['name']]
+                    for highlight in container.files[file['uid']].searchs[searchAtom['uid']].res_highlights.keys():
+                        selected_key[file['uid']+'.'+searchAtom['uid']+'.highlight.'+highlight] = container.files[file['uid']].searchs[searchAtom['uid']].res_highlights[highlight]
     
     final = {}
     for key in selected_key.keys():
@@ -79,6 +78,8 @@ def global_sort(sid, params):
         res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
         res = res.loc[(res['path'] == key)&(res['name'] == key.split('.')[-1]), :].reset_index()
         res = res.rename(columns={"index": "graph_index"})
+        res['file_uid'] = key.split('.')[0]
+        res['search_uid'] = key.split('.')[1]
         final[key] = json.loads(res.to_json(orient='records'))
     return {'content': final}
 

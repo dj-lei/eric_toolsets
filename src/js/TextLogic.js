@@ -157,40 +157,21 @@ class TopMenu
     }
 
     generateGlobalKeyValueTree(){
-        if ('children' in this.globalKeyValueSelect) {
-            var ownChild = []
-            this.globalKeyValueSelect['children'].forEach((child) => {
-                ownChild.push(child.uid)
-            })
-            Object.keys(this.parent.containerFiles).forEach((file) => {
-                if (!ownChild.includes(file)) {
-                    var kvs = []
-                    Object.keys(this.parent.containerFiles[file].searchContainer).forEach((uid) => {
-                        var keys = []
-                        this.parent.containerFiles[file].searchContainer[uid].res.res_kv.forEach((key) => {
-                            keys.push({'name': key, 'check': false})
-                        })
-                        kvs.push({'uid': uid, 'name': this.parent.containerFiles[file].searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
-                    })
-                    this.globalKeyValueSelect['children'].push({'uid': file, 'name': this.parent.containerFiles[file].name, 'check': false, 'children': kvs})
-                }
-            })
-        }else{
-            this.globalKeyValueSelect = {'name': 'global', 'check': false}
-            var files = []
-            Object.keys(this.parent.containerFiles).forEach((file) => {
-                var kvs = []
-                Object.keys(this.parent.containerFiles[file].searchContainer).forEach((uid) => {
-                    var keys = []
-                    this.parent.containerFiles[file].searchContainer[uid].res.res_kv.forEach((key) => {
-                        keys.push({'name': key, 'check': false})
-                    })
-                    kvs.push({'uid': uid, 'name': this.parent.containerFiles[file].searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
+        this.globalKeyValueSelect = {'name': 'global', 'check': false}
+        var files = []
+        Object.keys(this.parent.containerFiles).forEach((file) => {
+            var kvs = []
+            Object.keys(this.parent.containerFiles[file].searchContainer).forEach((uid) => {
+                var keys = []
+                this.parent.containerFiles[file].searchContainer[uid].res.res_kv.forEach((key) => {
+                    keys.push({'name': key, 'check': false})
                 })
-                files.push({'uid': file, 'name': this.parent.containerFiles[file].name, 'check': false, 'children': kvs})
+                kvs.push({'uid': uid, 'name': this.parent.containerFiles[file].searchContainer[uid].ins.desc.value, 'check': false, 'children': keys})
             })
-            this.globalKeyValueSelect['children'] = files
-        }
+            files.push({'uid': file, 'name': this.parent.containerFiles[file].name, 'check': false, 'children': kvs})
+        })
+        this.globalKeyValueSelect['children'] = files
+
         this.globalKeyValueTree = new TreeSelect(this.globalKeyValueSelect, this, this.parent.screen)
         this.globalKeyValueTree.canvas.style.position = 'fixed'
         this.globalKeyValueTree.canvas.style.zIndex = 0
@@ -218,7 +199,13 @@ class TopMenu
                 if (that.globalSequentialChart != '') {
                     that.globalSequentialChart.delete()
                 }
-                that.globalSequentialChart = new SequentialChart(res.content, that.parent.screen)
+                var data = {}
+                Object.keys(res.content).forEach((key) => {
+                    var fileUid = key.split('.')[0]
+                    var searchUid = key.split('.')[1]
+                    data[that.parent.containerFiles[fileUid].name+'.'+that.parent.containerFiles[fileUid].searchContainer[searchUid].ins.desc.value+'.'+key.split('.').slice(2).join('.')] = res.content[key]
+                })
+                that.globalSequentialChart = new SequentialChart(that, data, that.parent.screen)
                 that.globalSequentialChart.chart.resize({height:that.parent.screen.clientHeight - 120, width:that.parent.screen.clientWidth})
                 that.globalSequentialChart.canvas.style.position = 'fixed'
                 that.globalSequentialChart.canvas.style.zIndex = 0
@@ -236,6 +223,12 @@ class TopMenu
 
     closeGlobalSequentialChart(){
         this.globalSequentialChart.close()
+    }
+
+    chartClickEvent(params){
+        this.parent.containerFiles[params.data.fileUid].title.click()
+        this.parent.containerFiles[params.data.fileUid].searchContainer[params.data.searchUid].ins.collapsible.click()
+        this.closeGlobalSequentialChart()
     }
 
     generateShareDownloadDialog(){
@@ -261,6 +254,7 @@ class FileViewer
         this.uid = ''
         this.file = file
         this.name = ''
+        this.title = ''
         this.configPath = ''
         this.configContent = {'search': []}
         this.count = 0
@@ -309,20 +303,20 @@ class FileViewer
         this.tablink = document.createElement('div')
         this.tablink.style.float = 'left'
 
-        var title = document.createElement('button')
-        title.setAttribute('id', this.uid+'-tablink')
-        title.style.backgroundColor = '#555'
-        title.style.color = 'white'
-        title.style.border = 'none'
-        title.style.cursor = 'pointer'
-        title.style.padding = '5px 8px'
-        title.style.fontSize = '12px'
-        title.style.width = `${this.name.length * 8}px`
-        title.className = "tablink"
-        title.innerHTML = this.name
-        title.addEventListener('click', function()
+        this.title = document.createElement('button')
+        this.title.setAttribute('id', this.uid+'-tablink')
+        this.title.style.backgroundColor = '#555'
+        this.title.style.color = 'white'
+        this.title.style.border = 'none'
+        this.title.style.cursor = 'pointer'
+        this.title.style.padding = '5px 8px'
+        this.title.style.fontSize = '12px'
+        this.title.style.width = `${this.name.length * 8}px`
+        this.title.className = "tablink"
+        this.title.innerHTML = this.name
+        this.title.addEventListener('click', function()
         {
-            that.parent.openPage(that.uid+'-tabcontent', title)
+            that.parent.openPage(that.uid+'-tabcontent', that.title)
         })
 
         var close = document.createElement('button')
@@ -335,7 +329,7 @@ class FileViewer
         close.addEventListener("click", function() {
             that.parent.deleteFile(that.uid)
         })
-        this.tablink.appendChild(title)
+        this.tablink.appendChild(this.title)
         this.tablink.appendChild(close)
     
         this.tabcontent = document.createElement('div')
@@ -586,18 +580,6 @@ class FileViewer
         this.llt.refresh(point)
     }
 
-    // closeKeyValueTree(){
-    //     this.keyValueTree.close()
-    // }
-
-    // openSequentialChart(){
-    //     this.sequentialChart.open()
-    // }
-
-    // closeSequentialChart(){
-    //     this.sequentialChart.close()
-    // }
-
     close(){
         service.emit('close', {'uid': this.uid}, (res) => {
             common.removeAll(this.tablink)
@@ -826,7 +808,7 @@ class LazyLogTable
 
         this.lines = []
         this.point = 0
-        this.range = 50
+        this.range = 60
         this.init(position)
     }
 

@@ -132,7 +132,11 @@ class Chart
     }
 
     close(that){
-        that.canvas.style.display = "none"
+      if(that){
+          that.canvas.style.display = "none"
+      }else{
+          this.canvas.style.display = "none"
+      }
     }
 
     delete(){

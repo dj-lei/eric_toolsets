@@ -69,7 +69,7 @@ def work_extract_regex(shm_name, shape, dtype, cpu_n, width, res_search_lines, k
 class Parallel(object):
 
     def __init__(self):
-        self._cpu_count = 8
+        self._cpu_count = cpu_count()
 
         self.smm = SharedMemoryManager()
         self.smm.start()
