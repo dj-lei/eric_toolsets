@@ -7,7 +7,6 @@ import { ipcRenderer } from 'electron'
 import { SearchDialog, ShareDownloadDialog } from './dialog'
 import { SequentialChart } from './chart'
 import { TreeSelect } from './svg'
-
 class TextLogicView
 {
     constructor(screen){
@@ -129,6 +128,8 @@ class TopMenu
                     })
                   .then(response => {
                         console.log(response.data)
+                }).catch(function (error) {
+                    alert('Can not link to sharing service!')
                 })
             }
         })

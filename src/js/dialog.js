@@ -246,7 +246,7 @@ class ShareDownloadDialog extends Dialog
                 input.type = 'radio'
                 input.value = theme
                 input.name = 'share-download'
-                var label = document.createElement("label")
+                var label = document.createElement("h4")
                 label.style.color = '#FFF'
                 label.innerHTML = theme
                 div.appendChild(input)
@@ -272,11 +272,19 @@ class ShareDownloadDialog extends Dialog
             this.container.appendChild(refresh)
             this.container.appendChild(cancel)
             this.modal.appendChild(this.container)
-        })
+            })
+            .catch(function (error) {
+                alert('Can not link to sharing service!')
+                that.close()
+            })
     }
 
     async download(){
-        await ipcRenderer.invoke('downloadURL', {url:`http://localhost:8001/download_theme/${this.container.querySelector('input[name="share-download"]:checked').value}`})
+        if (process.env.NODE_ENV == 'development'){
+            await ipcRenderer.invoke('downloadURL', {url:`http://localhost:8001/download_theme/${this.container.querySelector('input[name="share-download"]:checked').value}`})
+        }else{
+            await ipcRenderer.invoke('downloadURL', {url:`http://10.166.152.87/share/download_theme/${this.container.querySelector('input[name="share-download"]:checked').value}`})
+        }
     }
 
     refresh(){
