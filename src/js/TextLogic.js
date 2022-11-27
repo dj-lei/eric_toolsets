@@ -7,6 +7,10 @@ import { ipcRenderer } from 'electron'
 import { SearchDialog, ShareDownloadDialog } from './dialog'
 import { SequentialChart } from './chart'
 import { TreeSelect } from './svg'
+import { TextLogicFlow } from './flow'
+
+const fs = require('fs')
+
 class TextLogicView
 {
     constructor(screen){
@@ -76,7 +80,7 @@ class TopMenu
         this.globalKeyValueSelect = {}
         this.globalSequentialChart = ''
         this.shareDownload = ''
-
+        this.workFlow = ''
         this.init()
     }
 
@@ -85,7 +89,10 @@ class TopMenu
         ipcRenderer.on('open-file', async function () {
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
-                new FileViewer(that.parent, file)
+                var f = new FileViewer(that.parent, file.filePaths[0])
+                f.openFile(function() {
+                    document.getElementById(f.uid+'-tablink').click()
+                })
             }
         })
         ipcRenderer.on('save-theme', async function () {
@@ -97,8 +104,8 @@ class TopMenu
             }
         })
         ipcRenderer.on('export-theme', async () => {
+            that.parent.containerFiles[that.parent.activeFile].saveConfig()
             let file = await ipcRenderer.invoke('export-theme', JSON.stringify(that.parent.containerFiles[that.parent.activeFile].configContent))
-            that.parent.containerFiles[that.parent.activeFile].saveConfig(file)
         })
         ipcRenderer.on('import-theme', async () => {
             let content = await ipcRenderer.invoke('import-theme')
@@ -136,6 +143,14 @@ class TopMenu
         ipcRenderer.on('share-download', async () => {
             // await ipcRenderer.invoke('downloadURL', {url:'http://localhost:8001/download_theme/config.txt'})
             that.openShareDownloadDialog()
+        })
+        ipcRenderer.on('dcgm-analysis', async () => {
+            await service.emit('test', {}, (res) => {
+                console.log(res)
+            })
+        })
+        ipcRenderer.on('work-flow', async () => {
+            that.openWorkFlow()
         })
         ipcRenderer.on('test', async () => {
             await service.emit('test', {}, (res) => {
@@ -193,7 +208,7 @@ class TopMenu
         this.globalKeyValueTree.close()
     }
 
-    async applyKeyValueTree(){
+    async keyValueTreeClickEvent(){
         let that = this
 
         await service.emit('global_sort', {'global_key_value_select':this.globalKeyValueSelect}, (res) => {
@@ -206,7 +221,7 @@ class TopMenu
                     var searchUid = key.split('.')[1]
                     data[that.parent.containerFiles[fileUid].name+'.'+that.parent.containerFiles[fileUid].searchContainer[searchUid].ins.desc.value+'.'+key.split('.').slice(2).join('.')] = res.content[key]
                 })
-                that.globalSequentialChart = new SequentialChart(that, data, that.parent.screen)
+                that.globalSequentialChart = new SequentialChart(that, res.uid, 'Global Sequential',data, that.parent.screen)
                 that.globalSequentialChart.chart.resize({height:that.parent.screen.clientHeight - 120, width:that.parent.screen.clientWidth})
                 that.globalSequentialChart.canvas.style.position = 'fixed'
                 that.globalSequentialChart.canvas.style.zIndex = 0
@@ -246,6 +261,20 @@ class TopMenu
     closeShareDownloadDialog(){
         this.shareDownload.close()
     }
+
+    openWorkFlow(){
+        var files = [
+            'E:\\Projects\\ericsson_toolsets\\src\\python\\save_log\\LE_CIKAMPEKJUANDA_MLteread.log',
+            'E:\\Projects\\ericsson_toolsets\\src\\python\\save_log\\LTE_JAMISUKAJAYA_ST_teread.log'
+        ]
+        var path = 'E:\\Projects\\ericsson_toolsets\\src\\python\\save_log\\Theme_Visby_All_Branch_txAtt2.txt'
+        var content = [path, fs.readFileSync(path, 'utf-8')]
+        this.workFlow = new TextLogicFlow(files, content, this.parent.screen)
+        this.workFlow.canvas.style.position = 'fixed'
+        this.workFlow.canvas.style.zIndex = 0
+        this.workFlow.canvas.style.top = 0
+        this.workFlow.canvas.style.left = 0
+    }
 }
 
 class FileViewer
@@ -257,7 +286,7 @@ class FileViewer
         this.name = ''
         this.title = ''
         this.configPath = ''
-        this.configContent = {'search': []}
+        this.configContent = {'search': [], 'keyValueTree':{}}
         this.count = 0
         this.words = []
         this.searchContainer = {}
@@ -274,17 +303,15 @@ class FileViewer
         this.activeFunc = ''
 
         this.keyValueTree = ''
-        this.sequentialChart = ''
+        this.sequentialCharts = {}
 
         this.llt = ''
-        this.openFile()
     }
 
-    async openFile(){
+    openFile(_callback){
         let that = this
 
-        // var start = new Date()
-        await service.emit('new', {'path':this.file.filePaths[0], 'handle_type':'parallel'}, (res) => {
+        service.emit('new', {'path':this.file, 'handle_type':'parallel'}, (res) => {
             var response = res
             that.uid = response.uid
             that.name = response.filename
@@ -292,9 +319,7 @@ class FileViewer
             that.words = response.words
             that.parent.containerFiles[that.uid] = that
             that.init()
-            // var end   = new Date()
-            // console.log((end.getTime() - start.getTime()) / 1000)
-            document.getElementById(that.uid+'-tablink').click()
+            _callback()
         })
     }
 
@@ -465,22 +490,24 @@ class FileViewer
     }
 
     saveConfig(){
-        this.configContent = {'search': []}
+        this.configContent = {'search': [], 'keyValueTree':{}}
         Object.keys(this.searchContainer).forEach((uid) => {
             var ins = this.searchContainer[uid].ins
-            this.configContent['search'].push({'desc': ins.desc.value, 'search': ins.expSearch.value, 'regexs': ins.getRegexList(), 'highlights': ins.getHighlightList()})
+            this.configContent['search'].push({'uid': ins.uid, 'desc': ins.desc.value, 'search': ins.expSearch.value, 'regexs': ins.getRegexList(), 'highlights': ins.getHighlightList()})
         })
 
-        this.configContent['select'] = this.keyValueSelect
+        this.configContent['keyValueTree'] = this.sequentialCharts
         return this.configContent
     }
 
     loadConfig(content){
+        let that = this
+        this.count = 1
         this.searchContainer = {}
         this.configPath = content[0]
         this.configContent = JSON.parse(content[1])
         this.configContent['search'].forEach((search) => {
-            this.tmpSearch = new SearchAtom(this, this.tabcontent)
+            this.tmpSearch = new SearchAtom(this, search.uid, this.tabcontent)
             this.tmpSearch.desc.value = search.desc
             this.tmpSearch.expSearch.value = search.search
             search.regexs.forEach((regex) => {
@@ -492,13 +519,22 @@ class FileViewer
                 this.tmpSearch.color.value = highlight[1]
                 this.tmpSearch.addHighlightItem()
             })
-            this.tmpSearch.search()
+            this.tmpSearch.search(function() {
+                if (that.count == that.configContent['search'].length) {
+                    Object.keys(that.configContent['keyValueTree']).forEach((uid) => {
+                        var title = that.configContent['keyValueTree'][uid]['title']
+                        var keyValueSelect = JSON.parse(that.configContent['keyValueTree'][uid]['tree'])
+                        that.applyKeyValueTree(title, keyValueSelect)
+                    })
+                }
+                that.count = that.count + 1
+            })
         })
         this.openFunc('SEARCH')
     }
 
     newSearch(){
-        this.tmpSearch = new SearchAtom(this, this.tabcontent)
+        this.tmpSearch = new SearchAtom(this, '', this.tabcontent)
         this.tmpSearch.open()
     }
 
@@ -541,27 +577,37 @@ class FileViewer
         this.keyValueTree.cancelBtn.style.display = 'none'
     }
 
-    async applyKeyValueTree(){
+    keyValueTreeClickEvent(){
+        this.applyKeyValueTree('Sequential', this.keyValueSelect)
+    }
+
+    async applyKeyValueTree(title, keyValueSelect){
         let that = this
 
-        await service.emit('sort', {'uid':this.uid, 'key_value_select':this.keyValueSelect}, (res) => {
-                if (that.sequentialChart != ''){
-                    that.sequentialChart.delete()
-                }
-                that.generateSequentialChart(res.content)
-                that.sequentialChart.chart.resize({height:that.keyValueTreeArea.clientHeight, width:that.keyValueTreeArea.clientWidth})
+        await service.emit('sort', {'uid':this.uid, 'key_value_select':keyValueSelect}, (res) => {
                 that.openFunc('CHART')
+                that.sequentialCharts[res.uid] = {'title':title, 'tree':JSON.stringify(keyValueSelect)}
+                that.generateSequentialChart(res.uid, title, res.content)
             })
     }
 
-    generateSequentialChart(selectedLines){
+    generateSequentialChart(uid, title, selectedLines){
         var data = {}
         Object.keys(selectedLines).forEach((key) => {
             var searchUid = key.split('.')[1]
             data[this.searchContainer[searchUid].ins.desc.value+'.'+key.split('.').slice(2).join('.')] = selectedLines[key]
         })
-        this.sequentialChart = new SequentialChart(this, data, this.chartArea)
-        this.sequentialChart.cancelBtn.style.display = 'none'
+        var chart = new SequentialChart(this, uid, title, data, this.chartArea)
+        chart.chart.resize({height:this.chartArea.clientHeight, width:this.chartArea.clientWidth})
+        chart.cancelBtn.style.display = 'none'
+    }
+
+    applyChartConfig(uid, title){
+        this.sequentialCharts[uid]['title'] = title
+    }
+
+    deleteChart(uid){
+        delete this.sequentialCharts[uid]
     }
 
     openKeyValueTree(){
@@ -592,27 +638,24 @@ class FileViewer
 
 class SearchAtom extends SearchDialog
 {
-    constructor(parent, position){
+    constructor(parent, uid, position){
         super()
         this.register(position)
         this.parent = parent
-        this.uid = ''
+        this.uid = uid
         this.res = {}
         this.select = {}
         this.resButton = ''
         this.resTable = ''
         this.collapsible = ''
         this.llt = ''
-        // this.desc.value = "search test"
-        // this.expSearch.value = "txlProcBranchE & (pmb | txAtt)"
-        // this.expRegex.value = "%{STRING:device}: \\[%{TIMESTAMP:time}\\] \\(%{STRING:cost}\\) %{STRING:name} %{STRING:trace}: %{DROP:tmp}txAtt:%{INT:txAtt}, txAttPeak:%{INT:txAttPeak},%{DROP:tmp}torTemperature:%{INT:torTemperature} "
     }
 
     register(position){
         position.append(this.modal)
     }
 
-    async search(){
+    search(_callback){
         let that = this
         let params = {
             uid: this.parent.uid + '/' + this.uid,
@@ -622,14 +665,13 @@ class SearchAtom extends SearchDialog
             exp_condition: this.getConditionList(),
             highlights: this.getHighlightList()
         }
-        await service.timeout(10000).emit('search', params, (err, res) => {
+        service.timeout(10000).emit('search', params, (err, res) => {
             if(err){
                 console.log(err)
-                console.log(res)
             }
 
             that.res = res
-            if (that.uid == ''){
+            if (that.collapsible == ''){
                 that.uid = that.res.uid
 
                 that.resButton = document.createElement('div')
@@ -729,6 +771,7 @@ class SearchAtom extends SearchDialog
             that.parent.llt.uid = 'O/'+that.parent.uid+'/'+that.uid
             that.parent.llt.refresh(that.parent.llt.point)
             that.close()
+            _callback()
         })
     }
 
@@ -887,4 +930,4 @@ class LazyLogTable
 
 }
 
-export {TextLogicView}
+export {TextLogicView, FileViewer}

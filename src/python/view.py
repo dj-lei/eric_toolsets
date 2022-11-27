@@ -34,15 +34,13 @@ def scroll(sid, params):
 def search(sid, params):
     file_uid = params['uid'].split('/')[0]
     search_uid = params['uid'].split('/')[1]
-    if search_uid == '':
-        search_uid = container.files[file_uid].search(params['desc'], params['exp_search'], params['exp_regex'], params['exp_condition'], params['highlights'])
-    else:
-        container.files[file_uid].change(search_uid, params['desc'], params['exp_search'], params['exp_regex'], params['exp_condition'], params['highlights'])
+    search_uid = container.files[file_uid].search(search_uid, params['desc'], params['exp_search'], params['exp_regex'], params['exp_condition'], params['highlights'])
     return {'uid': search_uid, 'count': len(container.files[file_uid].searchs[search_uid].res_search_lines), 'res_kv': list(container.files[file_uid].searchs[search_uid].res_kv.keys())}
 
 @sio.on('sort')
 def sort(sid, params):
-    return {'content': container.files[params['uid']].sort(params['key_value_select'])}
+    uid, content = container.files[params['uid']].sort(params['key_value_select'])
+    return {'uid': uid, 'content': content}
 
 @sio.on('close')
 def close(sid, params):
@@ -53,6 +51,7 @@ def close(sid, params):
 
 @sio.on("global_sort")
 def global_sort(sid, params):
+    uid = str(uuid.uuid4()).replace('-','')
     selected_key = {}
     for file in params['global_key_value_select']['children']:
         for searchAtom in file['children']:
@@ -81,7 +80,7 @@ def global_sort(sid, params):
         res['file_uid'] = key.split('.')[0]
         res['search_uid'] = key.split('.')[1]
         final[key] = json.loads(res.to_json(orient='records'))
-    return {'content': final}
+    return {'uid': uid, 'content': final}
 
 @sio.on("shutdown_all")
 def shutdwon(sid, params):

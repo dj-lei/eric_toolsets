@@ -88,15 +88,21 @@ class TextFile(object):
                 lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
         return lines
 
-    def search(self, desc, exp_search, exp_regex, exp_condition, highlights):
-        uid = str(uuid.uuid4()).replace('-','')
-        self.searchs[uid] = SearchAtom(self, desc, exp_search, exp_regex, exp_condition, highlights)
-        return uid
+    def search(self, search_uid, desc, exp_search, exp_regex, exp_condition, highlights):
+        if search_uid == '':
+            search_uid = str(uuid.uuid4()).replace('-','')
+            self.searchs[search_uid] = SearchAtom(self, desc, exp_search, exp_regex, exp_condition, highlights)
+        elif search_uid not in self.searchs:
+            self.searchs[search_uid] = SearchAtom(self, desc, exp_search, exp_regex, exp_condition, highlights)
+        else:
+            self.searchs[search_uid].change(desc, exp_search, exp_regex, exp_condition, highlights)
+        return search_uid
 
-    def change(self, uid, desc, exp_search, exp_regex, exp_condition, highlights):
-        self.searchs[uid].change(desc, exp_search, exp_regex, exp_condition, highlights)
+    def change(self, search_uid, desc, exp_search, exp_regex, exp_condition, highlights):
+        self.searchs[search_uid].change(desc, exp_search, exp_regex, exp_condition, highlights)
 
     def sort(self, key_value_select):
+        uid = str(uuid.uuid4()).replace('-','')
         selected_key = {}
         
         for searchAtom in key_value_select['children']:
@@ -125,7 +131,7 @@ class TextFile(object):
             res['file_uid'] = key.split('.')[0]
             res['search_uid'] = key.split('.')[1]
             final[key] = json.loads(res.to_json(orient='records'))
-        return final
+        return uid, final
 
 
 class SearchAtom(object):
@@ -197,21 +203,13 @@ class SearchAtom(object):
         self.exp_regex = exp_regex
         self.exp_condition = exp_condition
         self.highlights = highlights
-        # start_time = time.time()
         self.search()
-        # print(f'search: {time.time()-start_time:.3f}s')
-        # start_time = time.time()
         if self.parent.handle_type == 'parallel':
             self.parallel_regex()
         else:
             self.regex()
-        # print(f'regex: {time.time()-start_time:.3f}s')
-        # start_time = time.time()
         self.condition()
-        # print(f'condition: {time.time()-start_time:.3f}s')
-        # start_time = time.time()
         self.highlight()
-        # print(f'highlight: {time.time()-start_time:.3f}s')
         return
 
     def search(self):

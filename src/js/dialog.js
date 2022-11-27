@@ -213,6 +213,49 @@ class SearchDialog extends Dialog
     }
 }
 
+class ChartDialog extends Dialog{
+    constructor(parent, position){
+        super()
+        this.register(position)
+        this.parent = parent
+        this.desc = ''
+        this.chartDialogInit()
+    }
+
+    register(position){
+        position.append(this.modal)
+    }
+
+    chartDialogInit(){
+        let that = this
+
+        var descL = document.createElement('h4')
+        descL.innerHTML = 'Title'
+        this.desc = document.createElement('input')
+        this.desc.spellcheck = false
+        this.desc.type = 'text'
+
+        // search and cancel button
+        var apply = document.createElement('button')
+        apply.innerHTML = 'APPLY'
+        apply.onclick = function(){that.apply()}
+        var cancel = document.createElement('button')
+        cancel.style.backgroundColor = 'red'
+        cancel.innerHTML = 'CANCEL'
+        cancel.onclick = function(){that.close()}
+
+        this.container.appendChild(descL)
+        this.container.appendChild(this.desc)
+        this.container.appendChild(apply)
+        this.container.appendChild(cancel)
+        this.modal.appendChild(this.container)
+    }
+
+    apply(){
+        this.parent.applyConfig()
+    }
+}
+
 class ShareDownloadDialog extends Dialog
 {
     constructor(position){
@@ -293,4 +336,4 @@ class ShareDownloadDialog extends Dialog
     }
 }
 
-export {SearchDialog, ShareDownloadDialog}
+export {SearchDialog, ChartDialog, ShareDownloadDialog}

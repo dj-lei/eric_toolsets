@@ -87,6 +87,7 @@ class TreeSelect extends svg
         this.data = data
         this.draw(this.data, this.svg)
         this.cancelBtn = this.addButton('CANCEL', this.close, 'red')
+        this.clearBtn = this.addButton('CLEAR', this.clear, 'blue')
         this.applyBtn = this.addButton('APPLY', this.apply, 'green')
     }
 
@@ -258,8 +259,24 @@ class TreeSelect extends svg
         // this.syncTreeAndFilterData(svg, filterData)
     }
 
+    clear(that){
+        that.iterationClear([that.data])
+        that.svg.selectAll("*").remove()
+        that.draw(that.data, that.svg)
+    }
+
+    iterationClear(data){
+        data.forEach((item) => {
+            if ('children' in item){
+                this.iterationClear(item['children'])
+            }else{
+                item.check = false
+            }
+        })
+    }
+
     apply(that){
-        that.parent.applyKeyValueTree()
+        that.parent.keyValueTreeClickEvent()
     }
 
 }

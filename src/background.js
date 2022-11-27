@@ -6,7 +6,8 @@ import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import service from '@/plugins/socket'
 const path = require('path')
 const fs = require('fs')
-const { spawn, exec }  = require("child_process")
+const { spawn }  = require("child_process")
+const { autoUpdater } = require('electron-updater')
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Scheme must be registered before the app is ready
@@ -25,19 +26,53 @@ async function createWindow() {
       nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
       contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION,
       webSecurity: false
-      // nodeIntegration: false,
-      // contextIsolation: true,
-      // preload: path.join(__dirname, './preload.js'),
     }
   })
 
-  // child('C:\\Users\\LDJ\\Projects\\ericsson_toolsets\\src\\view.exe', [], {shell:true}, function(err, data) {
-  //   if(err){
-  //      console.error(err);
-  //      return
-  //   }
-  //   console.log(data.toString())
-  // })
+  // auto update
+  if (!process.env.WEBPACK_DEV_SERVER_URL) {
+    autoUpdater.autoDownload = false
+   
+    autoUpdater.signals.updateDownloaded(() => {})
+    autoUpdater.on('error', (error) => {
+      // log.warn('Check update error:' + error == null ? 'unknown' : (error.stack || error).toString())
+      // dialog.showErrorBox('Error: ', error == null ? 'unknown' : (error.stack || error).toString())
+    })
+   
+    autoUpdater.on('update-available', (info) => {
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'Update Tooltip',
+        message: 'Software needs to be updated. Would you like to update it now?',
+        buttons: ['Delay', 'Update']
+      }).then((res) => {
+        if (res.response === 1) {
+          autoUpdater.downloadUpdate()
+        }
+      })
+    })
+   
+    // Triggered when checking for updates
+    // autoUpdater.on('update-available', (res) => {
+    //   log.warn(res)
+    // })
+   
+    // No updates available
+    // autoUpdater.on('update-not-available', () => {
+    //   log.warn('No updates available')
+    // })
+   
+    // Install update
+    autoUpdater.on('update-downloaded', (res) => {
+      // log.warn(res)
+      dialog.showMessageBox({
+        title: 'Update Tooltip！',
+        message: 'It has been automatically upgraded to the latest version. Please wait for the program installation to complete and restart the application!'
+      }, () => {
+        setImmediate(() => autoUpdater.quitAndInstall(true, true))
+      })
+    })
+  }
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
@@ -47,20 +82,13 @@ async function createWindow() {
     createProtocol('app')
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
+    autoUpdater.checkForUpdates()
   }
 
+  // start python background program 
   if (!process.env.WEBPACK_DEV_SERVER_URL) {
     // const bat = spawn('C:\\Users\\LDJ\\Projects\\ericsson_toolsets\\src\\view.exe', [], {shell: true, detached: true})
-    const bat = spawn(path.join(__dirname).replace("app.asar", "view.exe"), [], {shell: true})
-    bat.stdout.on('data', (data) => {
-      console.log(data.toString());
-    });
-    bat.stderr.on('data', (data) => {
-      console.error(data.toString());
-    });
-    bat.on('exit', (code) => {
-      console.log(`Child exited with code ${code}`);
-    });
+    const bat = spawn(path.join(__dirname).replace("app.asar", "view\\view.exe"), [], {shell: true})
   }
 
   win.on("closed", function(){
@@ -170,12 +198,15 @@ async function createWindow() {
             label: 'DCGM Analysis',
             accelerator: 'CommandOrControl+C',
             click: () => {
-              win.webContents.send('test')
+              win.webContents.send('dcgm-analysis')
             }
           },
           {
             label: 'Work Flow',
             accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('work-flow')
+            }
           }
         ]
       },

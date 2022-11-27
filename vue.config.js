@@ -7,10 +7,23 @@ module.exports = defineConfig({
   },
   pluginOptions: {
     electronBuilder: {
-      // preload: 'src/preload.js',
       nodeIntegration: true,
-      // Or, for multiple preload files:
-      // preload: { preload: 'src/preload.js', otherPreload: 'src/preload2.js' }
+      builderOptions: {
+        productName: "ericsson_toolsets",
+        appId: "ericsson_toolsets",
+        publish: [
+          {
+            "provider": "generic",
+            "url": "http://localhost:8001/download"
+          }
+        ],
+        extraFiles: [
+          {
+            "from": "src/python/dist/view",
+            "to": "resources/view"
+          }
+        ]
+      }
     }
-   }
+  }
 })
