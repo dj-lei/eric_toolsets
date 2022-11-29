@@ -1,4 +1,5 @@
 from utils import *
+import sys
 
 special_symbols = ['/','\*','\{','\}','\[','\]','\(','\)','#','+','-','!','=',':',',','"','\'','>','<','@','$','%','^','\&','\|',' ']
 color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
@@ -15,7 +16,9 @@ class FileContainer(object):
         return uid
 
     def delete(self, uid):
-        self.parallel.unlink_shm(uid)
+        if self.files[uid].handle_type == 'parallel':
+            self.parallel.delete_shm(uid)
+        self.files[uid] = ''
         del self.files[uid]
 
     def shutdown(self):
@@ -37,11 +40,10 @@ class TextFile(object):
         with open(self.path, 'r') as f:
             if self.handle_type == 'parallel':
                 time1 = time.time()
-                self.lines = self.parent.parallel.copy_to_shm(self.uid, np.array(f.readlines()))
-                time2 = time.time()
-                print('copy_to_shm: ', time2 - time1)
+                # self.lines = self.parent.parallel.copy_to_shm(self.uid, np.array(f.readlines()))
+                self.lines = self.parent.parallel.copy_to_shm(self.uid, f.readlines())
                 self.parallel_extract_inverted_index_table()
-                print('parallel_extract_inverted_index_table: ', time.time() - time2)
+                print('parallel_extract_inverted_index_table: ', time.time() - time1)
             else:
                 self.lines = f.readlines()
                 self.extract_inverted_index()
@@ -58,7 +60,7 @@ class TextFile(object):
                             self.inverted_index_table[word].append(index)
 
     def parallel_extract_inverted_index_table(self):
-        self.parent.parallel.extract_inverted_index_table(self.uid, self.inverted_index_table)
+        self.inverted_index_table = self.parent.parallel.extract_inverted_index_table(self.uid)
 
     def scroll(self, uid, point, range):
         def word_color_replace(word):

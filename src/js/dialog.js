@@ -2,6 +2,7 @@ import http from '@/plugins/http'
 import urls from '@/plugins/urls'
 import common from '@/plugins/common'
 import { ipcRenderer } from 'electron'
+const fs = require('fs')
 
 class Dialog
 {
@@ -213,7 +214,8 @@ class SearchDialog extends Dialog
     }
 }
 
-class ChartDialog extends Dialog{
+class ChartDialog extends Dialog
+{
     constructor(parent, position){
         super()
         this.register(position)
@@ -253,6 +255,93 @@ class ChartDialog extends Dialog{
 
     apply(){
         this.parent.applyConfig()
+    }
+}
+
+class WorkFlowDialog extends Dialog
+{
+    constructor(parent, position){
+        super()
+        this.register(position)
+        this.parent = parent
+        this.dir = ''
+        this.themePath = ''
+        this.workFlowDialogInit()
+    }
+
+    register(position){
+        position.append(this.modal)
+    }
+
+    workFlowDialogInit(){
+        let that = this
+
+        // Files Directory
+        var dirL = document.createElement('h4')
+        dirL.innerHTML = 'Files Directory'
+        this.dir = document.createElement('input')
+        this.dir.spellcheck = false
+        this.dir.style.width = '85%'
+        this.dir.type = 'text'
+        var browseDir = document.createElement('button')
+        browseDir.style.width = '15%'
+        browseDir.innerHTML = 'BROWSE'
+        browseDir.onclick = function(){that.browseFilesDirectory()}
+
+        // Theme path
+        var themePathL = document.createElement('h4')
+        themePathL.innerHTML = 'Theme Path'
+        this.themePath = document.createElement('input')
+        this.themePath.spellcheck = false
+        this.themePath.style.width = '85%'
+        this.themePath.type = 'text'
+        var browseThenme = document.createElement('button')
+        browseThenme.style.width = '15%'
+        browseThenme.innerHTML = 'BROWSE'
+        browseThenme.onclick = function(){that.browseTheme()}
+
+        // search and cancel button
+        var apply = document.createElement('button')
+        apply.innerHTML = 'RUN'
+        apply.onclick = function(){that.apply()}
+        var cancel = document.createElement('button')
+        cancel.style.backgroundColor = 'red'
+        cancel.innerHTML = 'CANCEL'
+        cancel.onclick = function(){that.close()}
+
+        this.container.appendChild(dirL)
+        this.container.appendChild(this.dir)
+        this.container.appendChild(browseDir)
+
+        this.container.appendChild(themePathL)
+        this.container.appendChild(this.themePath)
+        this.container.appendChild(browseThenme)
+
+        this.container.appendChild(apply)
+        this.container.appendChild(cancel)
+        this.modal.appendChild(this.container)
+    }
+
+    async browseFilesDirectory(){
+        let content = await ipcRenderer.invoke('open-dir')
+        this.dir.value = content.filePaths[0]
+    }
+
+    async browseTheme(){
+        let content = await ipcRenderer.invoke('import-theme')
+        this.themePath.value = content[0]
+    }
+
+    apply(){
+        let that = this
+        fs.readdir(this.dir.value, (err, files) => {
+            var res = []
+            files.forEach(file => {
+                res.push(that.dir.value + '\\' + file)
+            });
+            that.parent.workFlowClickEvent(res, that.themePath.value)
+        })
+        this.close()
     }
 }
 
@@ -336,4 +425,4 @@ class ShareDownloadDialog extends Dialog
     }
 }
 
-export {SearchDialog, ChartDialog, ShareDownloadDialog}
+export {SearchDialog, ChartDialog, WorkFlowDialog, ShareDownloadDialog}

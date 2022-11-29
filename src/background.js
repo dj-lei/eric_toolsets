@@ -248,6 +248,13 @@ async function createWindow() {
     return result
   })
 
+  ipcMain.handle('open-dir', async () => {
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory']
+    })
+    return result
+  })
+
   ipcMain.handle('import-theme', async () => {
     const file = await dialog.showOpenDialog(win, options)
     var content = []

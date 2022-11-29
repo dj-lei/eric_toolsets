@@ -22,6 +22,8 @@ class Chart
         var ch = document.createElement('div')
         ch.style.width = '100%'
         ch.style.height = '100%'
+        ch.style.borderSpacing = 0
+        ch.style.border = '1px solid rgb(255, 255, 255)'
 
         this.bottomNav = document.createElement('div')
         this.bottomNav.style.position = 'fixed'

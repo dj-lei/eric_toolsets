@@ -11,7 +11,7 @@ import multiprocessing
 sio = socketio.Server()
 app = socketio.WSGIApp(sio)
 
-Payload.max_decode_packets = 100
+Payload.max_decode_packets = 500
 
 @sio.event
 def connect(sid, environ):

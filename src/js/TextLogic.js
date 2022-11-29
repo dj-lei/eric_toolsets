@@ -4,7 +4,7 @@ import http from '@/plugins/http'
 import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
-import { SearchDialog, ShareDownloadDialog } from './dialog'
+import { SearchDialog, WorkFlowDialog, ShareDownloadDialog } from './dialog'
 import { SequentialChart } from './chart'
 import { TreeSelect } from './svg'
 import { TextLogicFlow } from './flow'
@@ -80,6 +80,7 @@ class TopMenu
         this.globalKeyValueSelect = {}
         this.globalSequentialChart = ''
         this.shareDownload = ''
+        this.workFlowDialog = ''
         this.workFlow = ''
         this.init()
     }
@@ -109,7 +110,7 @@ class TopMenu
         })
         ipcRenderer.on('import-theme', async () => {
             let content = await ipcRenderer.invoke('import-theme')
-            that.parent.containerFiles[that.parent.activeFile].loadConfig(content)
+            that.parent.containerFiles[that.parent.activeFile].loadConfig(content, function() {})
         })
         ipcRenderer.on('new-search', () => {
             that.newSearchDialog()
@@ -263,13 +264,22 @@ class TopMenu
     }
 
     openWorkFlow(){
-        var files = [
-            'E:\\Projects\\ericsson_toolsets\\src\\python\\save_log\\LE_CIKAMPEKJUANDA_MLteread.log',
-            'E:\\Projects\\ericsson_toolsets\\src\\python\\save_log\\LTE_JAMISUKAJAYA_ST_teread.log'
-        ]
-        var path = 'E:\\Projects\\ericsson_toolsets\\src\\python\\save_log\\Theme_Visby_All_Branch_txAtt2.txt'
+        if (this.workFlowDialog == '') {
+            this.workFlowDialog = new WorkFlowDialog(this, this.parent.screen)
+        }
+        if (this.workFlow != '') {
+            this.workFlow.open()
+        }else{
+            this.workFlowDialog.open()
+        }
+    }
+
+    async workFlowClickEvent(files, path){
+        if (this.workFlow != '') {
+            this.workFlow.delete()
+        }
         var content = [path, fs.readFileSync(path, 'utf-8')]
-        this.workFlow = new TextLogicFlow(files, content, this.parent.screen)
+        this.workFlow = new TextLogicFlow(this, files, content, this.parent.screen)
         this.workFlow.canvas.style.position = 'fixed'
         this.workFlow.canvas.style.zIndex = 0
         this.workFlow.canvas.style.top = 0
@@ -500,7 +510,7 @@ class FileViewer
         return this.configContent
     }
 
-    loadConfig(content){
+    loadConfig(content, _callback){
         let that = this
         this.count = 1
         this.searchContainer = {}
@@ -526,6 +536,7 @@ class FileViewer
                         var keyValueSelect = JSON.parse(that.configContent['keyValueTree'][uid]['tree'])
                         that.applyKeyValueTree(title, keyValueSelect)
                     })
+                    _callback()
                 }
                 that.count = that.count + 1
             })
@@ -913,7 +924,6 @@ class LazyLogTable
         service.emit('scroll', {'uid':this.uid, 'point':point, 'range':this.range}, (res) => {
             common.removeAllChild(this.table)
             that.lines = res.lines
-            // that.slider.style.height = `${that.lines.length * 18}px`
             that.lines.forEach((line) => {
                 var tr = document.createElement('tr')
                 tr.insertAdjacentHTML('beforeend', line)
@@ -925,6 +935,20 @@ class LazyLogTable
                 }
                 that.table.appendChild(tr)
             })
+            if (that.lines.length < that.range) {
+                for(var i=0; i < that.range - that.lines.length; i++){
+                    var tr = document.createElement('tr')
+                    var td1 = document.createElement('td')
+                    td1.setAttribute('style', 'color:#FFF;background-color:#666666;font-size:10px;')
+                    var td2 = document.createElement('td')
+                    td2.setAttribute('style', 'color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left')
+                    td1.innerHTML = 'END'
+                    td2.innerHTML = 'END'
+                    tr.appendChild(td1)
+                    tr.appendChild(td2)
+                    that.table.appendChild(tr)
+                }
+            }
         })
     }
 
