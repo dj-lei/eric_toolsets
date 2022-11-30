@@ -4,7 +4,7 @@ import http from '@/plugins/http'
 import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
-import { SearchDialog, WorkFlowDialog, ShareDownloadDialog } from './dialog'
+import { SearchDialog, WorkFlowDialog, ShareDownloadDialog, videoDialog } from './dialog'
 import { SequentialChart } from './chart'
 import { TreeSelect } from './svg'
 import { TextLogicFlow } from './flow'
@@ -82,6 +82,7 @@ class TopMenu
         this.shareDownload = ''
         this.workFlowDialog = ''
         this.workFlow = ''
+        this.videoPlay = ''
         this.init()
     }
 
@@ -153,10 +154,12 @@ class TopMenu
         ipcRenderer.on('work-flow', async () => {
             that.openWorkFlow()
         })
-        ipcRenderer.on('test', async () => {
-            await service.emit('test', {}, (res) => {
-                console.log(res)
-            })
+        ipcRenderer.on('video', (e, videoPath) => {
+            if (this.videoPlay == '') {
+                this.videoPlay = new videoDialog(this.parent.screen)
+            }
+            this.videoPlay.play(videoPath)
+            this.videoPlay.open()
         })
         ipcRenderer.on('shutdown_all', () => {
             service.emit('shutdown_all', {'shutdown':true}, (res) => {
@@ -240,6 +243,10 @@ class TopMenu
 
     closeGlobalSequentialChart(){
         this.globalSequentialChart.close()
+    }
+
+    deleteChart(uid){
+
     }
 
     chartClickEvent(params){
@@ -347,7 +354,7 @@ class FileViewer
         this.title.style.cursor = 'pointer'
         this.title.style.padding = '5px 8px'
         this.title.style.fontSize = '12px'
-        this.title.style.width = `${this.name.length * 8}px`
+        this.title.style.width = `${this.name.length * 7}px`
         this.title.className = "tablink"
         this.title.innerHTML = this.name
         this.title.addEventListener('click', function()
@@ -676,7 +683,7 @@ class SearchAtom extends SearchDialog
             exp_condition: this.getConditionList(),
             highlights: this.getHighlightList()
         }
-        service.timeout(10000).emit('search', params, (err, res) => {
+        service.timeout(30000).emit('search', params, (err, res) => {
             if(err){
                 console.log(err)
             }

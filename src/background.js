@@ -88,7 +88,7 @@ async function createWindow() {
   // start python background program 
   if (!process.env.WEBPACK_DEV_SERVER_URL) {
     // const bat = spawn('C:\\Users\\LDJ\\Projects\\ericsson_toolsets\\src\\view.exe', [], {shell: true, detached: true})
-    const bat = spawn(path.join(__dirname).replace("app.asar", "view\\view.exe"), [], {shell: true})
+    const bat = spawn(path.join(__dirname).replace("app.asar", "view\\view.exe"), [], {shell: true, detached: true})
   }
 
   win.on("closed", function(){
@@ -208,6 +208,46 @@ async function createWindow() {
               win.webContents.send('work-flow')
             }
           }
+        ]
+      },
+      {
+        label: 'Course',
+        submenu: [
+          {
+            label: '1.Install',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('video', 'install.mp4')
+            }
+          },
+          {
+            label: '2.Get Start',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('video', 'getStart.mp4')
+            }
+          },
+          {
+            label: '3.Regex(pending)',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              // win.webContents.send('video', 'regex.mp4')
+            }
+          },
+          {
+            label: '4.Work Flow',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('video', 'workFlow.mp4')
+            }
+          },
+          {
+            label: '5.Software Updates',
+            accelerator: 'CommandOrControl+C',
+            click: () => {
+              win.webContents.send('video', 'softwareUpdates.mp4')
+            }
+          },
         ]
       },
       {

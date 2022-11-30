@@ -14,7 +14,8 @@ module.exports = defineConfig({
         publish: [
           {
             "provider": "generic",
-            "url": "http://localhost:8001/download"
+            // "url": "http://localhost:8001/download"
+            "url": "http://10.166.152.87/share/download"
           }
         ],
         extraFiles: [

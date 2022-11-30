@@ -2,6 +2,9 @@ import http from '@/plugins/http'
 import urls from '@/plugins/urls'
 import common from '@/plugins/common'
 import { ipcRenderer } from 'electron'
+import videojs from "video.js"
+import "video.js/dist/video-js.css"
+
 const fs = require('fs')
 
 class Dialog
@@ -132,10 +135,10 @@ class SearchDialog extends Dialog
         this.container.appendChild(addHighlight)
         this.container.appendChild(this.highlightUl)
 
-        this.container.appendChild(conditionL)
-        this.container.appendChild(this.condition)
-        this.container.appendChild(addCondition)
-        this.container.appendChild(this.conditionUl)
+        // this.container.appendChild(conditionL)
+        // this.container.appendChild(this.condition)
+        // this.container.appendChild(addCondition)
+        // this.container.appendChild(this.conditionUl)
 
         this.container.appendChild(apply)
         this.container.appendChild(cancel)
@@ -425,4 +428,56 @@ class ShareDownloadDialog extends Dialog
     }
 }
 
-export {SearchDialog, ChartDialog, WorkFlowDialog, ShareDownloadDialog}
+class videoDialog extends Dialog
+{
+    constructor(position){
+        super()
+        this.register(position)
+        // this.position = position
+        this.player = ''
+        this.videoDialogInit("http://localhost:8001/display/test.mp4")
+    }
+
+    register(position){
+        position.append(this.modal)
+    }
+
+    videoDialogInit(){
+        this.modal.className = ''
+        this.container.className = ''
+        this.container.style.backgroundColor = '#000'
+
+        var video = document.createElement('video')
+        video.setAttribute('id', 'videoPlayer')
+        video.setAttribute('class', 'video-js vjs-default-skin')
+        video.setAttribute('controls', true)
+        video.setAttribute('preload', 'auto')
+        video.setAttribute('data-setup', '{}')
+        video.style.textAlign = 'center'
+        this.container.appendChild(video)
+
+        this.player = videojs('videoPlayer')
+        var CloseButton = videojs.getComponent('CloseButton')
+        CloseButton.prototype.handleClick = () => this.onClose()
+        var closeButton = new CloseButton(this.player )
+        this.player.addChild(closeButton)
+    }
+
+    play(videoPath){
+        var url = ''
+        if (process.env.NODE_ENV == 'development'){
+            url = 'http://localhost:8001/'
+        }else{
+            url = 'http://10.166.152.87/share/'
+        }
+        url = url+'display/'+videoPath
+        this.player.src({src: url, type: "video/mp4"})
+    }
+
+    onClose(){
+        this.player.pause()
+        this.close()
+    }
+}
+
+export {SearchDialog, ChartDialog, WorkFlowDialog, ShareDownloadDialog, videoDialog}

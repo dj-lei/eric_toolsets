@@ -144,7 +144,9 @@ class Chart
 
     delete(that){
       common.removeAll(this.canvas)
-      that.parent.deleteChart(that.uid)
+      if (that) {
+        that.parent.deleteChart(that.uid)
+      }
     }
 }
 

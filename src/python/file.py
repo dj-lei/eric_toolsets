@@ -18,6 +18,9 @@ class FileContainer(object):
     def delete(self, uid):
         if self.files[uid].handle_type == 'parallel':
             self.parallel.delete_shm(uid)
+        for search_uid in self.files[uid].searchs.keys():
+            self.files[uid].searchs[search_uid] = ''
+        self.files[uid].searchs = {}
         self.files[uid] = ''
         del self.files[uid]
 
@@ -120,12 +123,12 @@ class TextFile(object):
             tmp = list(selected_key.keys())
             tmp.remove(key)
             res = pd.DataFrame()
-            res = res.append(pd.DataFrame(selected_key[key]))
+            res = pd.concat([res, pd.DataFrame(selected_key[key])])
             res['full_name'] = key
             for s_key in tmp:
                 temp = pd.DataFrame(selected_key[s_key])
                 temp['full_name'] = s_key
-                res = res.append(temp).reset_index(drop=True)
+                res = pd.concat([res, temp]).reset_index(drop=True)
             res = res.drop_duplicates(['timestamp'])
             res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
             res = res.loc[(res['full_name'] == key), :].reset_index()

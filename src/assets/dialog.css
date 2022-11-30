@@ -10,6 +10,7 @@
 }
 
 .modal .container {
+    color: white;
     width: 40%; /* Hidden by default */
     border: 1px solid #888; /* Stay in place */
     margin: 5% auto 15% auto; /* Sit on top */
