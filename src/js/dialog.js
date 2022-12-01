@@ -113,7 +113,7 @@ class SearchDialog extends Dialog
         // search and cancel button
         var apply = document.createElement('button')
         apply.innerHTML = 'SEARCH'
-        apply.onclick = function(){that.search()}
+        apply.onclick = function(){that.search(function() {})}
         var cancel = document.createElement('button')
         cancel.style.backgroundColor = 'red'
         cancel.innerHTML = 'CANCEL'
