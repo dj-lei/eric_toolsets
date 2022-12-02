@@ -2,6 +2,7 @@ import http from '@/plugins/http'
 import urls from '@/plugins/urls'
 import common from '@/plugins/common'
 import { ipcRenderer } from 'electron'
+import { InputDropDown } from './dropDown'
 import videojs from "video.js"
 import "video.js/dist/video-js.css"
 
@@ -65,9 +66,10 @@ class SearchDialog extends Dialog
         // search express 
         var expSearchL = document.createElement('h4')
         expSearchL.innerHTML = 'Search Express'
-        this.expSearch = document.createElement('input')
-        this.expSearch.spellcheck = false
-        this.expSearch.type = 'text'
+        this.expSearch = new InputDropDown(['test1', 'test2', 'test3'])
+        // this.expSearch = document.createElement('input')
+        // this.expSearch.spellcheck = false
+        // this.expSearch.type = 'text'
 
         // regex express
         var expRegexL = document.createElement('h4')
@@ -122,7 +124,7 @@ class SearchDialog extends Dialog
         this.container.appendChild(descL)
         this.container.appendChild(this.desc)
         this.container.appendChild(expSearchL)
-        this.container.appendChild(this.expSearch)
+        this.container.appendChild(this.expSearch.box)
 
         this.container.appendChild(expRegexL)
         this.container.appendChild(this.expRegex)
@@ -428,7 +430,7 @@ class ShareDownloadDialog extends Dialog
     }
 }
 
-class videoDialog extends Dialog
+class VideoDialog extends Dialog
 {
     constructor(position){
         super()
@@ -480,4 +482,4 @@ class videoDialog extends Dialog
     }
 }
 
-export {SearchDialog, ChartDialog, WorkFlowDialog, ShareDownloadDialog, videoDialog}
+export {SearchDialog, ChartDialog, WorkFlowDialog, ShareDownloadDialog, VideoDialog}

@@ -4,7 +4,7 @@ import http from '@/plugins/http'
 import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
-import { SearchDialog, WorkFlowDialog, ShareDownloadDialog, videoDialog } from './dialog'
+import { SearchDialog, WorkFlowDialog, ShareDownloadDialog, VideoDialog } from './dialog'
 import { SequentialChart } from './chart'
 import { TreeSelect } from './svg'
 import { TextLogicFlow } from './flow'
@@ -156,7 +156,7 @@ class TopMenu
         })
         ipcRenderer.on('video', (e, videoPath) => {
             if (this.videoPlay == '') {
-                this.videoPlay = new videoDialog(this.parent.screen)
+                this.videoPlay = new VideoDialog(this.parent.screen)
             }
             this.videoPlay.play(videoPath)
             this.videoPlay.open()
@@ -456,6 +456,7 @@ class FileViewer
         this.chartArea.style.display = 'none'
         this.chartArea.style.width = '100%'
         this.chartArea.style.border = '2px solid #ddd'
+        this.chartArea.style.overflowX = 'hidden'
 
         this.funcArea = document.createElement('div')
         this.funcArea.style.overflowY = 'auto'

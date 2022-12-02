@@ -20,7 +20,7 @@ class Chart
         this.canvas.style.backgroundColor = '#555'
 
         var ch = document.createElement('div')
-        ch.style.width = '100%'
+        ch.style.width = '99%'
         ch.style.height = '100%'
         ch.style.borderSpacing = 0
         ch.style.border = '1px solid rgb(255, 255, 255)'
@@ -42,6 +42,7 @@ class Chart
           },
           // backgroundColor:'#3F3F3F',
           toolbox:{
+            show: true,
             feature:{
             }
           },
@@ -61,13 +62,6 @@ class Chart
               })
               return ret;
               
-            },
-            feature: {
-              saveAsImage: {
-                show: true,
-                excludeComponents: ['toolbox'],
-                pixelRatio: 2
-              }
             }
           },
           legend: {
@@ -284,6 +278,11 @@ class SequentialChart extends Chart
         // install tool button 
         this.option['toolbox']['right'] = "3%"
         this.option['toolbox']['feature'] = {
+          saveAsImage: {
+            show: true,
+            excludeComponents: ['toolbox'],
+            pixelRatio: 2
+          },
           myTool3:{
             show:true,
             title: 'Edit',
@@ -344,22 +343,20 @@ class SequentialChart extends Chart
           res[e.global_index] = tmp
         })
       })
-      var str =  "timestamp,"+Object.keys(item).join(",")+"\n"
       // var nums = Object.keys(res).map(v => {return parseInt(v)}).sort()
       var exportData = []
       Object.keys(res).forEach((num) => {
         exportData.push(res[num])
       })
-      for(var i=0; i< exportData.length; i++){
-        for(const key in exportData[i]){
-          str += `${String(exportData[i][key]).trim() + '\t'},`
-        }
-        str += '\n'
-      }
-      const uri = 'data:text/csv;charset=utf-8,\ufeff' + encodeURIComponent(str)
-      const link = document.createElement("a")
-      link.href = uri
-      link.download = 'export.csv'
+      let csvContent = "timestamp,"+Object.keys(item).join(",")+"\n"
+      exportData.forEach(row => {
+        csvContent += Object.values(row).join(',') + '\n'
+      })
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8,' })
+      const objUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', objUrl)
+      link.setAttribute('download', 'export.csv')
       link.click()
     }
 }
