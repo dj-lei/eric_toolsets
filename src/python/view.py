@@ -73,6 +73,7 @@ def global_sort(sid, params):
             temp = pd.DataFrame(selected_key[s_key])
             temp['path'] = s_key
             res = res.append(temp).reset_index(drop=True)
+        res['timestamp'] = res.apply(parse_data_format, axis=1)
         res = res.drop_duplicates(['timestamp'])
         res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
         res = res.loc[(res['path'] == key)&(res['name'] == key.split('.')[-1]), :].reset_index()

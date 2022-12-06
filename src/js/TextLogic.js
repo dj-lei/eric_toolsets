@@ -389,7 +389,8 @@ class FileViewer
         this.originArea.style.height = `${document.body.offsetHeight - 20}px`
 
         this.llt = new LazyLogTable(this, 'O/'+this.uid+'/', this.originArea, this.count)
-
+        this.llt.refresh(0)
+        
         var tab = document.createElement('div')
         tab.style.backgroundColor = '#333'
         tab.style.width = '100%'
@@ -511,7 +512,7 @@ class FileViewer
         this.configContent = {'search': [], 'keyValueTree':{}}
         Object.keys(this.searchContainer).forEach((uid) => {
             var ins = this.searchContainer[uid].ins
-            this.configContent['search'].push({'uid': ins.uid, 'desc': ins.desc.value, 'search': ins.expSearch.value, 'regexs': ins.getRegexList(), 'highlights': ins.getHighlightList()})
+            this.configContent['search'].push({'uid': ins.uid, 'desc': ins.desc.value, 'search': ins.expSearch.input.value, 'regexs': ins.getRegexList(), 'highlights': ins.getHighlightList()})
         })
 
         this.configContent['keyValueTree'] = this.sequentialCharts
@@ -527,7 +528,7 @@ class FileViewer
         this.configContent['search'].forEach((search) => {
             this.tmpSearch = new SearchAtom(this, search.uid, this.tabcontent)
             this.tmpSearch.desc.value = search.desc
-            this.tmpSearch.expSearch.value = search.search
+            this.tmpSearch.expSearch.input.value = search.search
             search.regexs.forEach((regex) => {
                 this.tmpSearch.expRegex.value = regex
                 this.tmpSearch.addRegexItem()
@@ -679,7 +680,7 @@ class SearchAtom extends SearchDialog
         let params = {
             uid: this.parent.uid + '/' + this.uid,
             desc: this.desc.value,
-            exp_search: this.expSearch.value,
+            exp_search: this.expSearch.input.value,
             exp_regex: this.getRegexList(),
             exp_condition: this.getConditionList(),
             highlights: this.getHighlightList()
@@ -922,7 +923,7 @@ class LazyLogTable
             e.stopPropagation()
         })
 
-        this.refresh(this.point)
+        // this.refresh(this.point)
     }
 
     refresh(point){

@@ -6,6 +6,7 @@ import uuid
 import datetime
 import numpy as np
 import pandas as pd
+from dateutil.parser import parse
 
 
 def clean_special_symbols(text, symbol):
@@ -26,6 +27,8 @@ def iterate_files_in_directory(directory):
             res.append(filename)
     return res
 
+def parse_data_format(df):
+    return parse(df['timestamp'], yearfirst=True)
 
 def analysis_express(cmd):
     left_p = []

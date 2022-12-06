@@ -113,10 +113,11 @@ class TextFile(object):
         for searchAtom in key_value_select['children']:
             for key in searchAtom['children']:
                 if key['check'] == True:
-                    data_type = self.searchs[searchAtom['uid']].res_kv[key['name']][0]['type']
-                    selected_key[self.uid+'.'+searchAtom['uid']+'.'+data_type+'.'+key['name']] = self.searchs[searchAtom['uid']].res_kv[key['name']]
-                    for highlight in self.searchs[searchAtom['uid']].res_highlights.keys():
-                        selected_key[self.uid+'.'+searchAtom['uid']+'.highlight.'+highlight] = self.searchs[searchAtom['uid']].res_highlights[highlight]
+                    if len(self.searchs[searchAtom['uid']].res_kv[key['name']]) > 0:
+                        data_type = self.searchs[searchAtom['uid']].res_kv[key['name']][0]['type']
+                        selected_key[self.uid+'.'+searchAtom['uid']+'.'+data_type+'.'+key['name']] = self.searchs[searchAtom['uid']].res_kv[key['name']]
+                        for highlight in self.searchs[searchAtom['uid']].res_highlights.keys():
+                            selected_key[self.uid+'.'+searchAtom['uid']+'.highlight.'+highlight] = self.searchs[searchAtom['uid']].res_highlights[highlight]
 
         final = {}
         for key in selected_key.keys():
@@ -129,6 +130,7 @@ class TextFile(object):
                 temp = pd.DataFrame(selected_key[s_key])
                 temp['full_name'] = s_key
                 res = pd.concat([res, temp]).reset_index(drop=True)
+            res['timestamp'] = res.apply(parse_data_format, axis=1)
             res = res.drop_duplicates(['timestamp'])
             res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
             res = res.loc[(res['full_name'] == key), :].reset_index()
@@ -193,12 +195,17 @@ class SearchAtom(object):
                     if len(is_exsit) > 0:
                         lines.append(num + '<td style="color:'+is_exsit['value'].values[0]+';white-space:nowrap;font-size:12px;text-align:left">'+self.parent.lines[line]+'</td>')
                         continue
-                
+                flag = True
                 for n_regex, regex in enumerate(regexs):
                     regex_res = re.findall(regex, self.parent.lines[line])
                     if len(regex_res) > 0:
                         lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(regex, v_regexs[n_regex], self.parent.lines[line]).replace('\\','')+'</td>')
+                        flag = False
                         break
+
+                if flag:
+                    lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.parent.lines[line]+'</td>')
+
         return lines
 
     def change(self, desc, exp_search, exp_regex, exp_condition, highlights):
@@ -257,7 +264,7 @@ class SearchAtom(object):
             for r in re.findall('%\{.*?\}', regex):
                 regex = regex.replace(r, '(.*?)')
             # compiled_regex = re.compile(regex, re.IGNORECASE)
-            regexs.append(re.compile(regex, re.IGNORECASE))
+            regexs.append(re.compile(regex))
         for search_index, line in enumerate(self.res_search_lines):
             for n_regex, regex in enumerate(regexs):
                 regex_res = regex.findall(self.parent.lines[line])
@@ -303,7 +310,7 @@ class SearchAtom(object):
             for r in re.findall('%\{.*?\}', regex):
                 regex = regex.replace(r, '(.*?)')
             # compiled_regex = re.compile(regex, re.IGNORECASE)
-            regexs.append(re.compile(regex, re.IGNORECASE))
+            regexs.append(re.compile(regex))
 
         key_value, self.res_inverted_index_table = self.parent.parent.parallel.extract_regex(self.parent.uid, self.res_search_lines, key_value, key_type, key_name, time_index, regexs)
         self.res_kv = key_value
