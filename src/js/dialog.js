@@ -27,6 +27,11 @@ class Dialog
         this.modal.appendChild(this.container)
     }
 
+    async browseFilesDirectory(_callback){
+        let content = await ipcRenderer.invoke('open-dir')
+        _callback(content.filePaths[0])
+    }
+
     open(){
         this.modal.style.display = "block"
     }
@@ -38,9 +43,9 @@ class Dialog
 
 class SearchDialog extends Dialog
 {
-    constructor(){
+    constructor(words){
         super()
-        // this.dialogInit()
+        this.words = words
         this.desc = ''
         this.expSearch = ''
         this.expRegex = ''
@@ -66,7 +71,7 @@ class SearchDialog extends Dialog
         // search express 
         var expSearchL = document.createElement('h4')
         expSearchL.innerHTML = 'Search Express'
-        this.expSearch = new InputDropDown(['test1', 'test2', 'test3'])
+        this.expSearch = new InputDropDown(this.words)
         // this.expSearch = document.createElement('input')
         // this.expSearch.spellcheck = false
         // this.expSearch.type = 'text'
@@ -291,7 +296,11 @@ class WorkFlowDialog extends Dialog
         var browseDir = document.createElement('button')
         browseDir.style.width = '15%'
         browseDir.innerHTML = 'BROWSE'
-        browseDir.onclick = function(){that.browseFilesDirectory()}
+        browseDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.dir.value = path
+            })
+        }
 
         // Theme path
         var themePathL = document.createElement('h4')
@@ -327,11 +336,6 @@ class WorkFlowDialog extends Dialog
         this.modal.appendChild(this.container)
     }
 
-    async browseFilesDirectory(){
-        let content = await ipcRenderer.invoke('open-dir')
-        this.dir.value = content.filePaths[0]
-    }
-
     async browseTheme(){
         let content = await ipcRenderer.invoke('import-theme')
         this.themePath.value = content[0]
@@ -344,9 +348,107 @@ class WorkFlowDialog extends Dialog
             files.forEach(file => {
                 res.push(that.dir.value + '\\' + file)
             });
-            that.parent.workFlowClickEvent(res, that.themePath.value)
+            that.parent.workFlowApply(res, that.themePath.value)
         })
         this.close()
+    }
+}
+
+class DCGMAnalysisDialog extends Dialog
+{
+    constructor(parent, position){
+        super()
+        this.register(position)
+        this.parent = parent
+        this.dcgmDir = ''
+        this.saveDir = ''
+        this.telogFilter = ''
+        this.elogFilter = ''
+        this.DCGMAnalysisDialogInit()
+    }
+
+    register(position){
+        position.append(this.modal)
+    }
+
+    DCGMAnalysisDialogInit(){
+        let that = this
+
+        // DCGM Directory
+        var dcgmDirL = document.createElement('h4')
+        dcgmDirL.innerHTML = 'DCGM Directory'
+        this.dcgmDir = document.createElement('input')
+        this.dcgmDir.spellcheck = false
+        this.dcgmDir.style.width = '85%'
+        this.dcgmDir.type = 'text'
+        var browseDcgmDir = document.createElement('button')
+        browseDcgmDir.style.width = '15%'
+        browseDcgmDir.innerHTML = 'BROWSE'
+        browseDcgmDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.dcgmDir.value = path
+            })
+        }
+
+        // Save Directory
+        var saveDirL = document.createElement('h4')
+        saveDirL.innerHTML = 'Save Directory'
+        this.saveDir = document.createElement('input')
+        this.saveDir.spellcheck = false
+        this.saveDir.style.width = '85%'
+        this.saveDir.type = 'text'
+        var browseSaveDir = document.createElement('button')
+        browseSaveDir.style.width = '15%'
+        browseSaveDir.innerHTML = 'BROWSE'
+        browseSaveDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.saveDir.value = path
+            })
+        }
+
+        // Filter condition
+        var telogFilterL = document.createElement('h4')
+        telogFilterL.innerHTML = 'Telog Filter Condition'
+        this.telogFilter = document.createElement('input')
+        this.telogFilter.spellcheck = false
+        this.telogFilter.style.width = '100%'
+        this.telogFilter.type = 'text'
+        var elogFilterL = document.createElement('h4')
+        elogFilterL.innerHTML = 'Elog Filter Condition'
+        this.elogFilter = document.createElement('input')
+        this.elogFilter.spellcheck = false
+        this.elogFilter.style.width = '100%'
+        this.elogFilter.type = 'text'
+
+        // search and cancel button
+        var apply = document.createElement('button')
+        apply.innerHTML = 'RUN'
+        apply.onclick = function(){that.apply()}
+        var cancel = document.createElement('button')
+        cancel.style.backgroundColor = 'red'
+        cancel.innerHTML = 'CANCEL'
+        cancel.onclick = function(){that.close()}
+
+        this.container.appendChild(dcgmDirL)
+        this.container.appendChild(this.dcgmDir)
+        this.container.appendChild(browseDcgmDir)
+
+        this.container.appendChild(saveDirL)
+        this.container.appendChild(this.saveDir)
+        this.container.appendChild(browseSaveDir)
+
+        this.container.appendChild(telogFilterL)
+        this.container.appendChild(this.telogFilter)
+        this.container.appendChild(elogFilterL)
+        this.container.appendChild(this.elogFilter)
+
+        this.container.appendChild(apply)
+        this.container.appendChild(cancel)
+        this.modal.appendChild(this.container)
+    }
+
+    apply(){
+        this.parent.dcgmAnalysisApply()
     }
 }
 
@@ -482,4 +584,4 @@ class VideoDialog extends Dialog
     }
 }
 
-export {SearchDialog, ChartDialog, WorkFlowDialog, ShareDownloadDialog, VideoDialog}
+export {SearchDialog, ChartDialog, WorkFlowDialog, DCGMAnalysisDialog, ShareDownloadDialog, VideoDialog}

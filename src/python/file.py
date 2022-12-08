@@ -135,6 +135,7 @@ class TextFile(object):
             res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
             res = res.loc[(res['full_name'] == key), :].reset_index()
             res = res.rename(columns={"index": "graph_index"})
+            res['timestamp'] = res['timestamp'].astype(str)
             res['file_uid'] = key.split('.')[0]
             res['search_uid'] = key.split('.')[1]
             final[key] = json.loads(res.to_json(orient='records'))

@@ -4,7 +4,7 @@ import http from '@/plugins/http'
 import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
-import { SearchDialog, WorkFlowDialog, ShareDownloadDialog, VideoDialog } from './dialog'
+import { SearchDialog, WorkFlowDialog, DCGMAnalysisDialog, ShareDownloadDialog, VideoDialog } from './dialog'
 import { SequentialChart } from './chart'
 import { TreeSelect } from './svg'
 import { TextLogicFlow } from './flow'
@@ -28,6 +28,7 @@ class TextLogicView
         // init file viewer
         this.tablinks = document.createElement('div')
         this.tablinks.setAttribute('id', 'tablinks')
+        this.tablinks.style.overflowX = 'auto'
 
         this.tabcontents = document.createElement('div')
         this.tabcontents.setAttribute('id', 'tabcontents')
@@ -82,6 +83,7 @@ class TopMenu
         this.shareDownload = ''
         this.workFlowDialog = ''
         this.workFlow = ''
+        this.dcgmAnalysisDialog = ''
         this.videoPlay = ''
         this.init()
     }
@@ -147,9 +149,7 @@ class TopMenu
             that.openShareDownloadDialog()
         })
         ipcRenderer.on('dcgm-analysis', async () => {
-            await service.emit('test', {}, (res) => {
-                console.log(res)
-            })
+            that.openDcgmAnalysis()
         })
         ipcRenderer.on('work-flow', async () => {
             that.openWorkFlow()
@@ -281,7 +281,7 @@ class TopMenu
         }
     }
 
-    async workFlowClickEvent(files, path){
+    async workFlowApply(files, path){
         if (this.workFlow != '') {
             this.workFlow.delete()
         }
@@ -291,6 +291,30 @@ class TopMenu
         this.workFlow.canvas.style.zIndex = 0
         this.workFlow.canvas.style.top = 0
         this.workFlow.canvas.style.left = 0
+    }
+
+    openDcgmAnalysis(){
+        if (this.dcgmAnalysisDialog == '') {
+            this.dcgmAnalysisDialog = new DCGMAnalysisDialog(this, this.parent.screen)
+        }
+        this.dcgmAnalysisDialog.open()
+    }
+
+    async dcgmAnalysisApply(){
+        let params = {
+            dcgm_dir: this.dcgmAnalysisDialog.dcgmDir.value + '\\',
+            save_dir: this.dcgmAnalysisDialog.saveDir.value + '\\',
+            telog_filter: this.dcgmAnalysisDialog.telogFilter.value.split(','),
+            elog_filter: this.dcgmAnalysisDialog.elogFilter.value.split(','),
+        }
+        service.emit('dcgm_analysis', params, (res) => {
+            if (res['status'] == 'error') {
+                alert(res.msg)
+            }else{
+                alert('Dcgm Analysis Complete!')
+            }
+            this.dcgmAnalysisDialog.close()
+        })
     }
 }
 
@@ -526,7 +550,7 @@ class FileViewer
         this.configPath = content[0]
         this.configContent = JSON.parse(content[1])
         this.configContent['search'].forEach((search) => {
-            this.tmpSearch = new SearchAtom(this, search.uid, this.tabcontent)
+            this.tmpSearch = new SearchAtom(this, search.uid, this.tabcontent, this.words)
             this.tmpSearch.desc.value = search.desc
             this.tmpSearch.expSearch.input.value = search.search
             search.regexs.forEach((regex) => {
@@ -554,7 +578,7 @@ class FileViewer
     }
 
     newSearch(){
-        this.tmpSearch = new SearchAtom(this, '', this.tabcontent)
+        this.tmpSearch = new SearchAtom(this, '', this.tabcontent, this.words)
         this.tmpSearch.open()
     }
 
@@ -658,8 +682,8 @@ class FileViewer
 
 class SearchAtom extends SearchDialog
 {
-    constructor(parent, uid, position){
-        super()
+    constructor(parent, uid, position, words){
+        super(words)
         this.register(position)
         this.parent = parent
         this.uid = uid

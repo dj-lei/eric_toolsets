@@ -3,6 +3,7 @@ import socketio
 import sys
 from utils import *
 from file import FileContainer
+from special import take_apart_dcgm
 from parallel_shm import Parallel
 from engineio.payload import Payload
 
@@ -67,17 +68,18 @@ def global_sort(sid, params):
         tmp = list(selected_key.keys())
         tmp.remove(key)
         res = pd.DataFrame()
-        res = res.append(pd.DataFrame(selected_key[key]))
+        res = pd.concat([res, pd.DataFrame(selected_key[key])])
         res['path'] = key
         for s_key in tmp:
             temp = pd.DataFrame(selected_key[s_key])
             temp['path'] = s_key
-            res = res.append(temp).reset_index(drop=True)
+            res = pd.concat([res, temp]).reset_index(drop=True)
         res['timestamp'] = res.apply(parse_data_format, axis=1)
         res = res.drop_duplicates(['timestamp'])
         res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
         res = res.loc[(res['path'] == key)&(res['name'] == key.split('.')[-1]), :].reset_index()
         res = res.rename(columns={"index": "graph_index"})
+        res['timestamp'] = res['timestamp'].astype(str)
         res['file_uid'] = key.split('.')[0]
         res['search_uid'] = key.split('.')[1]
         final[key] = json.loads(res.to_json(orient='records'))
@@ -89,6 +91,15 @@ def shutdwon(sid, params):
     container.shutdown()
     proc.close()
 
+@sio.on("dcgm_analysis")
+def dcgm_analysis(sid, params):
+    print('dcgm Analysis!', params)
+    try:
+        take_apart_dcgm(params['dcgm_dir'], params['save_dir'], params['telog_filter'], params['elog_filter'])
+        return {'status': 'ok', 'msg': ''}
+    except Exception as e:
+        return {'status': 'error', 'msg': str(e)}
+    
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
