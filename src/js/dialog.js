@@ -408,13 +408,13 @@ class DCGMAnalysisDialog extends Dialog
 
         // Filter condition
         var telogFilterL = document.createElement('h4')
-        telogFilterL.innerHTML = 'Telog Filter Condition'
+        telogFilterL.innerHTML = 'Optional: Telog Filter Condition(Case sensitive, Comma delimited)'
         this.telogFilter = document.createElement('input')
         this.telogFilter.spellcheck = false
         this.telogFilter.style.width = '100%'
         this.telogFilter.type = 'text'
         var elogFilterL = document.createElement('h4')
-        elogFilterL.innerHTML = 'Elog Filter Condition'
+        elogFilterL.innerHTML = 'Optional: Elog Filter Condition(Case sensitive, Comma delimited)'
         this.elogFilter = document.createElement('input')
         this.elogFilter.spellcheck = false
         this.elogFilter.style.width = '100%'

@@ -58,10 +58,11 @@ def global_sort(sid, params):
         for searchAtom in file['children']:
             for key in searchAtom['children']:
                 if key['check'] == True:
-                    data_type = container.files[file['uid']].searchs[searchAtom['uid']].res_kv[key['name']][0]['type']
-                    selected_key[file['uid']+'.'+searchAtom['uid']+'.'+data_type+'.'+key['name']] = container.files[file['uid']].searchs[searchAtom['uid']].res_kv[key['name']]
-                    for highlight in container.files[file['uid']].searchs[searchAtom['uid']].res_highlights.keys():
-                        selected_key[file['uid']+'.'+searchAtom['uid']+'.highlight.'+highlight] = container.files[file['uid']].searchs[searchAtom['uid']].res_highlights[highlight]
+                    if len(container.files[file['uid']].searchs[searchAtom['uid']].res_kv[key['name']]) > 0:
+                        data_type = container.files[file['uid']].searchs[searchAtom['uid']].res_kv[key['name']][0]['type']
+                        selected_key[file['uid']+'.'+searchAtom['uid']+'.'+data_type+'.'+key['name']] = container.files[file['uid']].searchs[searchAtom['uid']].res_kv[key['name']]
+                        for highlight in container.files[file['uid']].searchs[searchAtom['uid']].res_highlights.keys():
+                            selected_key[file['uid']+'.'+searchAtom['uid']+'.highlight.'+highlight] = container.files[file['uid']].searchs[searchAtom['uid']].res_highlights[highlight]
     
     final = {}
     for key in selected_key.keys():
@@ -94,11 +95,11 @@ def shutdwon(sid, params):
 @sio.on("dcgm_analysis")
 def dcgm_analysis(sid, params):
     print('dcgm Analysis!', params)
-    try:
-        take_apart_dcgm(params['dcgm_dir'], params['save_dir'], params['telog_filter'], params['elog_filter'])
-        return {'status': 'ok', 'msg': ''}
-    except Exception as e:
-        return {'status': 'error', 'msg': str(e)}
+    # try:
+    take_apart_dcgm(params['dcgm_dir'], params['save_dir'], params['telog_filter'], params['elog_filter'])
+    return {'status': 'ok', 'msg': ''}
+    # except Exception as e:
+    #     return {'status': 'error', 'msg': str(e)}
     
 @sio.event
 def disconnect(sid):

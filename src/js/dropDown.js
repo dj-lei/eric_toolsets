@@ -27,7 +27,7 @@ class DropDown
         a.style.backgroundColor = '#000'
         a.style.float = 'none'
         a.style.color = 'white'
-        a.style.padding = '12px 16px'
+        a.style.padding = '4px 8px'
         a.style.textDecoration = 'none'
         a.style.display = 'block'
         a.style.textAlign = 'left'
@@ -43,18 +43,6 @@ class DropDown
             that.updateInput(a)
         })
         this.dropDown.append(a)
-    }
-
-    bindClickEvent(){
-
-    }
-
-    onMouseOver(){
-
-    }
-
-    onMouseOut(){
-
     }
 }
 
@@ -138,13 +126,29 @@ class InputDropDown extends DropDown
     filterItems(){
         common.removeAllChild(this.dropDown)
         var count = 0
+        var res = []
         this.items.forEach((item) => {
             if (item.toUpperCase().indexOf(this.inputWord.toUpperCase()) > -1) {
                 if (count < 20) {
-                    this.addItem(item)
+                    res.push(item)
                     count = count + 1
                 }
             }
+        })
+        var highPriority = []
+        var lowPriority = []
+        res.forEach((item) => {
+            if (this.inputWord == item.slice(0, this.inputWord.length)) {
+                highPriority.push(item)
+            }else{
+                lowPriority.push(item)
+            }
+        })
+        highPriority.forEach((item) => {
+            this.addItem(item)
+        })
+        lowPriority.forEach((item) => {
+            this.addItem(item)
         })
         this.dropDown.style.display = 'block'
         this.selectItem = ''

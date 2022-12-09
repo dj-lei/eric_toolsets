@@ -106,7 +106,7 @@ async function createWindow() {
         submenu: [
           {
             label: 'Open',
-            accelerator: 'CommandOrControl+C',
+            accelerator: 'CommandOrControl+N',
             click: () => {
               win.webContents.send('open-file')
             }
@@ -114,21 +114,21 @@ async function createWindow() {
           { type: 'separator' },
           {
             label: 'Import Theme',
-            accelerator: 'CommandOrControl+C',
+            accelerator: 'CommandOrControl+I',
             click: () => {
               win.webContents.send('import-theme')
             }
           },
           {
             label: 'Save Theme',
-            accelerator: 'CommandOrControl+C',
+            accelerator: 'CommandOrControl+S',
             click: () => {
               win.webContents.send('save-theme')
             }
           },
           {
             label: 'Export Theme',
-            accelerator: 'CommandOrControl+C',
+            accelerator: 'CommandOrControl+E',
             click: () => {
               win.webContents.send('export-theme')
             }
@@ -143,14 +143,14 @@ async function createWindow() {
         submenu: [
           {
             label: 'New Search',
-            accelerator: 'CommandOrControl+C',
+            accelerator: 'CommandOrControl+F',
             click: () => {
               win.webContents.send('new-search')
             }
           },
           {
             label: 'Open Function Area',
-            accelerator: 'CommandOrControl+C',
+            accelerator: 'CommandOrControl+O',
             click: () => {
               win.webContents.send('open-func-area')
             }
@@ -158,14 +158,12 @@ async function createWindow() {
           { type: 'separator' },
           {
             label: 'Open Global KeyValue Tree',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('open-global-keyvalue-tree')
             }
           },
           {
             label: 'Open Global Chart',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('open-global-chart')
             }
@@ -177,14 +175,12 @@ async function createWindow() {
         submenu: [
           {
             label: 'Upload Theme',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('share-upload')
             }
           },
           {
             label: 'Download Theme',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('share-download')
             }
@@ -196,14 +192,12 @@ async function createWindow() {
         submenu: [
           {
             label: 'DCGM Analysis',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('dcgm-analysis')
             }
           },
           {
             label: 'Work Flow',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('work-flow')
             }
@@ -215,35 +209,30 @@ async function createWindow() {
         submenu: [
           {
             label: '1.Install',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('video', 'install.mp4')
             }
           },
           {
             label: '2.Get Start',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('video', 'getStart.mp4')
             }
           },
           {
             label: '3.Regex(pending)',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               // win.webContents.send('video', 'regex.mp4')
             }
           },
           {
             label: '4.Work Flow',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('video', 'workFlow.mp4')
             }
           },
           {
             label: '5.Software Updates',
-            accelerator: 'CommandOrControl+C',
             click: () => {
               win.webContents.send('video', 'softwareUpdates.mp4')
             }

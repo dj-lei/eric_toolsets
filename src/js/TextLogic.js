@@ -304,8 +304,8 @@ class TopMenu
         let params = {
             dcgm_dir: this.dcgmAnalysisDialog.dcgmDir.value + '\\',
             save_dir: this.dcgmAnalysisDialog.saveDir.value + '\\',
-            telog_filter: this.dcgmAnalysisDialog.telogFilter.value.split(','),
-            elog_filter: this.dcgmAnalysisDialog.elogFilter.value.split(','),
+            telog_filter: this.dcgmAnalysisDialog.telogFilter.value == '' ? [] : this.dcgmAnalysisDialog.telogFilter.value.split(','),
+            elog_filter: this.dcgmAnalysisDialog.elogFilter.value == '' ? [] : this.dcgmAnalysisDialog.elogFilter.value.split(','),
         }
         service.emit('dcgm_analysis', params, (res) => {
             if (res['status'] == 'error') {
