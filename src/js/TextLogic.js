@@ -28,7 +28,6 @@ class TextLogicView
         // init file viewer
         this.tablinks = document.createElement('div')
         this.tablinks.setAttribute('id', 'tablinks')
-        this.tablinks.style.overflowX = 'auto'
 
         this.tabcontents = document.createElement('div')
         this.tabcontents.setAttribute('id', 'tabcontents')
@@ -93,9 +92,11 @@ class TopMenu
         ipcRenderer.on('open-file', async function () {
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
-                var f = new FileViewer(that.parent, file.filePaths[0])
-                f.openFile(function() {
-                    document.getElementById(f.uid+'-tablink').click()
+                file.filePaths.forEach((path) => {
+                    var f = new FileViewer(that.parent, path)
+                    f.openFile(function() {
+                        document.getElementById(f.uid+'-tablink').click()
+                    })
                 })
             }
         })

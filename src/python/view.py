@@ -94,13 +94,38 @@ def shutdwon(sid, params):
 
 @sio.on("dcgm_analysis")
 def dcgm_analysis(sid, params):
-    print('dcgm Analysis!', params)
-    # try:
-    take_apart_dcgm(params['dcgm_dir'], params['save_dir'], params['telog_filter'], params['elog_filter'])
-    return {'status': 'ok', 'msg': ''}
-    # except Exception as e:
-    #     return {'status': 'error', 'msg': str(e)}
-    
+    print('Dcgm Analysis!', params)
+    try:
+        take_apart_dcgm(params['dcgm_dir'], params['save_dir'], params['telog_filter'], params['elog_filter'])
+        return {'status': 'ok', 'msg': ''}
+    except Exception as e:
+        return {'status': 'error', 'msg': str(e)}
+
+@sio.on("regex_test")
+def regex_test(sid, params):
+    print('Regex Test!', params)
+    try:
+        types = []
+        var_names = []
+        for item in re.findall('%\{(.*?)\}', params['regex']):
+            types.append(item.split(':')[0])
+            var_names.append(item.split(':')[1])
+
+        regex = params['regex']
+        for r in re.findall('%\{.*?\}', params['regex']):
+            regex = regex.replace(r, '(.*?)')
+
+        res = re.findall(regex, params['text'])
+        if len(res) > 0:
+            ret = []
+            for a,b,c in zip(types, var_names, res[0]):
+                ret.append('Var:'+b+', Value:'+c+', Type:'+a)
+            return {'status': 'ok', 'msg': ret}
+        else:
+            return {'status': 'ok', 'msg': []}
+    except Exception as e:
+        return {'status': 'error', 'msg': str(e)}
+
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)

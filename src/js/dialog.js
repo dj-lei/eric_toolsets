@@ -1,6 +1,7 @@
 import http from '@/plugins/http'
 import urls from '@/plugins/urls'
 import common from '@/plugins/common'
+import service from '@/plugins/socket'
 import { ipcRenderer } from 'electron'
 import { InputDropDown } from './dropDown'
 import videojs from "video.js"
@@ -55,11 +56,42 @@ class SearchDialog extends Dialog
         this.regexUl = ''
         this.highlightUl = ''
         this.conditionUl = ''
+
+        this.textArea = ''
+        this.regexArea = ''
+        this.returnArea = ''
+
+        this.tablinks = document.createElement('div')
+        this.tabcontents = document.createElement('div')
+        this.container.appendChild(this.tablinks)
+        this.container.appendChild(this.tabcontents)
+        this.modal.appendChild(this.container)
         this.searchDialogInit()
     }
 
     searchDialogInit(){
         let that = this
+
+        /************************************SEARCH TAB*************************************/
+        var searchContent = document.createElement('div')
+        searchContent.style.display = 'block'
+        // search title
+        var searchTitle = document.createElement('button')
+        searchTitle.style.backgroundColor = '#333'
+        searchTitle.style.color = 'white'
+        searchTitle.style.border = 'none'
+        searchTitle.style.cursor = 'pointer'
+        searchTitle.style.padding = '10px 16px'
+        searchTitle.style.fontSize = '16px'
+        searchTitle.style.width = '50%'
+        searchTitle.innerHTML = 'SEARCH'
+        searchTitle.addEventListener('click', function()
+        {
+            searchContent.style.display = 'block'
+            searchTitle.style.backgroundColor = '#333'
+            regexContent.style.display = 'none'
+            regexTitle.style.backgroundColor = '#999'
+        })
 
         // search description
         var descL = document.createElement('h4')
@@ -72,9 +104,6 @@ class SearchDialog extends Dialog
         var expSearchL = document.createElement('h4')
         expSearchL.innerHTML = 'Search Express'
         this.expSearch = new InputDropDown(this.words)
-        // this.expSearch = document.createElement('input')
-        // this.expSearch.spellcheck = false
-        // this.expSearch.type = 'text'
 
         // regex express
         var expRegexL = document.createElement('h4')
@@ -126,30 +155,111 @@ class SearchDialog extends Dialog
         cancel.innerHTML = 'CANCEL'
         cancel.onclick = function(){that.close()}
 
-        this.container.appendChild(descL)
-        this.container.appendChild(this.desc)
-        this.container.appendChild(expSearchL)
-        this.container.appendChild(this.expSearch.box)
+        searchContent.appendChild(descL)
+        searchContent.appendChild(this.desc)
+        searchContent.appendChild(expSearchL)
+        searchContent.appendChild(this.expSearch.box)
 
-        this.container.appendChild(expRegexL)
-        this.container.appendChild(this.expRegex)
-        this.container.appendChild(addRegex)
-        this.container.appendChild(this.regexUl)
+        searchContent.appendChild(expRegexL)
+        searchContent.appendChild(this.expRegex)
+        searchContent.appendChild(addRegex)
+        searchContent.appendChild(this.regexUl)
 
-        this.container.appendChild(highlightL)
-        this.container.appendChild(this.highlight)
-        this.container.appendChild(this.color)
-        this.container.appendChild(addHighlight)
-        this.container.appendChild(this.highlightUl)
+        searchContent.appendChild(highlightL)
+        searchContent.appendChild(this.highlight)
+        searchContent.appendChild(this.color)
+        searchContent.appendChild(addHighlight)
+        searchContent.appendChild(this.highlightUl)
 
-        // this.container.appendChild(conditionL)
-        // this.container.appendChild(this.condition)
-        // this.container.appendChild(addCondition)
-        // this.container.appendChild(this.conditionUl)
+        searchContent.appendChild(apply)
+        searchContent.appendChild(cancel)
 
-        this.container.appendChild(apply)
-        this.container.appendChild(cancel)
-        this.modal.appendChild(this.container)
+        this.tablinks.appendChild(searchTitle)
+        this.tabcontents.appendChild(searchContent)
+
+        /************************************REGEX TEST TAB*************************************/
+        var regexContent = document.createElement('div')
+        regexContent.style.display = 'none'
+        // regex title
+        var regexTitle = document.createElement('button')
+        regexTitle.style.backgroundColor = '#999'
+        regexTitle.style.color = 'white'
+        regexTitle.style.border = 'none'
+        regexTitle.style.cursor = 'pointer'
+        regexTitle.style.padding = '10px 16px'
+        regexTitle.style.fontSize = '16px'
+        regexTitle.style.width = '50%'
+        regexTitle.innerHTML = 'REGEX TEXT'
+        regexTitle.addEventListener('click', function()
+        {
+            searchContent.style.display = 'none'
+            searchTitle.style.backgroundColor = '#999'
+            regexContent.style.display = 'block'
+            regexTitle.style.backgroundColor = '#333'
+        })
+
+        var textL = document.createElement('h4')
+        textL.innerHTML = 'Input Text'
+        this.textArea = document.createElement('textarea')
+        this.textArea.rows = '5'
+        this.textArea.cols = '1000'
+        this.textArea.placeholder = 'Input Text'
+        this.textArea.style.width = '100%'
+        this.textArea.style.padding = '12px 20px'
+        this.textArea.style.margin = '8px 0'
+        this.textArea.style.display = 'inline-block'
+        this.textArea.style.border = '1px solid #ccc'
+        this.textArea.style.boxSizing= 'border-box'
+        this.textArea.spellcheck = false
+
+        var regexL = document.createElement('h4')
+        regexL.innerHTML = 'Input Regex'
+        this.regexArea = document.createElement('textarea')
+        this.regexArea.rows = '5'
+        this.regexArea.cols = '1000'
+        this.regexArea.placeholder = 'Input Regex Express'
+        this.regexArea.style.width = '100%'
+        this.regexArea.style.padding = '12px 20px'
+        this.regexArea.style.margin = '8px 0'
+        this.regexArea.style.display = 'inline-block'
+        this.regexArea.style.border = '1px solid #ccc'
+        this.regexArea.style.boxSizing= 'border-box'
+        this.regexArea.spellcheck = false
+
+        var returnL = document.createElement('h4')
+        returnL.innerHTML = 'Return Result'
+        this.returnArea = document.createElement('textarea')
+        this.returnArea.rows = '5'
+        this.returnArea.cols = '1000'
+        this.returnArea.placeholder = 'Return Result'
+        this.returnArea.style.width = '100%'
+        this.returnArea.style.padding = '12px 20px'
+        this.returnArea.style.margin = '8px 0'
+        this.returnArea.style.display = 'inline-block'
+        this.returnArea.style.border = '1px solid #ccc'
+        this.returnArea.style.boxSizing= 'border-box'
+        this.returnArea.spellcheck = false
+
+        // test button
+        var test = document.createElement('button')
+        test.innerHTML = 'TEST'
+        test.onclick = function(){that.regexTest()}
+        var cancel2 = document.createElement('button')
+        cancel2.style.backgroundColor = 'red'
+        cancel2.innerHTML = 'CANCEL'
+        cancel2.onclick = function(){that.close()}
+
+        regexContent.appendChild(textL)
+        regexContent.appendChild(this.textArea)
+        regexContent.appendChild(regexL)
+        regexContent.appendChild(this.regexArea)
+        regexContent.appendChild(returnL)
+        regexContent.appendChild(this.returnArea)
+        regexContent.appendChild(test)
+        regexContent.appendChild(cancel2)
+
+        this.tablinks.appendChild(regexTitle)
+        this.tabcontents.appendChild(regexContent)
     }
 
     async search(){
@@ -221,6 +331,16 @@ class SearchDialog extends Dialog
 
     deleteItem(b){
         common.removeAll(b.parentNode)
+    }
+
+    regexTest(){
+        service.emit('regex_test', {'text':this.textArea.value, 'regex':this.regexArea.value}, (res) => {
+            if (res['status'] == 'error') {
+                alert(res.msg)
+            }else{
+                this.returnArea.value = res.msg.join('\n')
+            }
+        })
     }
 }
 

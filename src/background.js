@@ -87,7 +87,6 @@ async function createWindow() {
 
   // start python background program 
   if (!process.env.WEBPACK_DEV_SERVER_URL) {
-    // const bat = spawn('C:\\Users\\LDJ\\Projects\\ericsson_toolsets\\src\\view.exe', [], {shell: true, detached: true})
     const bat = spawn(path.join(__dirname).replace("app.asar", "view\\view.exe"), [], {shell: true, detached: true})
   }
 
@@ -269,8 +268,8 @@ async function createWindow() {
     //   {name: 'Custom File Type', extensions: ['as']},
     //   {name: 'All Files', extensions: ['*']}
     // ],
-    properties: ['openFile']
-   }
+    properties: ['openFile', 'multiSelections']
+  }
   
   ipcMain.handle('open-file', async () => {
     const result = await dialog.showOpenDialog(win, options)

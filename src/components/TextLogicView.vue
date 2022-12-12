@@ -31,6 +31,6 @@ html,body {
   height: 100%;
   background: #000;
   margin: 0px 0px 0px 0px;
-  overflow: hidden !important;
+  /* overflow: hidden !important; */
 }
 </style>
