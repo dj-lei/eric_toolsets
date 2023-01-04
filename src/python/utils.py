@@ -10,7 +10,10 @@ import datetime
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse
+from types import SimpleNamespace
 
+def json_to_object(json_data):
+    return json.loads(json.dumps(json_data), object_hook=lambda d: SimpleNamespace(**d))
 
 def clean_special_symbols(text, symbol):
     for ch in ['/','*','{','}','[',']','(',')','#','+','-','!','=',';',':',',','.','"','\'','>','<','@','`','$','^','&','|','\n']:

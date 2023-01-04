@@ -109,16 +109,24 @@ class SearchAtomComponentDialog extends Dialog
         // search and cancel button
         var apply = document.createElement('button')
         apply.innerHTML = 'SEARCH'
-        apply.onclick = function(){that.search(function() {})}
+        apply.onclick = function(){that.search()}
         var cancel = document.createElement('button')
         cancel.style.backgroundColor = 'red'
         cancel.innerHTML = 'CANCEL'
-        cancel.onclick = function(){that.close()}
+        cancel.onclick = function(){that.hidden()}
         this.subContainer.appendChild(apply)
         this.subContainer.appendChild(cancel)
     }
 
-    async search(){
+    search(){
+        let model = {
+            namespace: this.searchAtomView.namespace,
+            desc: this.desc.value,
+            exp_search: this.expSearch.value,
+            exp_extract: this.getExpExtractList(),
+            exp_sign: this.getExpSignList(),
+        }
+        this.searchAtomView.search(model)
     }
 
     addExpExtractItem(){
@@ -128,7 +136,7 @@ class SearchAtomComponentDialog extends Dialog
 
         var t = document.createElement("input");
         t.setAttribute('type', "text")
-        t.setAttribute('value', this.expRegex.value)
+        t.setAttribute('value', this.expExtract.value)
         t.style.width = '92%'
         var x = document.createElement("button")
         x.style.width = '8%'
@@ -138,7 +146,7 @@ class SearchAtomComponentDialog extends Dialog
 
         li.appendChild(t)
         li.appendChild(x)
-        this.regexUl.append(li)
+        this.expExtractUl.append(li)
     }
 
     addExpSignItem(){
@@ -148,11 +156,11 @@ class SearchAtomComponentDialog extends Dialog
 
         var t = document.createElement("input");
         t.setAttribute('type', "text")
-        t.setAttribute('value', this.highlight.value)
+        t.setAttribute('value', this.expSign.value)
         t.style.width = '82%'
         var c = document.createElement("input")
         c.setAttribute('type', "color")
-        c.setAttribute('value', this.color.value)
+        c.setAttribute('value', this.expSignColor.value)
         var x = document.createElement("button")
         x.style.width = '8%'
         x.style.backgroundColor = 'red'
@@ -162,11 +170,37 @@ class SearchAtomComponentDialog extends Dialog
         li.appendChild(t)
         li.appendChild(c)
         li.appendChild(x)
-        this.highlightUl.append(li)
+        this.expSignUl.append(li)
     }
 
-    deleteItem(b){
-        common.removeAll(b.parentNode)
+    getExpExtractList(){
+        var expExtracts = []
+        for (const li of this.expExtractUl.children) {
+            for (const elm of li.children) {
+                if (elm.tagName == 'INPUT'){
+                    expExtracts.push(elm.value)
+                }
+            }
+        }
+        return expExtracts
+    }
+
+    getExpSignList(){
+        var expSigns = []
+        for (const li of this.expSignUl.children) {
+            var item = []
+            for (const elm of li.children) {
+                if (elm.tagName == 'INPUT'){
+                    item.push(elm.value)
+                }
+            }
+            expSigns.push(item)
+        }
+        return expSigns
+    }
+
+    deleteItem(item){
+        common.removeAll(item.parentNode)
     }
 }
 

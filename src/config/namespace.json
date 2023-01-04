@@ -1,0 +1,9 @@
+{
+  "TEXTANALYSIS": "/TextAnalysis",
+  "FILECONTAINER": "/FileContainer",
+  "TEXTFILEORIGINAL": "/TextFileOriginal",
+  "TEXTFILEFUNCTION": "/TextFileFunction",
+  "SEARCHFUNCTION": "/SearchFunction",
+  "KEYVALUETREEFUNCTION": "/KeyValueTreeFunction",
+  "CHARTFUNCTION": "/ChartFunction"
+}

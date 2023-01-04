@@ -1,6 +1,5 @@
-import urls from '@/plugins/urls'
-import service from '@/plugins/socket'
-import http from '@/plugins/http'
+import status from '@/config/status.json'
+import ns from '@/config/namespace.json'
 import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
@@ -36,7 +35,7 @@ class View
 class TextAnalysisView extends View
 {
     constructor(position){
-        super('/TextAnalysis', position)
+        super(ns.TEXTANALYSIS, position)
         this.fileContainerView = new FileContainerView(this)
         this.initMenu()
     }
@@ -53,22 +52,21 @@ class TextAnalysisView extends View
         })
         ipcRenderer.on('save-theme', async function () {
             if (that.parent.containerFiles[that.parent.activeFile].configPath == ''){
-                let file = await ipcRenderer.invoke('export-theme', JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
-                that.parent.containerFiles[that.parent.activeFile].configPath = file.filePath.toString()
+                let file = await ipcRenderer.invoke('export-theme', JSON.stringify(that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].saveConfig()))
+                that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].configPath = file.filePath.toString()
             }else{
-                await ipcRenderer.invoke('save-theme', that.parent.containerFiles[that.parent.activeFile].configPath, JSON.stringify(that.parent.containerFiles[that.parent.activeFile].saveConfig()))
+                await ipcRenderer.invoke('save-theme', that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].configPath, JSON.stringify(that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].saveConfig()))
             }
         })
         ipcRenderer.on('export-theme', async () => {
-            that.parent.containerFiles[that.parent.activeFile].saveConfig()
-            let file = await ipcRenderer.invoke('export-theme', JSON.stringify(that.parent.containerFiles[that.parent.activeFile].configContent))
+            await ipcRenderer.invoke('export-theme', JSON.stringify(that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].getConfig()))
         })
         ipcRenderer.on('import-theme', async () => {
             let content = await ipcRenderer.invoke('import-theme')
-            that.parent.containerFiles[that.parent.activeFile].loadConfig(content, function() {})
+            that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].loadConfig(content)
         })
         ipcRenderer.on('new-search', () => {
-            that.fileContainerView.newSearch()
+            that.fileContainerView.newTmpSearch()
         })
         ipcRenderer.on('open-func-area', () => {
             that.parent.containerFiles[that.parent.activeFile].dragCanvas(0.5)
@@ -124,7 +122,7 @@ class TextAnalysisView extends View
 class FileContainerView extends View
 {
     constructor(textAnalysisView){
-        super(`${textAnalysisView.namespace}/FileContainer`, textAnalysisView.container)
+        super(`${textAnalysisView.namespace}${ns.FILECONTAINER}`, textAnalysisView.container)
         this.fileContainerComponentTab = new FileContainerComponentTab(this)
         this.textFileViews = {}
 
@@ -136,20 +134,21 @@ class FileContainerView extends View
         let that = this
         var textFileNamespace = `${this.namespace}/${common.uuidv4()}`
         this.fileContainerComponentTab.placeholder(textFileNamespace)
-        // var fileName = path.split('\/').slice(-1).pop()
-        this.socket.emit("new_file", textFileNamespace, path, (model) => {
-            that.textFileViews[model.namespace] = new TextFileView(that, model)
-            that.fileContainerComponentTab.createNewTablink(that.textFileViews[model.namespace])
-            that.textFileViews[model.namespace].textFileOriginalView.scroll()
-            if (model.namespace ==this.activeTextFileView) {
-                that.fileContainerComponentTab.openTablink(that.textFileViews[model.namespace])
+        this.socket.emit("new_file", textFileNamespace, path, (response) => {
+            if(response.status == status.SUCCESS){
+                that.textFileViews[response.model.namespace] = new TextFileView(that, response.model)
+                that.fileContainerComponentTab.createNewTablink(that.textFileViews[response.model.namespace])
+                that.textFileViews[response.model.namespace].textFileOriginalView.scroll()
+                if (response.model.namespace ==this.activeTextFileView) {
+                    that.fileContainerComponentTab.openTablink(that.textFileViews[response.model.namespace])
+                }
             }
         })
         this.activeTextFileView = textFileNamespace
     }
 
-    newSearch(){
-        this.textFileViews[this.activeTextFileView].textFileFunctionView.searchFunctionView.newSearch()
+    newTmpSearch(){
+        this.textFileViews[this.activeTextFileView].textFileFunctionView.searchFunctionView.newTmpSearch()
     }
 }
 
@@ -157,11 +156,13 @@ class TextFileView extends View
 {
     constructor(fileContainerView, model){
         super(model.namespace, fileContainerView.container)
-        this.textFileOriginalView = new TextFileOriginalView(this)
-        this.textFileFunctionView = new TextFileFunctionView(this)
 
         this.fileContainerView = fileContainerView
         this.model = model
+        this.configPath = ''
+
+        this.textFileOriginalView = new TextFileOriginalView(this)
+        this.textFileFunctionView = new TextFileFunctionView(this)
     }
 
     init(){
@@ -174,12 +175,20 @@ class TextFileView extends View
     openFile(){
 
     }
+
+    getConfig(){
+        return this.textFileFunctionView.searchFunctionView.getConfig()
+    }
+
+    loadConfig(content){
+        this.textFileFunctionView.searchFunctionView.loadConfig()
+    }
 }
 
 class TextFileOriginalView extends View
 {
     constructor(textFileView){
-        super(`${textFileView.namespace}/TextFileOriginal`, textFileView.container)
+        super(`${textFileView.namespace}${ns.TEXTFILEORIGINAL}`, textFileView.container)
         this.textFileOriginalComponentTable = new TextFileOriginalComponentTable(this)
         
         this.textFileView = textFileView
@@ -206,7 +215,7 @@ class TextFileOriginalView extends View
 class TextFileFunctionView extends View
 {
     constructor(textFileView){
-        super(`${textFileView.namespace}/TextFileFunction`, textFileView.container)
+        super(`${textFileView.namespace}${ns.TEXTFILEFUNCTION}`, textFileView.container)
         this.textFileOriginalComponentTable = new TextFileOriginalComponentTable(this)
         this.textFileView = textFileView
 
@@ -219,51 +228,109 @@ class TextFileFunctionView extends View
 class SearchFunctionView extends View
 {
     constructor(textFileFunctionView){
-        super(`${textFileView.namespace}/SearchFunction`, textFileFunctionView.container)
+        super(`${textFileFunctionView.namespace}${ns.SEARCHFUNCTION}`, textFileFunctionView.container)
         this.textFileFunctionView = textFileFunctionView
-        this.searchAtomViews = []
+        this.searchAtomViews = {}
+        this.tmpSearchAtomView = null
 
         // this.functionSearchView = new SearchFunctionView(this)
         // this.functionSearchView = new SearchFunctionView(this)
     }
 
-    newSearch(){
-        this.tmpSearchAtomView = new SearchAtomView(this)
+    newTmpSearch(){
+        let that = this
+        if(this.tmpSearchAtomView){
+            this.tmpSearchAtomView.searchAtomComponentDialog.display()
+        }else{
+            var searchAtomViewNamespace = `${this.namespace}/${common.uuidv4()}`
+            this.socket.emit("new_tmp_search", searchAtomViewNamespace, (response) => {
+                if(response.status == status.SUCCESS){
+                    that.tmpSearchAtomView = new SearchAtomView(that, response.model)
+                    that.tmpSearchAtomView.searchAtomComponentDialog.display()
+                }
+            })
+        }
+    }
+
+    isRegister(namespace){
+        if(namespace in this.searchAtomViews){
+            return true
+        }else{
+            return false
+        }
+    }
+
+    registerNewSearch(searchAtomView){
+        this.searchAtomViews[searchAtomView.namespace] = searchAtomView
+    }
+
+    getConfig(){
+        var ret = []
+        Object.keys(this.searchAtomViews).forEach((namespace) => {
+            ret.push(this.searchAtomViews[namespace].model)
+        })
+        return ret
+    }
+
+    loadConfig(content){
+        content.forEach((searchAtomViewModel) => {
+            this.socket.emit("new_tmp_search", searchAtomViewNamespace, (response) => {
+                if(response.status == status.SUCCESS){
+                    that.tmpSearchAtomView = new SearchAtomView(that, response.model)
+                    that.tmpSearchAtomView.searchAtomComponentDialog.display()
+                }
+            })
+        })
     }
 }
 
-class KeyValueTreeFunctionView 
+class KeyValueTreeFunctionView extends View
 {
     constructor(textFileFunctionView){
+        super(`${textFileFunctionView.namespace}${ns.KEYVALUETREEFUNCTION}`, textFileFunctionView.container)
         this.textFileFunctionView = textFileFunctionView
     }
 }
 
-class ChartFunctionView
+class ChartFunctionView extends View
 {
     constructor(textFileFunctionView){
+        super(`${textFileFunctionView.namespace}${ns.CHARTFUNCTION}`, textFileFunctionView.container)
         this.textFileFunctionView = textFileFunctionView
     }
 }
 
 class SearchAtomView extends View
 {
-    constructor(searchFunctionView){
-        super(`${searchFunctionView.namespace}/${common.uuidv4()}`, searchFunctionView.container)
-        this.searchAtomComponentDialog = new SearchAtomComponentDialog(this)
-        this.searchAtomComponentTable = new SearchAtomComponentTable(this)
+    constructor(searchFunctionView, model){
+        super(model.namespace, searchFunctionView.container)
+        this.searchFunctionView = searchFunctionView
+        this.model = model
 
-        this.socket.on("refresh", (res) => {
-            this.refresh()
+        this.searchAtomComponentDialog = new SearchAtomComponentDialog(this)
+        this.searchAtomComponentTable = null
+        // this.searchAtomComponentTable = new SearchAtomComponentTable(this)
+
+        let that = this
+        this.socket.on("refresh", (response) => {
+            if(response.status == status.SUCCESS){
+                that.refresh(response.model)
+            }else{
+                alert(response.msg)
+            }
         })
     }
 
-    search(){
-
+    search(model){
+        this.model = model
+        this.socket.emit("search", model)
     }
 
-    refresh(){
-
+    refresh(model){
+        if (!this.searchFunctionView.isRegister(self.namespace)){
+            this.searchFunctionView.registerNewSearch(this)
+        }
+        console.log(model)
     }
 }
 
