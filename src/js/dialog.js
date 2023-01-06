@@ -1,10 +1,9 @@
 import common from '@/plugins/common'
 import { ipcRenderer } from 'electron'
 
-import { Graph } from './graph'
-const fs = require('fs')
+import { Component } from './element'
 
-class Dialog extends Graph
+class Dialog extends Component
 {
     constructor(position){
         super(position)
@@ -18,11 +17,11 @@ class Dialog extends Graph
         this.container.style.overflow = 'auto'
 
         this.subContainer = document.createElement('div')
+        this.subContainer.style.backgroundColor = '#333'
         this.subContainer.style.color = 'white'
         this.subContainer.style.width = '40%'
         this.subContainer.style.border = '1px solid #888'
         this.subContainer.style.margin = '5% auto 15% auto'
-        this.subContainer.style.backgroundColor = '#fefefe'
 
         this.container.appendChild(this.subContainer)
     }
@@ -39,6 +38,7 @@ class SearchAtomComponentDialog extends Dialog
         super(searchAtomView.container)
         this.searchAtomView = searchAtomView
 
+        this.alias = ''
         this.desc = ''
         this.expSearch = ''
         this.expExtract = ''
@@ -53,66 +53,57 @@ class SearchAtomComponentDialog extends Dialog
     init(){
         let that = this
 
+        // alias
+        this.alias = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        this.subContainer.appendChild(this.alias)
+
         // search description
-        var descL = document.createElement('h4')
-        descL.innerHTML = 'Search Description'
-        this.desc = document.createElement('input')
-        this.desc.spellcheck = false
-        this.desc.type = 'text'
-        this.subContainer.appendChild(descL)
+        this.desc = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Search Description'))
         this.subContainer.appendChild(this.desc)
 
         // search regex express 
-        var expSearchL = document.createElement('h4')
-        expSearchL.innerHTML = 'Search Express'
-        this.expSearch = document.createElement('input')
-        this.subContainer.appendChild(expSearchL)
+        this.expSearch = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Search Express'))
         this.subContainer.appendChild(this.expSearch)
 
         // extract key value regex express
-        var expExtractL = document.createElement('h4')
-        expExtractL.innerHTML = 'Extract Key Value Regex Express'
-        this.expExtract = document.createElement('input')
+        this.expExtract = this.createElementTextInput()
         this.expExtract.style.width = '85%'
-        this.expExtract.spellcheck = false
-        this.expExtract.type = 'text'
-        var addExpExtract = document.createElement('button')
+        var addExpExtract = this.createElementButton('ADD')
         addExpExtract.style.width = '15%'
-        addExpExtract.innerHTML = 'ADD'
         addExpExtract.onclick = function(){that.addExpExtractItem()}
-        this.expExtractUl = document.createElement('ul')
-        this.subContainer.appendChild(expExtractL)
+        this.expExtractUl = this.createElementUl()
+        this.subContainer.appendChild(this.createElementH4('Extract Key Value Regex Express'))
         this.subContainer.appendChild(this.expExtract)
         this.subContainer.appendChild(addExpExtract)
         this.subContainer.appendChild(this.expExtractUl)
 
         // sign key location express
-        var expSignL = document.createElement('h4')
-        expSignL.innerHTML = 'Sign Key Location Express'
-        this.expSign = document.createElement('input')
-        this.expSign.style.width = '75%'
-        this.expSign.spellcheck = false
-        this.expSign.type = 'text'
-        this.expSignColor = document.createElement('input')
-        this.expSignColor.type = 'color'
-        var addExpSign = document.createElement('button')
+        this.expSignAlias = this.createElementTextInput()
+        this.expSignAlias.style.width = '10%'
+        this.expSign = this.createElementTextInput()
+        this.expSign.style.width = '65%'
+        this.expSignColor = this.createElementColorInput()
+        var addExpSign = this.createElementButton('ADD')
         addExpSign.style.width = '15%'
-        addExpSign.innerHTML = 'ADD'
         addExpSign.onclick = function(){that.addExpSignItem()}
-        this.expSignUl = document.createElement('ul')
-        this.subContainer.appendChild(expSignL)
+        this.expSignUl = this.createElementUl()
+        this.subContainer.appendChild(this.createElementH4('Sign Key Location Express'))
+        this.subContainer.appendChild(this.expSignAlias)
         this.subContainer.appendChild(this.expSign)
         this.subContainer.appendChild(this.expSignColor)
         this.subContainer.appendChild(addExpSign)
         this.subContainer.appendChild(this.expSignUl)
 
         // search and cancel button
-        var apply = document.createElement('button')
-        apply.innerHTML = 'SEARCH'
+        var apply = this.createElementButton('SEARCH')
+        apply.style.width = '50%'
         apply.onclick = function(){that.search()}
-        var cancel = document.createElement('button')
+        var cancel = this.createElementButton('CANCEL')
         cancel.style.backgroundColor = 'red'
-        cancel.innerHTML = 'CANCEL'
+        cancel.style.width = '50%'
         cancel.onclick = function(){that.hidden()}
         this.subContainer.appendChild(apply)
         this.subContainer.appendChild(cancel)
@@ -121,6 +112,7 @@ class SearchAtomComponentDialog extends Dialog
     search(){
         let model = {
             namespace: this.searchAtomView.namespace,
+            alias: this.alias.value,
             desc: this.desc.value,
             exp_search: this.expSearch.value,
             exp_extract: this.getExpExtractList(),
@@ -129,19 +121,32 @@ class SearchAtomComponentDialog extends Dialog
         this.searchAtomView.search(model)
     }
 
+    update(model){
+        this.alias.value = model.alias
+        this.desc.value = model.desc
+        this.expSearch.value = model.expSearch
+        model.expExtract.forEach((exp) => {
+            this.expExtract.value = exp
+            this.addExpExtractItem()
+        })
+        model.expSign.forEach((sign) => {
+            this.expSignAlias.value = sign.alias
+            this.expSign.value = sign.exp
+            this.expSignColor.value = sign.color
+            this.addExpSignItem()
+        })
+    }
+
     addExpExtractItem(){
         let that = this
-        var li = document.createElement("li")
-        // li.style.listStyleType = 'none'
+        var li = this.createElementLi()
 
-        var t = document.createElement("input");
-        t.setAttribute('type', "text")
+        var t = this.createElementTextInput()
         t.setAttribute('value', this.expExtract.value)
         t.style.width = '92%'
-        var x = document.createElement("button")
+        var x = this.createElementButton('X')
         x.style.width = '8%'
         x.style.backgroundColor = 'red'
-        x.innerHTML = 'X'
         x.onclick = function(){that.deleteItem(x)}
 
         li.appendChild(t)
@@ -151,22 +156,22 @@ class SearchAtomComponentDialog extends Dialog
 
     addExpSignItem(){
         let that = this
-        var li = document.createElement("li")
-        // li.style.listStyleType = 'none'
+        var li = this.createElementLi()
 
-        var t = document.createElement("input");
-        t.setAttribute('type', "text")
+        var a = this.createElementTextInput()
+        a.setAttribute('value', this.expSignAlias.value)
+        a.style.width = '10%'
+        var t = this.createElementTextInput()
         t.setAttribute('value', this.expSign.value)
-        t.style.width = '82%'
-        var c = document.createElement("input")
-        c.setAttribute('type', "color")
+        t.style.width = '72%'
+        var c = this.createElementColorInput()
         c.setAttribute('value', this.expSignColor.value)
-        var x = document.createElement("button")
+        var x = this.createElementButton('X')
         x.style.width = '8%'
         x.style.backgroundColor = 'red'
         x.onclick = function(){that.deleteItem(x)}
-        x.innerHTML = 'X'
 
+        li.appendChild(a)
         li.appendChild(t)
         li.appendChild(c)
         li.appendChild(x)

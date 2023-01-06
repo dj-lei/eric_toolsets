@@ -1,30 +1,27 @@
-import { Graph } from './graph'
+import { Component } from './element'
 
-class Tab extends Graph
+class Tab extends Component
 {
     constructor(position){
         super(position)
         this.container.style.display = 'inline-block'
+        this.tabs = {}
     }
 
-    createNewTablink(){
-        var tablink = document.createElement('div')
+    subscribePlaceholder(namespace){
+        var tablink = this.createElementDiv()
+        tablink.setAttribute("name", namespace)
         tablink.style.display = 'inline-block'
 
-        var title = document.createElement('button')
-        title.name = 'title'
-        title.style.backgroundColor = '#555'
-        title.style.color = 'white'
-        title.style.border = 'none'
-        title.style.cursor = 'pointer'
-        title.style.padding = '5px 8px'
-        title.style.fontSize = '12px'
-
+        var title = this.createElementButton('')
         tablink.append(title)
         this.container.append(tablink)
-        return tablink
+        this.tabs[namespace] = {'ins':tablink, 'title':title}
     }
 
+    getPlaceholder(namespace){
+        return this.tabs[namespace].ins
+    }
 }
 
 class FileContainerComponentTab extends Tab
@@ -34,42 +31,32 @@ class FileContainerComponentTab extends Tab
         this.fileContainerView = fileContainerView
     }
 
-    placeholder(namespace){
-        var tablink = super.createNewTablink()
-        tablink.setAttribute("name", namespace)
-    }
-
     createNewTablink(textFileView){
         let that = this
-        var tablink = this.container.querySelector(`div[name="${textFileView.namespace}"]`)
-        var title = tablink.querySelector('button[name="title"]')
-        title.style.width = `${textFileView.model.fileName.length * 7}px`
+        var tablink = this.tabs[textFileView.namespace].ins
+        tablink.style.width = `${textFileView.model.fileName.length * 10}px`
+        var title = this.tabs[textFileView.namespace].title
         title.innerHTML = textFileView.model.fileName
         title.addEventListener('click', function()
         {
             that.openTablink(textFileView)
         })
 
-        var close = document.createElement('button')
-        close.name = 'close'
+        var close = this.createElementButton('X')
         close.style.backgroundColor = 'red'
-        close.style.color = 'white'
-        close.style.cursor = 'pointer'
-        close.style.padding = '5px 8px'
-        close.style.fontSize = '12px'
-        close.innerHTML = 'X'
         close.addEventListener("click", function() {
             that.deleteTablink(textFileView)
         })
         tablink.append(close)
+        this.tabs[textFileView.namespace]['close'] = close
     }
 
     openTablink(textFileView)
     {
-        this.container.querySelector(`div[name="${this.fileContainerView.activeTextFileView}"]`).querySelector(`button[name="title"]`).style.backgroundColor = "#555"
+        this.tabs[this.fileContainerView.activeTextFileView].title.style.backgroundColor = "#555"
         this.fileContainerView.textFileViews[this.fileContainerView.activeTextFileView].textFileOriginalView.textFileOriginalComponentTable.hidden()
         
-        this.container.querySelector(`div[name="${textFileView.namespace}"]`).querySelector(`button[name="title"]`).style.backgroundColor = "#333"
+        this.tabs[textFileView.namespace].title.style.backgroundColor = "#333"
         textFileView.textFileOriginalView.textFileOriginalComponentTable.display('inline-block')
 
         this.fileContainerView.activeTextFileView = textFileView.namespace
@@ -85,23 +72,44 @@ class TextFileFunctionComponentTab extends Tab
     constructor(textFileFunctionView){
         super(textFileFunctionView.container)
         this.textFileFunctionView = textFileFunctionView
+        this.container.style.display = 'none'
 
         let that = this
-        this.searchTablink = this.createNewTablink()
-        this.searchTablink.style.width = '33%'
-        this.searchTablink.innerHTML = 'Search'
-        this.searchTablink.addEventListener('click', function()
+        this.subscribePlaceholder('Search')
+        var tablink = this.getPlaceholder('Search')
+        tablink.style.width = '33%'
+        this.searchTitle = this.tabs['Search'].title
+        this.searchTitle.style.width = '100%'
+        this.searchTitle.innerHTML = 'Search'
+        this.searchTitle.addEventListener('click', function()
         {
             // that.textFileFunctionView.functionSearchView
         })
 
-        this.keyValueTreeTablink = this.createNewTablink()
-        this.keyValueTreeTablink.style.width = '33%'
-        this.keyValueTreeTablink.innerHTML = 'KeyValueTree'
+        this.subscribePlaceholder('Chart')
+        tablink = this.getPlaceholder('Chart')
+        tablink.style.width = '33%'
 
-        this.chartTablink = this.createNewTablink()
-        this.chartTablink.style.width = '33%'
-        this.chartTablink.innerHTML = 'Chart'
+        this.chartTitle = this.tabs['Chart'].title
+        this.chartTitle.style.width = '100%'
+        this.chartTitle.innerHTML = 'Chart'
+        this.chartTitle.addEventListener('click', function()
+        {
+            // that.textFileFunctionView.functionSearchView
+        })
+
+        this.subscribePlaceholder('Statistics')
+        tablink = this.getPlaceholder('Statistics')
+        tablink.style.width = '33%'
+        this.statisticsTitle = this.tabs['Statistics'].title
+        this.statisticsTitle.style.width = '100%'
+        this.statisticsTitle.innerHTML = 'Statistics'
+        this.statisticsTitle.addEventListener('click', function()
+        {
+            // that.textFileFunctionView.functionSearchView
+        })
+
+
     }
 
     openTablink(tablink)

@@ -1,29 +1,25 @@
-import { Graph } from './graph'
+import { Component } from './element'
 
-class List extends Graph
+class List extends Component
 {
     constructor(position){
         super(position)
+        this.ul = this.createElementUl()
+        this.ul.style.listStyleType = 'none'
+        this.ul.style.padding = 0
+        this.ul.style.margin = 0
+        this.container.append(this.ul)
     }
 
-    createNewItem(){
-        var tablink = document.createElement('div')
-        tablink.style.display = 'inline-block'
-
-        var title = document.createElement('button')
-        title.name = 'title'
-        title.style.backgroundColor = '#555'
-        title.style.color = 'white'
-        title.style.border = 'none'
-        title.style.cursor = 'pointer'
-        title.style.padding = '5px 8px'
-        title.style.fontSize = '12px'
-
-        tablink.append(title)
-        this.addTablink(tablink)
-        return tablink
+    subscribePlaceholder(namespace){
+        var li = this.createElementLi()
+        li.setAttribute("name", namespace)
+        this.ul.append(li)
     }
 
+    getPlaceholder(namespace){
+        return this.locateChildElement(this.ul, 'li', namespace)
+    }
 }
 
 class SearchFunctionComponentList extends List
@@ -31,13 +27,6 @@ class SearchFunctionComponentList extends List
     constructor(searchFunctionView){
         super(searchFunctionView.container)
         this.searchFunctionView = searchFunctionView
-    }
-
-    createNewSearchItem(textFileView){
-        let that = this
-
-        
-
     }
 }
 

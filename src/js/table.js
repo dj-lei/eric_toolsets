@@ -1,8 +1,8 @@
-import { Graph } from './graph'
+import { Component } from './element'
 
 import common from '@/plugins/common'
 
-class Table extends Graph
+class Table extends Component
 {
     constructor(position){
         super(position)
@@ -10,23 +10,14 @@ class Table extends Graph
         this.slider = ''
         this.count = 10
 
-        this.table = document.createElement('table')
-        this.table.style.display = 'inline-block'
-        this.table.style.width = '98%'
-        this.table.style.overflowX = 'scroll'
-        this.table.style.overflowY= 'hidden'
-        this.table.style.whiteSpace = 'nowrap'
-        this.table.style.border = 'none'
+        this.table = this.createElementTable()
+        this.slider = this.createElementRangeInput()
+    }
 
-        this.slider = document.createElement('input')
-        this.slider.style.display = 'inline-block'
-        this.slider.className = 'slider'
-        this.slider.type = 'range'
-        this.slider.min = 0
-        this.slider.max = this.count
-        this.slider.style.width = '1%'
-        this.slider.value=0
-        this.slider.step=1
+    deleteTableAllChilds(){
+        while (this.table.firstChild) {
+            this.table.removeChild(this.table.lastChild)
+          }
     }
 }
 
@@ -36,7 +27,7 @@ class TextFileOriginalComponentTable extends Table
         super(textFileOriginalView.container)
         this.textFileOriginalView = textFileOriginalView
 
-        this.container.style.display = 'none'
+        this.container.style.overflow = 'hidden'
 
         let that = this
         this.slider.addEventListener('input', (event) => {
@@ -49,7 +40,7 @@ class TextFileOriginalComponentTable extends Table
             }else{
                 that.slider.value = parseInt(that.slider.value) + 1
             }
-            that.textFileOriginalView.jump(parseInt(that.slider.value))
+            that.textFileOriginalView.scroll(parseInt(that.slider.value))
             e.preventDefault()
             e.stopPropagation()
         })
@@ -59,7 +50,7 @@ class TextFileOriginalComponentTable extends Table
     }
 
     refresh(lines){
-        common.removeAllChild(this.table)
+        this.deleteTableAllChilds()
         lines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
@@ -89,48 +80,25 @@ class SearchAtomComponentTable extends Table
         this.searchAtomView = searchAtomView
 
         let that = this
-        var del = document.createElement('button')
+        var del = this.createElementButton('X')
         del.style.backgroundColor = 'red'
         del.style.width = '2%'
-        del.style.border = '1px solid #ddd'
-        del.style.color = 'white'
-        del.style.cursor = 'pointer'
-        del.fontSize = '15px'
-        del.innerHTML = 'X'
         del.addEventListener("click", function() {
-            // that.parent.keyValueSelect['children'].forEach((child, index) => {
-            //     if (child.uid == that.uid) {
-            //         that.parent.keyValueSelect['children'].splice(index,1)
-            //     }
-            // })
-            // delete that.parent.searchContainer[that.uid]
-            // that.parent.generateKeyValueTree()
-            // common.removeAll(that.resTable)
-            // common.removeAll(that.resButton)
+            that.searchAtomView.delete()
         })
 
-        var search = document.createElement('button')
+        var search = this.createElementButton('O')
         search.style.backgroundColor = 'green'
         search.style.width = '2%'
-        search.style.border = '1px solid #ddd'
-        search.style.color = 'white'
-        search.style.cursor = 'pointer'
-        search.fontSize = '15px'
-        search.innerHTML = 'O'
         search.addEventListener("click", function() {
-            // that.open()
+            that.searchAtomView.searchAtomComponentDialog.display()
         })
 
-        var collapsible = document.createElement('button')
+        var collapsible = this.createElementButton('')
         collapsible.style.backgroundColor = '#777'
         collapsible.style.width = '94%'
-        collapsible.style.border = '1px solid #ddd'
         collapsible.style.textAlign = 'left'
-        collapsible.style.color = 'white'
-        collapsible.style.cursor = 'pointer'
-        collapsible.fontSize = '15px'
-        collapsible.className = 'collapsible'
-        collapsible.innerHTML = '+ ' + that.desc.value + ` (${that.res.count} hits)`
+        collapsible.innerHTML = '+ ' + that.searchAtomView.model.desc.value + ` (${that.searchAtomView.model.count} hits)`
         collapsible.addEventListener("click", function() {
             // that.parent.shutAllSearch()
             // if (that.resTable.style.display === "block") {
@@ -145,7 +113,7 @@ class SearchAtomComponentTable extends Table
         })
 
         this.slider.addEventListener('input', (event) => {
-            that.textFileOriginalView.jump(parseInt(event.target.value))
+            that.searchAtomView.scroll(parseInt(event.target.value))
         })
 
         this.table.addEventListener("wheel", function(e){
@@ -154,7 +122,7 @@ class SearchAtomComponentTable extends Table
             }else{
                 that.slider.value = parseInt(that.slider.value) + 1
             }
-            that.textFileOriginalView.jump(parseInt(that.slider.value))
+            that.searchAtomView.scroll(parseInt(that.slider.value))
             e.preventDefault()
             e.stopPropagation()
         })
@@ -166,9 +134,9 @@ class SearchAtomComponentTable extends Table
         this.container.append(this.slider)
     }
 
-    refresh(lines){
-        common.removeAllChild(this.table)
-        lines.forEach((line) => {
+    refresh(model){
+        this.deleteTableAllChilds()
+        model.displayLines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)

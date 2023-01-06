@@ -1,33 +1,29 @@
 import * as d3 from "d3"
 import common from '@/plugins/common'
+import { Component } from './element'
 
-class svg
+class svg extends Component
 {
-    constructor(){
-        this.canvas = ''
+    constructor(position, scaleMin, scaleMax){
+        super(position)
         this.svg = ''
         this.bottomNav = ''
-        this.svgInit(0.5, 3)
-    }
 
-    svgInit(scaleMin, scaleMax){
-        this.canvas = document.createElement('div')
-        this.canvas.style.display = "block"
-        this.canvas.style.width = "100%"
-        this.canvas.style.height = '100%'
-        this.canvas.style.backgroundColor = '#555'
-        this.canvas.style.border = '1px solid #888'
+        this.container.style.width = "100%"
+        this.container.style.height = '100%'
+        this.container.style.backgroundColor = '#555'
+        this.container.style.border = '1px solid #888'
 
         var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
         svg.setAttribute('width', '100%')
         svg.setAttribute('height', '100%')
-        this.canvas.append(svg)
+        this.container.append(svg)
 
-        this.bottomNav = document.createElement('div')
-        this.bottomNav.style.position = 'fixed'
-        this.bottomNav.style.bottom = 0
-        this.bottomNav.style.width = '100%'
-        this.canvas.append(this.bottomNav)
+        this.bottomBtnSets = this.createElementDiv()
+        this.bottomBtnSets.style.position = 'fixed'
+        this.bottomBtnSets.style.bottom = 0
+        this.bottomBtnSets.style.width = '100%'
+        this.container.append(this.bottomBtnSets)
 
         var zoom = d3.zoom().scaleExtent([scaleMin, scaleMax]).on("zoom", zoomed)
         d3.select(svg).call(zoom).on("dblclick.zoom", null)
@@ -43,59 +39,34 @@ class svg
             d3.select(svg).select("#canvas").attr("transform", transform)
         }
     }
-
-    addButton(name, func, color){
-        let that = this
-        var button = document.createElement('button')
-        button.style.backgroundColor = color
-        button.style.color = '#FFF'
-        button.style.float = 'right'
-        button.style.display = 'block'
-        button.style.padding = '14px 16px'
-        button.innerHTML = name
-        button.addEventListener('click', function()
-        {
-            func(that)
-        })
-        this.bottomNav.appendChild(button)
-        return button
-    }
-
-    open(){
-        this.canvas.style.display = "block"
-    }
-
-    close(that){
-        if(that){
-            that.canvas.style.display = "none"
-        }else{
-            this.canvas.style.display = "none"
-        }
-    }
-
-    delete(){
-        common.removeAll(this.canvas)
-    }
 }
 
-class TreeSelect extends svg
+class ChartAtomComponentSvg extends svg
 {
-    constructor(data, parent, position){
-        super()
-        this.register(position)
-        this.parent = parent
-        this.data = data
-        this.draw(this.data, this.svg)
-        this.cancelBtn = this.addButton('CANCEL', this.close, 'red')
-        this.clearBtn = this.addButton('CLEAR', this.clear, 'blue')
-        this.applyBtn = this.addButton('APPLY', this.apply, 'green')
+    constructor(chartAtomView){
+        super(chartAtomView.container)
+        this.chartAtomView = chartAtomView
+        this.draw(chartAtomView.model.keyValueTree)
+
+        let that = this
+        var cancelBtn = this.createElementButton('CANCEL')
+        cancelBtn.style.backgroundColor = 'red'
+        cancelBtn.style.float = 'right'
+        cancelBtn.onclick = function(){that.hidden()}
+        var clearBtn = this.createElementButton('CLEAR')
+        clearBtn.style.backgroundColor = 'blue'
+        clearBtn.style.float = 'right'
+        clearBtn.onclick = function(){that.clear()}
+        var applyBtn = this.createElementButton('APPLY')
+        applyBtn.style.backgroundColor = 'green'
+        applyBtn.style.float = 'right'
+        applyBtn.onclick = function(){that.apply()}
+        this.bottomBtnSets.appendChild(cancelBtn)
+        this.bottomBtnSets.appendChild(clearBtn)
+        this.bottomBtnSets.appendChild(applyBtn)
     }
 
-    register(position){
-        position.append(this.canvas)
-    }
-
-    draw(data, svg){
+    draw(data){
         // let that = this
         const width = 1600
         const dx = 10
@@ -114,13 +85,13 @@ class TreeSelect extends svg
             // if (d.depth !== 0) d.children = null
         // })
       
-        const gLink = svg.append("g")
+        const gLink = this.svg.append("g")
             .attr("fill", "none")
             .attr("stroke", "#999")
             .attr("stroke-opacity", 0.4)
             .attr("stroke-width", 1.5);
       
-        const gNode = svg.append("g")
+        const gNode = this.svg.append("g")
             .attr("cursor", "pointer")
             .attr("pointer-events", "all");
       
@@ -141,10 +112,10 @@ class TreeSelect extends svg
       
           const height = right.x - left.x + margin.top + margin.bottom;
       
-          const transition = svg.transition()
+          const transition = this.svg.transition()
               .duration(duration)
               .attr("viewBox", [-margin.left, left.x - margin.top, width, height])
-              .tween("resize", window.ResizeObserver ? null : () => () => svg.dispatch("toggle"));
+              .tween("resize", window.ResizeObserver ? null : () => () => this.svg.dispatch("toggle"));
       
           // Update the nodes…
           const node = gNode.selectAll("g")
@@ -256,13 +227,12 @@ class TreeSelect extends svg
           });
         }
         update(root);
-        // this.syncTreeAndFilterData(svg, filterData)
     }
 
-    clear(that){
-        that.iterationClear([that.data])
-        that.svg.selectAll("*").remove()
-        that.draw(that.data, that.svg)
+    clear(){
+        this.iterationClear([this.chartAtomView.model.keyValueTree])
+        this.svg.selectAll("*").remove()
+        this.draw(this.chartAtomView.model.keyValueTree)
     }
 
     iterationClear(data){
@@ -275,10 +245,10 @@ class TreeSelect extends svg
         })
     }
 
-    apply(that){
-        that.parent.keyValueTreeClickEvent()
+    apply(){
+        this.chartAtomView.apply()
     }
 
 }
 
-export {TreeSelect}
+export {ChartAtomComponentSvg}

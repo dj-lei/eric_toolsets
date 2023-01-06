@@ -1,36 +1,32 @@
 import * as echarts from 'echarts'
 import common from '@/plugins/common'
-import { ChartDialog } from './dialog'
+import { Component } from './element'
 
-class Chart
+class Chart extends Component
 {
-    constructor(){
-        this.canvas = ''
+    constructor(position){
+        super(position)
         this.chart = ''
-        this.bottomNav = ''
-        this.chartInit()
-    }
 
-    chartInit(){
-        this.canvas = document.createElement('div')
-        this.canvas.style.display = "inline-block"
-        this.canvas.style.width = '100%'
-        this.canvas.style.height = '100%'
-        this.canvas.style.border = '1px solid #888'
-        this.canvas.style.backgroundColor = '#555'
+        this.container.style.display = "inline-block"
+        this.container.style.height = '100%'
+        this.container.style.border = '1px solid #888'
+        this.container.style.backgroundColor = '#555'
 
-        var ch = document.createElement('div')
+        var ch = this.createElementDiv()
         ch.style.width = '99%'
         ch.style.height = '100%'
         ch.style.borderSpacing = 0
         ch.style.border = '1px solid rgb(255, 255, 255)'
 
-        this.bottomNav = document.createElement('div')
-        this.bottomNav.style.position = 'fixed'
-        this.bottomNav.style.bottom = 0
-        this.bottomNav.style.width = '100%'
-        this.canvas.append(ch)
-        this.canvas.append(this.bottomNav)
+        this.bottomBtnSets = this.createElementDiv()
+        this.bottomBtnSets.style.position = 'fixed'
+        this.bottomBtnSets.style.bottom = 0
+        this.bottomBtnSets.style.width = '100%'
+        this.container.append(this.bottomBtnSets)
+
+        this.container.append(ch)
+        this.container.append(this.bottomBtnSets)
 
         this.chart = echarts.init(ch, 'dark')
     }
@@ -107,41 +103,6 @@ class Chart
         }
     }
 
-    addButton(name, func, color){
-        let that = this
-        var button = document.createElement('button')
-        button.style.backgroundColor = color
-        button.style.color = '#FFF'
-        button.style.float = 'right'
-        button.style.display = 'block'
-        button.style.padding = '14px 16px'
-        button.innerHTML = name
-        button.addEventListener('click', function()
-        {
-            func(that)
-        })
-        this.bottomNav.appendChild(button)
-        return button
-    }
-
-    open(){
-        this.canvas.style.display = "block"
-    }
-
-    close(that){
-      if(that){
-          that.canvas.style.display = "none"
-      }else{
-          this.canvas.style.display = "none"
-      }
-    }
-
-    delete(that){
-      common.removeAll(this.canvas)
-      if (that) {
-        that.parent.deleteChart(that.uid)
-      }
-    }
 }
 
 class SequentialChart extends Chart

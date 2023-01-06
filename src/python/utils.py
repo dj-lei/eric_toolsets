@@ -9,7 +9,8 @@ import zipfile
 import datetime
 import numpy as np
 import pandas as pd
-from dateutil.parser import parse
+from parse import parse
+from dateutil.parser import parse as dp
 from types import SimpleNamespace
 
 def json_to_object(json_data):
@@ -34,7 +35,7 @@ def iterate_files_in_directory(directory):
     return res
 
 def parse_data_format(df):
-    return parse(df['timestamp'], yearfirst=True)
+    return dp(df['timestamp'], yearfirst=True)
 
 def analysis_express(cmd):
     left_p = []
