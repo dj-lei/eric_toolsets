@@ -42,6 +42,26 @@ class View extends Element
         this.namespace = namespace
         this.container.setAttribute("name", this.namespace)
         this.socket = io(`${server}${this.namespace}`)
+
+        let that = this
+        Object.getOwnPropertyNames(Object.getPrototypeOf(this)).forEach((functionName) => {
+            if(functionName.slice(0,2) === 'on'){
+                var listenName = functionName.slice(2)
+                listenName = listenName.charAt(0).toLowerCase() + listenName.slice(1)
+                this.socket.on(listenName, (request) => {
+                    this[functionName](request)
+                })
+            }
+        })
+
+        this.socket.on("display", () => {
+            that.display()
+        })
+
+        this.socket.on("hidden", () => {
+            that.hidden()
+        })
+
     }
 }
 

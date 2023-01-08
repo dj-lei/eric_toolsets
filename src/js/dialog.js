@@ -42,10 +42,10 @@ class SearchAtomComponentDialog extends Dialog
         this.desc = ''
         this.expSearch = ''
         this.expExtract = ''
-        this.expSign = ''
-        this.expSignColor = ''
+        this.expMark = ''
+        this.expMarkColor = ''
         this.expExtractUl = ''
-        this.expSignUl = ''
+        this.expMarkUl = ''
 
         this.init()
     }
@@ -80,22 +80,22 @@ class SearchAtomComponentDialog extends Dialog
         this.subContainer.appendChild(addExpExtract)
         this.subContainer.appendChild(this.expExtractUl)
 
-        // sign key location express
-        this.expSignAlias = this.createElementTextInput()
-        this.expSignAlias.style.width = '10%'
-        this.expSign = this.createElementTextInput()
-        this.expSign.style.width = '65%'
-        this.expSignColor = this.createElementColorInput()
-        var addExpSign = this.createElementButton('ADD')
-        addExpSign.style.width = '15%'
-        addExpSign.onclick = function(){that.addExpSignItem()}
-        this.expSignUl = this.createElementUl()
-        this.subContainer.appendChild(this.createElementH4('Sign Key Location Express'))
-        this.subContainer.appendChild(this.expSignAlias)
-        this.subContainer.appendChild(this.expSign)
-        this.subContainer.appendChild(this.expSignColor)
-        this.subContainer.appendChild(addExpSign)
-        this.subContainer.appendChild(this.expSignUl)
+        // mark key location express
+        this.expMarkAlias = this.createElementTextInput()
+        this.expMarkAlias.style.width = '10%'
+        this.expMark = this.createElementTextInput()
+        this.expMark.style.width = '65%'
+        this.expMarkColor = this.createElementColorInput()
+        var addExpMark = this.createElementButton('ADD')
+        addExpMark.style.width = '15%'
+        addExpMark.onclick = function(){that.addExpMarkItem()}
+        this.expMarkUl = this.createElementUl()
+        this.subContainer.appendChild(this.createElementH4('Mark Key Location Express'))
+        this.subContainer.appendChild(this.expMarkAlias)
+        this.subContainer.appendChild(this.expMark)
+        this.subContainer.appendChild(this.expMarkColor)
+        this.subContainer.appendChild(addExpMark)
+        this.subContainer.appendChild(this.expMarkUl)
 
         // search and cancel button
         var apply = this.createElementButton('SEARCH')
@@ -116,7 +116,7 @@ class SearchAtomComponentDialog extends Dialog
             desc: this.desc.value,
             exp_search: this.expSearch.value,
             exp_extract: this.getExpExtractList(),
-            exp_sign: this.getExpSignList(),
+            exp_mark: this.getExpMarkList(),
         }
         this.searchAtomView.search(model)
     }
@@ -129,11 +129,11 @@ class SearchAtomComponentDialog extends Dialog
             this.expExtract.value = exp
             this.addExpExtractItem()
         })
-        model.expSign.forEach((sign) => {
-            this.expSignAlias.value = sign.alias
-            this.expSign.value = sign.exp
-            this.expSignColor.value = sign.color
-            this.addExpSignItem()
+        model.expMark.forEach((mark) => {
+            this.expMarkAlias.value = mark.alias
+            this.expMark.value = mark.exp
+            this.expMarkColor.value = mark.color
+            this.addExpMarkItem()
         })
     }
 
@@ -154,18 +154,18 @@ class SearchAtomComponentDialog extends Dialog
         this.expExtractUl.append(li)
     }
 
-    addExpSignItem(){
+    addExpMarkItem(){
         let that = this
         var li = this.createElementLi()
 
         var a = this.createElementTextInput()
-        a.setAttribute('value', this.expSignAlias.value)
+        a.setAttribute('value', this.expMarkAlias.value)
         a.style.width = '10%'
         var t = this.createElementTextInput()
-        t.setAttribute('value', this.expSign.value)
+        t.setAttribute('value', this.expMark.value)
         t.style.width = '72%'
         var c = this.createElementColorInput()
-        c.setAttribute('value', this.expSignColor.value)
+        c.setAttribute('value', this.expMarkColor.value)
         var x = this.createElementButton('X')
         x.style.width = '8%'
         x.style.backgroundColor = 'red'
@@ -175,7 +175,7 @@ class SearchAtomComponentDialog extends Dialog
         li.appendChild(t)
         li.appendChild(c)
         li.appendChild(x)
-        this.expSignUl.append(li)
+        this.expMarkUl.append(li)
     }
 
     getExpExtractList(){
@@ -190,18 +190,21 @@ class SearchAtomComponentDialog extends Dialog
         return expExtracts
     }
 
-    getExpSignList(){
-        var expSigns = []
-        for (const li of this.expSignUl.children) {
-            var item = []
+    getExpMarkList(){
+        var expMarks = []
+        var keys = ['alias', 'exp', 'color']
+        for (const li of this.expMarkUl.children) {
+            var item = {}
+            var count = 0
             for (const elm of li.children) {
                 if (elm.tagName == 'INPUT'){
-                    item.push(elm.value)
+                    item[keys[count]] = elm.value
+                    count = count + 1
                 }
             }
-            expSigns.push(item)
+            expMarks.push(item)
         }
-        return expSigns
+        return expMarks
     }
 
     deleteItem(item){
@@ -209,4 +212,12 @@ class SearchAtomComponentDialog extends Dialog
     }
 }
 
-export {SearchAtomComponentDialog}
+class ChartAtomComponentSvgDialog extends Dialog
+{
+    constructor(chartAtomView){
+        super(chartAtomView.container)
+        this.subContainer.style.width = '90%' 
+    }
+}
+
+export {SearchAtomComponentDialog, ChartAtomComponentSvgDialog}

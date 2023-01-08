@@ -112,24 +112,24 @@ async function createWindow() {
           },
           { type: 'separator' },
           {
-            label: 'Import Theme',
+            label: 'Import Config',
             accelerator: 'CommandOrControl+I',
             click: () => {
-              win.webContents.send('import-theme')
+              win.webContents.send('import-config')
             }
           },
           {
-            label: 'Save Theme',
+            label: 'Save Config',
             accelerator: 'CommandOrControl+S',
             click: () => {
-              win.webContents.send('save-theme')
+              win.webContents.send('save-config')
             }
           },
           {
-            label: 'Export Theme',
+            label: 'Export Config',
             accelerator: 'CommandOrControl+E',
             click: () => {
-              win.webContents.send('export-theme')
+              win.webContents.send('export-config')
             }
           },
           { type: 'separator' },
@@ -145,6 +145,13 @@ async function createWindow() {
             accelerator: 'CommandOrControl+F',
             click: () => {
               win.webContents.send('new-search')
+            }
+          },
+          {
+            label: 'New Chart',
+            accelerator: 'CommandOrControl+G',
+            click: () => {
+              win.webContents.send('new-chart')
             }
           },
           {
@@ -283,7 +290,7 @@ async function createWindow() {
     return result
   })
 
-  ipcMain.handle('import-theme', async () => {
+  ipcMain.handle('import-config', async () => {
     const file = await dialog.showOpenDialog(win, options)
     var content = []
     if (!file.canceled) {
@@ -294,7 +301,7 @@ async function createWindow() {
     return content
   })
 
-  ipcMain.handle('export-theme', async (event, config) => {
+  ipcMain.handle('export-config', async (event, config) => {
     const file = await dialog.showSaveDialog(win, {
                     title: 'Select the Path to save config',
                     defaultPath: path.join(__dirname, './assets/config.txt'),
@@ -320,7 +327,7 @@ async function createWindow() {
     return file
   })
 
-  ipcMain.handle('save-theme', async (event, filepath, config) => {
+  ipcMain.handle('save-config', async (event, filepath, config) => {
     fs.writeFile(filepath, 
       config, function (err) {
       if (err) throw err;

@@ -13,6 +13,9 @@ from parse import parse
 from dateutil.parser import parse as dp
 from types import SimpleNamespace
 
+def createUuid4():
+    return str(uuid.uuid4()).replace('-','')
+
 def json_to_object(json_data):
     return json.loads(json.dumps(json_data), object_hook=lambda d: SimpleNamespace(**d))
 

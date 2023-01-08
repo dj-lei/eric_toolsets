@@ -30,5 +30,13 @@ class SearchFunctionComponentList extends List
     }
 }
 
+class ChartFunctionComponentList extends List
+{
+    constructor(chartFunctionView){
+        super(chartFunctionView.container)
+        this.chartFunctionView = chartFunctionView
+    }
+}
 
-export {SearchFunctionComponentList}
+
+export {SearchFunctionComponentList, ChartFunctionComponentList}

@@ -43,10 +43,10 @@ class svg extends Component
 
 class ChartAtomComponentSvg extends svg
 {
-    constructor(chartAtomView){
-        super(chartAtomView.container)
+    constructor(chartAtomView, container){
+        super(container)
         this.chartAtomView = chartAtomView
-        this.draw(chartAtomView.model.keyValueTree)
+        this.draw(this.chartAtomView.model.keyValueTree)
 
         let that = this
         var cancelBtn = this.createElementButton('CANCEL')
@@ -62,12 +62,13 @@ class ChartAtomComponentSvg extends svg
         applyBtn.style.float = 'right'
         applyBtn.onclick = function(){that.apply()}
         this.bottomBtnSets.appendChild(cancelBtn)
+        this.bottomBtnSets.appendChild(cancelBtn)
         this.bottomBtnSets.appendChild(clearBtn)
         this.bottomBtnSets.appendChild(applyBtn)
     }
 
     draw(data){
-        // let that = this
+        let that = this
         const width = 1600
         const dx = 10
         const dy = width / 6
@@ -112,10 +113,10 @@ class ChartAtomComponentSvg extends svg
       
           const height = right.x - left.x + margin.top + margin.bottom;
       
-          const transition = this.svg.transition()
+          const transition = that.svg.transition()
               .duration(duration)
               .attr("viewBox", [-margin.left, left.x - margin.top, width, height])
-              .tween("resize", window.ResizeObserver ? null : () => () => this.svg.dispatch("toggle"));
+              .tween("resize", window.ResizeObserver ? null : () => () => that.svg.dispatch("toggle"));
       
           // Update the nodes…
           const node = gNode.selectAll("g")

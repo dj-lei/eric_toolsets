@@ -31,38 +31,34 @@ class FileContainerComponentTab extends Tab
         this.fileContainerView = fileContainerView
     }
 
-    createNewTablink(textFileView){
+    updatePlaceholder(textFileModel){
         let that = this
-        var tablink = this.tabs[textFileView.namespace].ins
-        tablink.style.width = `${textFileView.model.fileName.length * 10}px`
-        var title = this.tabs[textFileView.namespace].title
-        title.innerHTML = textFileView.model.fileName
+        var tablink = this.tabs[textFileModel.namespace].ins
+        tablink.style.width = `${textFileModel.fileName.length * 10}px`
+        var title = this.tabs[textFileModel.namespace].title
+        title.innerHTML = textFileModel.fileName
         title.addEventListener('click', function()
         {
-            that.openTablink(textFileView)
+            that.displayFile(textFileModel)
         })
 
         var close = this.createElementButton('X')
         close.style.backgroundColor = 'red'
         close.addEventListener("click", function() {
-            that.deleteTablink(textFileView)
+            that.deleteTablink(textFileModel)
         })
         tablink.append(close)
-        this.tabs[textFileView.namespace]['close'] = close
+        this.tabs[textFileModel.namespace]['close'] = close
     }
 
-    openTablink(textFileView)
+    displayFile(textFileModel)
     {
-        this.tabs[this.fileContainerView.activeTextFileView].title.style.backgroundColor = "#555"
-        this.fileContainerView.textFileViews[this.fileContainerView.activeTextFileView].textFileOriginalView.textFileOriginalComponentTable.hidden()
-        
-        this.tabs[textFileView.namespace].title.style.backgroundColor = "#333"
-        textFileView.textFileOriginalView.textFileOriginalComponentTable.display('inline-block')
-
-        this.fileContainerView.activeTextFileView = textFileView.namespace
+        this.tabs[this.fileContainerView.model.activeTextFileModel].title.style.backgroundColor = "#555"
+        this.tabs[textFileModel.namespace].title.style.backgroundColor = "#333"
+        this.fileContainerView.displayFile(textFileModel.namespace)
     }
 
-    deleteTablink(textFileView){
+    deleteFile(textFileModel){
 
     }
 }
@@ -72,7 +68,6 @@ class TextFileFunctionComponentTab extends Tab
     constructor(textFileFunctionView){
         super(textFileFunctionView.container)
         this.textFileFunctionView = textFileFunctionView
-        this.container.style.display = 'none'
 
         let that = this
         this.subscribePlaceholder('Search')
