@@ -25,7 +25,6 @@ def clean_special_symbols(text, symbol):
             text = text.replace(ch,symbol)
     return re.sub(symbol+"+", symbol, text)
 
-
 def iterate_files_in_directory(directory):
     # iterate over files in
     # that directory
@@ -69,6 +68,5 @@ def analysis_express(cmd):
                 exp_res['@exp'+str(p)+'_'+str(exp_index)] = express
     return exp_res
     
-
 def cal_time_difference(start, end):
     return datetime.datetime.strptime(end, "%H:%M:%S") - datetime.datetime.strptime(start, "%H:%M:%S")

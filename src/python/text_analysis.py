@@ -374,7 +374,7 @@ class SearchAtomModel(Model):
             for exp in self.exp_extract:
                 r = parse(exp, string)
                 if r is not None:
-                    ts = r.named['timestamp']
+                    ts = str(r.named['timestamp'])
                     for key in r.named.keys():
                         if key == 'timestamp':
                             continue
@@ -383,7 +383,7 @@ class SearchAtomModel(Model):
                         self.res_key_value[key]['global_index'].append(unit[0]+self.backward_rows)
                         self.res_key_value[key]['search_index'].append(search_index)
                         self.res_key_value[key]['value'].append(r.named[key])
-                        # self.res_key_value[key]['timestamp'].append(ts)
+                        self.res_key_value[key]['timestamp'].append(ts)
                     break
 
             # handle mark
@@ -394,7 +394,7 @@ class SearchAtomModel(Model):
                     self.res_key_value[exp['alias']]['global_index'].append(unit[0]+self.backward_rows)
                     self.res_key_value[exp['alias']]['search_index'].append(search_index)
                     self.res_key_value[exp['alias']]['value'].append(exp['color'])
-                    # self.res_key_value[exp['alias']]['timestamp'].append(ts)
+                    self.res_key_value[exp['alias']]['timestamp'].append(ts)
         self.res_key_value = json_to_object(self.res_key_value)
 
     def unit_test(self, model):
@@ -427,7 +427,7 @@ class ChartAtomModel(Model):
         self.key_value_tree = {'uid': text_file_model.namespace, 'name': text_file_model.file_name, 'check': False, 'children': []}
         for namespace in search_atom_models.keys():
             keys = []
-            for key in search_atom_models[namespace].res_key_value.keys():
+            for key in search_atom_models[namespace].res_key_value.__dict__.keys():
                 keys.append({'name': key, 'check': False})
             self.key_value_tree['children'].append({'uid': namespace, 'name': search_atom_models[namespace].alias, 'check': False, 'children': keys})
 
@@ -438,8 +438,8 @@ class ChartAtomModel(Model):
         for search_atom_model in self.key_value_tree['children']:
             for key in search_atom_model['children']:
                 if key['check'] == True:
-                    key_value = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models[search_atom_model['uid']].res_key_value[key['name']]
-                    if len(key_value['global_index']) > 0:
+                    key_value = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models[search_atom_model['uid']].res_key_value.__dict__[key['name']]
+                    if len(key_value.global_index) > 0:
                         selected_key[search_atom_model['uid']+'.'+key['name']] = key_value
 
         final = {}
@@ -447,10 +447,10 @@ class ChartAtomModel(Model):
             tmp = list(selected_key.keys())
             tmp.remove(key)
             res = pd.DataFrame()
-            res = pd.concat([res, pd.DataFrame(selected_key[key])])
+            res = pd.concat([res, pd.DataFrame(selected_key[key].__dict__)])
             res['full_name'] = key
             for s_key in tmp:
-                temp = pd.DataFrame(selected_key[s_key])
+                temp = pd.DataFrame(selected_key[s_key].__dict__)
                 temp['full_name'] = s_key
                 res = pd.concat([res, temp]).reset_index(drop=True)
             # res['timestamp'] = res.apply(parse_data_format, axis=1)
