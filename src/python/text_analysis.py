@@ -43,14 +43,17 @@ class FileContainerModel(Model):
 
     def on_new_file(self, sid, path):
         new_file_namespace = self.namespace+'/'+createUuid4()
-        self.text_file_models[new_file_namespace] = TextFileModel(self, new_file_namespace, path)
         self.active_text_file_model = new_file_namespace
+        self.text_file_models[new_file_namespace] = TextFileModel(self, new_file_namespace, path)
         return Response(status.SUCCESS, msg.NONE, self.text_file_models[new_file_namespace].model()).__dict__
 
     async def on_display_file(self, sid, namespace):
         self.active_text_file_model = namespace
         await self.text_file_models[self.active_text_file_model].hidden()
         await self.text_file_models[namespace].display()
+
+    async def on_delete_file(self, sid, namespace):
+        await self.text_file_models[namespace].delete()
         
     def on_get_config(self, sid):
         return self.text_file_models[self.active_text_file_model].get_config()
@@ -63,6 +66,12 @@ class FileContainerModel(Model):
 
     async def on_new_chart(self, sid):
         await self.text_file_models[self.active_text_file_model].text_file_function_model.chart_function_model.new_chart(sid)
+
+    async def on_new_statistic(self, sid):
+        await self.text_file_models[self.active_text_file_model].text_file_function_model.statistic_function_model.new_statistic(sid)
+
+    async def on_open_text_file_function(self, sid):
+        await self.text_file_models[self.active_text_file_model].on_adjust_view_rate(sid, 0.5)
 
 
 class TextFileModel(Model):
@@ -77,13 +86,16 @@ class TextFileModel(Model):
             self.lines = f.readlines()
         
         self.text_file_original_model = TextFileOriginalModel(self)
-        socket_server.sio.register_namespace(self.text_file_original_model)
         self.text_file_function_model = TextFileFunctionModel(self)
-        socket_server.sio.register_namespace(self.text_file_function_model)
 
     def model(self):
         return {'namespace': self.namespace, 'fileName':self.file_name, 'path': self.path, 'config': self.config}
 
+    async def delete(self):
+        await self.emit('delete', namespace=self.namespace)
+        self.file_container_model.text_file_models[self.namespace] = ''
+        del self.file_container_model.text_file_models[self.namespace]
+        
     def get_config(self):
         self.config['search'] = []
         for search_atom_model in self.text_file_function_model.search_function_model.search_atom_models.keys():
@@ -101,6 +113,10 @@ class TextFileModel(Model):
         
         return Response(status.SUCCESS, msg.NONE, self.model()).__dict__
 
+    async def on_adjust_view_rate(self, sid, rate):
+        await self.text_file_original_model.on_set_height(sid, rate)
+        await self.text_file_function_model.on_set_height(sid, 1 - rate)
+
 
 class TextFileOriginalModel(Model):
     def __init__(self, text_file_model):
@@ -110,11 +126,12 @@ class TextFileOriginalModel(Model):
         self.step = 1
         self.point = 0
         self.range = 60
+        self.count =  len(self.text_file_model.lines)
         self.exp_mark = False
         self.display_lines = []
 
     def model(self):
-        return {'rateHeight': self.rateHeight, 'point': self.point, 'range': self.range, 'displayLines': self.display_lines}
+        return {'rateHeight': self.rateHeight, 'point': self.point, 'range': self.range, 'count': self.count, 'displayLines': self.display_lines}
 
     async def on_scroll(self, sid, point):
         # def word_color_replace(word):
@@ -156,9 +173,8 @@ class TextFileFunctionModel(Model):
         self.rateHeight = 0.5
 
         self.search_function_model = SearchFunctionModel(self)
-        socket_server.sio.register_namespace(self.search_function_model)
         self.chart_function_model = ChartFunctionModel(self)
-        socket_server.sio.register_namespace(self.chart_function_model)
+        self.statistic_function_model = StatisticFunctionModel(self)
 
     def model(self):
         return {'rateHeight': self.rateHeight}
@@ -166,6 +182,23 @@ class TextFileFunctionModel(Model):
     async def on_set_height(self, sid, rate):
         self.rateHeight = rate
         await self.emit('setHeight', self.model(), namespace=self.namespace)
+
+    async def on_select_function(self, sid, function):
+        if function == 'search':
+            await self.search_function_model.on_display(sid)
+            await self.chart_function_model.on_hidden(sid)
+            await self.statistic_function_model.on_hidden(sid)
+        elif function == 'chart':
+            await self.search_function_model.on_hidden(sid)
+            await self.chart_function_model.on_display(sid)
+            await self.statistic_function_model.on_hidden(sid)
+        elif function == 'statistic':
+            await self.search_function_model.on_hidden(sid)
+            await self.chart_function_model.on_hidden(sid)
+            await self.statistic_function_model.on_display(sid)
+
+    async def on_hidden(self, sid):
+        await self.text_file_model.on_adjust_view_rate(sid, 1)
 
 
 class SearchFunctionModel(Model):
@@ -230,6 +263,32 @@ class ChartFunctionModel(Model):
             await self.tmp_chart_atom_model.on_display_dialog()
 
 
+class StatisticFunctionModel(Model):
+    def __init__(self, text_file_function_model):
+        super().__init__(text_file_function_model.namespace+ns.STATISTICFUNCTION)
+        self.text_file_function_model = text_file_function_model
+        self.statistic_atom_models = {}
+        self.tmp_statistic_atom_model = None
+
+    def is_register(self, namespace):
+        if namespace in self.statistic_atom_models:
+            return True
+        else:
+            return False
+
+    def register_new_search(self, statistic_atom_model):
+        self.chart_atom_models[statistic_atom_model.namespace] = statistic_atom_model
+        self.tmp_statistic_atom_model = None
+
+    async def new_statistic(self, sid):
+        if not self.tmp_statistic_atom_model:
+            new_statistic_namespace = self.namespace+'/'+createUuid4()
+            self.tmp_statistic_atom_model = StatisticAtomModel(self, new_statistic_namespace)
+            await self.emit('newStatistic', self.tmp_statistic_atom_model.model(), namespace=self.namespace)
+        else:
+            await self.tmp_statistic_atom_model.on_display_dialog()
+
+
 class SearchAtomModel(Model):
     def __init__(self, search_function_model, namespace):
         super().__init__(namespace)
@@ -237,7 +296,7 @@ class SearchAtomModel(Model):
 
         self.alias = ''
         self.desc = ''
-        self.exp_search = []
+        self.exp_search = ''
         self.exp_extract = []
         self.exp_mark = []
         self.is_case_sensitive = True
@@ -245,6 +304,7 @@ class SearchAtomModel(Model):
         self.point = 0
         self.range = 15
         self.step = 1
+        self.count = 0
         self.display_lines = []
 
         self.forward_rows = 0
@@ -252,12 +312,15 @@ class SearchAtomModel(Model):
 
         self.res_search_units = []
         self.res_key_value = {}
-        self.res_mark_coordinate = {}
         self.res_lines = []
 
     def model(self):
-        return {'namespace': self.namespace, 'alias': self.alias, 'desc':self.desc, 'expSearch': self.exp_search, 
+        return {'count': self.count, 'namespace': self.namespace, 'alias': self.alias, 'desc':self.desc, 'expSearch': self.exp_search, 
         'expExtract': self.exp_extract, 'expMark': self.exp_mark, 'displayLines': self.display_lines}
+
+    async def on_delete(self, sid):
+        self.search_function_model.search_atom_models[self.namespace] = ''
+        del self.search_function_model.search_atom_models[self.namespace]
 
     async def on_search(self, sid, model):
         self.__dict__.update(model)
@@ -266,8 +329,8 @@ class SearchAtomModel(Model):
         self.search()
         if not self.search_function_model.is_register(self.namespace):
             self.search_function_model.register_new_search(self)
-            await self.search_function_model.text_file_function_model.text_file_model.text_file_original_model.on_set_height(sid, 0.5)
-            await self.search_function_model.text_file_function_model.on_set_height(sid, 0.5)
+            await self.search_function_model.text_file_function_model.on_select_function(sid, 'search')
+            await self.search_function_model.text_file_function_model.text_file_model.on_adjust_view_rate(sid, 0.5)
         await self.on_scroll(sid, 0)
 
     async def on_scroll(self, sid, point):
@@ -296,6 +359,7 @@ class SearchAtomModel(Model):
         self.extract()
         for unit in self.res_search_units:
             self.res_lines.extend(unit)
+        self.count = len(self.res_search_units)
         self.res_lines = sorted(set(self.res_lines),key=self.res_lines.index)
 
     def extract(self):
@@ -303,10 +367,10 @@ class SearchAtomModel(Model):
             return
 
         self.res_key_value = {}
-        self.res_mark_coordinate = {}
         for search_index, unit in enumerate(self.res_search_units):
             string = '\n'.join(self.search_function_model.text_file_function_model.text_file_model.lines[unit[0]:unit[1]+1])
             ts = ''
+            # handle key value
             for exp in self.exp_extract:
                 r = parse(exp, string)
                 if r is not None:
@@ -315,15 +379,23 @@ class SearchAtomModel(Model):
                         if key == 'timestamp':
                             continue
                         if key not in self.res_key_value:
-                            self.res_key_value[key] = []
-                        self.res_key_value[key].append({'name': key, 'type': type(r.named[key]).__name__, 'global_index': unit[0]+self.backward_rows, 'search_index': search_index, 'value': r.named[key], 'timestamp': ts})
+                            self.res_key_value[key] = {'name':key, 'type': type(r.named[key]).__name__, 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                        self.res_key_value[key]['global_index'].append(unit[0]+self.backward_rows)
+                        self.res_key_value[key]['search_index'].append(search_index)
+                        self.res_key_value[key]['value'].append(r.named[key])
+                        # self.res_key_value[key]['timestamp'].append(ts)
                     break
 
+            # handle mark
             for exp in self.exp_mark:
                 if len(re.findall(exp['exp'], string)) > 0:
-                    if exp['alias'] not in self.res_mark_coordinate:
-                        self.res_mark_coordinate[exp['alias']] = []
-                    self.res_mark_coordinate[exp['alias']].append({'name':exp['alias'], 'type': 'mark', 'global_index': unit[0]+self.backward_rows, 'search_index':search_index, 'value': exp['color'], 'timestamp': ts})
+                    if exp['alias'] not in self.res_key_value:
+                        self.res_key_value[exp['alias']] = {'name':exp['alias'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                    self.res_key_value[exp['alias']]['global_index'].append(unit[0]+self.backward_rows)
+                    self.res_key_value[exp['alias']]['search_index'].append(search_index)
+                    self.res_key_value[exp['alias']]['value'].append(exp['color'])
+                    # self.res_key_value[exp['alias']]['timestamp'].append(ts)
+        self.res_key_value = json_to_object(self.res_key_value)
 
     def unit_test(self, model):
         self.__dict__.update(model)
@@ -367,11 +439,8 @@ class ChartAtomModel(Model):
             for key in search_atom_model['children']:
                 if key['check'] == True:
                     key_value = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models[search_atom_model['uid']].res_key_value[key['name']]
-                    mark_coordinate = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models[search_atom_model['uid']].res_mark_coordinate
-                    if len(key_value) > 0:
+                    if len(key_value['global_index']) > 0:
                         selected_key[search_atom_model['uid']+'.'+key['name']] = key_value
-                        for mark in mark_coordinate.keys():
-                            selected_key[search_atom_model['uid']+'.mark.'+mark] = mark_coordinate[mark]
 
         final = {}
         for key in selected_key.keys():
@@ -394,11 +463,42 @@ class ChartAtomModel(Model):
             # res['search_uid'] = key.split('.')[1]
             final[key] = json.loads(res.to_json(orient='records'))
         self.select_lines = final
+
+        if not self.chart_function_model.is_register(self.namespace):
+            self.chart_function_model.register_new_search(self)
+            await self.chart_function_model.text_file_function_model.on_select_function(sid, 'chart')
+            await self.chart_function_model.text_file_function_model.text_file_model.on_adjust_view_rate(sid, 0.5)
+        await self.emit('refresh', self.model(), namespace=self.namespace)
+
+    async def on_display_dialog(self):
+        await self.emit('displayDialog', namespace=self.namespace)
+
+
+class StatisticAtomModel(Model):
+    def __init__(self, statistic_function_model, namespace):
+        super().__init__(namespace)
+        self.statistic_function_model = statistic_function_model
+
+        self.alias = ''
+        self.exp = ''
+        self.exp_optimized = ''
+        self.result = ''
+
+    def model(self):
+        return {'namespace': self.namespace, 'alias': self.alias, 'exp': self.exp, 'result':self.result}
+
+    async def on_statistic(self, sid, model):
+        self.__dict__.update(model)
+
+        search_atom_models = self.statistic_function_model.text_file_function_model.search_function_model.search_atom_models
+        self.exp_optimized = "self.result = " + self.exp
+        for search_atom_model in search_atom_models.keys():
+            ins = search_atom_models[search_atom_model].alias + '.'
+            if (ins) in self.exp:
+                self.exp_optimized = self.exp_optimized.replace(ins, 'self.statistic_function_model.text_file_function_model.search_function_model.search_atom_models["'+search_atom_model+'"].res_key_value.')
+        print(self.exp_optimized)
+        exec(self.exp_optimized)
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def display_dialog(self):
         await self.emit('displayDialog', namespace=self.namespace)
-
-
-
-

@@ -155,6 +155,13 @@ async function createWindow() {
             }
           },
           {
+            label: 'New Statistic',
+            accelerator: 'CommandOrControl+H',
+            click: () => {
+              win.webContents.send('new-statistic')
+            }
+          },
+          {
             label: 'Open Function Area',
             accelerator: 'CommandOrControl+O',
             click: () => {

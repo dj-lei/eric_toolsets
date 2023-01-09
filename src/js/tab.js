@@ -31,34 +31,34 @@ class FileContainerComponentTab extends Tab
         this.fileContainerView = fileContainerView
     }
 
-    updatePlaceholder(textFileModel){
+    updatePlaceholder(model){
         let that = this
-        var tablink = this.tabs[textFileModel.namespace].ins
-        tablink.style.width = `${textFileModel.fileName.length * 10}px`
-        var title = this.tabs[textFileModel.namespace].title
-        title.innerHTML = textFileModel.fileName
+        var tablink = this.tabs[model.namespace].ins
+        tablink.style.width = `${model.fileName.length * 10}px`
+        var title = this.tabs[model.namespace].title
+        title.innerHTML = model.fileName
         title.addEventListener('click', function()
         {
-            that.displayFile(textFileModel)
+            that.displayFile(model)
         })
 
         var close = this.createElementButton('X')
         close.style.backgroundColor = 'red'
         close.addEventListener("click", function() {
-            that.deleteTablink(textFileModel)
+            that.deleteTablink(model)
         })
         tablink.append(close)
-        this.tabs[textFileModel.namespace]['close'] = close
+        this.tabs[model.namespace]['close'] = close
     }
 
-    displayFile(textFileModel)
+    displayFile(model)
     {
         this.tabs[this.fileContainerView.model.activeTextFileModel].title.style.backgroundColor = "#555"
-        this.tabs[textFileModel.namespace].title.style.backgroundColor = "#333"
-        this.fileContainerView.displayFile(textFileModel.namespace)
+        this.tabs[model.namespace].title.style.backgroundColor = "#333"
+        this.fileContainerView.displayFile(model.namespace)
     }
 
-    deleteFile(textFileModel){
+    deleteFile(model){
 
     }
 }
@@ -78,7 +78,10 @@ class TextFileFunctionComponentTab extends Tab
         this.searchTitle.innerHTML = 'Search'
         this.searchTitle.addEventListener('click', function()
         {
-            // that.textFileFunctionView.functionSearchView
+            that.searchTitle.style.backgroundColor = '#333'
+            that.chartTitle.style.backgroundColor = '#555'
+            that.statisticTitle.style.backgroundColor = '#555'
+            that.textFileFunctionView.onSelectFunction('search')
         })
 
         this.subscribePlaceholder('Chart')
@@ -90,21 +93,38 @@ class TextFileFunctionComponentTab extends Tab
         this.chartTitle.innerHTML = 'Chart'
         this.chartTitle.addEventListener('click', function()
         {
-            // that.textFileFunctionView.functionSearchView
+            that.searchTitle.style.backgroundColor = '#555'
+            that.chartTitle.style.backgroundColor = '#333'
+            that.statisticTitle.style.backgroundColor = '#555'
+            that.textFileFunctionView.onSelectFunction('chart')
         })
 
-        this.subscribePlaceholder('Statistics')
-        tablink = this.getPlaceholder('Statistics')
-        tablink.style.width = '33%'
-        this.statisticsTitle = this.tabs['Statistics'].title
-        this.statisticsTitle.style.width = '100%'
-        this.statisticsTitle.innerHTML = 'Statistics'
-        this.statisticsTitle.addEventListener('click', function()
+        this.subscribePlaceholder('Statistic')
+        tablink = this.getPlaceholder('Statistic')
+        tablink.style.width = '32%'
+        this.statisticTitle = this.tabs['Statistic'].title
+        this.statisticTitle.style.width = '100%'
+        this.statisticTitle.innerHTML = 'Statistic'
+        this.statisticTitle.addEventListener('click', function()
         {
-            // that.textFileFunctionView.functionSearchView
+            that.searchTitle.style.backgroundColor = '#555'
+            that.chartTitle.style.backgroundColor = '#555'
+            that.statisticTitle.style.backgroundColor = '#333'
+            that.textFileFunctionView.onSelectFunction('statistic')
         })
 
-
+        this.subscribePlaceholder('Hidden')
+        tablink = this.getPlaceholder('Hidden')
+        tablink.style.width = '2%'
+        var hidden = this.tabs['Hidden'].title
+        hidden.style.color = '#FFF'
+        hidden.style.backgroundColor = '#FF9900'
+        hidden.style.width = '2%'
+        hidden.fontSize = '30px'
+        hidden.innerHTML = '-'
+        hidden.addEventListener("click", function() {
+            that.textFileFunctionView.viewHidden()
+        })
     }
 
     openTablink(tablink)

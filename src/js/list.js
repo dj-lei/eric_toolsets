@@ -26,7 +26,6 @@ class SearchFunctionComponentList extends List
 {
     constructor(searchFunctionView){
         super(searchFunctionView.container)
-        this.searchFunctionView = searchFunctionView
     }
 }
 
@@ -34,9 +33,15 @@ class ChartFunctionComponentList extends List
 {
     constructor(chartFunctionView){
         super(chartFunctionView.container)
-        this.chartFunctionView = chartFunctionView
+    }
+}
+
+class StatisticFunctionComponentList extends List
+{
+    constructor(chartFunctionView){
+        super(chartFunctionView.container)
     }
 }
 
 
-export {SearchFunctionComponentList, ChartFunctionComponentList}
+export {SearchFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList}

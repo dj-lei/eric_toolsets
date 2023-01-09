@@ -220,4 +220,64 @@ class ChartAtomComponentSvgDialog extends Dialog
     }
 }
 
-export {SearchAtomComponentDialog, ChartAtomComponentSvgDialog}
+class StatisticAtomComponentDialog extends Dialog
+{
+    constructor(statisticAtomView){
+        super(statisticAtomView.container)
+        this.statisticAtomView = statisticAtomView
+
+        this.alias = ''
+        this.desc = ''
+        this.exp = ''
+
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // alias
+        this.alias = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        this.subContainer.appendChild(this.alias)
+
+        // search description
+        this.desc = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Express Description'))
+        this.subContainer.appendChild(this.desc)
+
+        // search regex express 
+        this.exp = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Python Express'))
+        this.subContainer.appendChild(this.exp)
+
+        // search and cancel button
+        var apply = this.createElementButton('STATISTIC')
+        apply.style.width = '50%'
+        apply.onclick = function(){that.statistic()}
+        var cancel = this.createElementButton('CANCEL')
+        cancel.style.backgroundColor = 'red'
+        cancel.style.width = '50%'
+        cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(apply)
+        this.subContainer.appendChild(cancel)
+    }
+
+    statistic(){
+        let model = {
+            namespace: this.statisticAtomView.namespace,
+            alias: this.alias.value,
+            desc: this.desc.value,
+            exp: this.exp.value,
+        }
+        this.statisticAtomView.statistic(model)
+    }
+
+    update(model){
+        this.alias.value = model.alias
+        this.desc.value = model.desc
+        this.exp.value = model.exp
+    }
+}
+
+export {SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog}

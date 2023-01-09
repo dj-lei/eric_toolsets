@@ -4,12 +4,13 @@ import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
 import { View } from './element'
-import { SearchAtomComponentDialog, ChartAtomComponentSvgDialog } from './dialog'
+import { SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
-import { TextFileOriginalComponentTable, SearchAtomComponentTable } from './table'
-import { SearchFunctionComponentList, ChartFunctionComponentList } from './list'
+import { TextFileOriginalComponentTable, SearchAtomComponentTable, StatisticFunctionComponentTable } from './table'
+import { SearchFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
 import { ChartAtomComponentSvg } from './svg'
 import { ChartAtomComponentSequentialChart } from './chart'
+import { StatisticAtomComponentCustom } from './custom'
 // import { TextLogicFlow } from './flow'
 
 const fs = require('fs')
@@ -29,11 +30,6 @@ class TextAnalysisView extends View
 
     initMenu(){
         let that = this
-        ipcRenderer.on('open-func-area', () => {
-            that.printHtml()
-            // that.parent.containerFiles[that.parent.activeFile].dragCanvas(0.5)
-            // that.parent.containerFiles[that.parent.activeFile].openFunc('SEARCH')
-        })
         // ipcRenderer.on('open-global-keyvalue-tree', () => {
         //     that.openGlobalKeyValueTree()
         // })
@@ -123,6 +119,13 @@ class FileContainerView extends View
         ipcRenderer.on('new-chart', () => {
             that.newChart()
         })
+        ipcRenderer.on('new-statistic', () => {
+            that.newStatistic()
+        })
+        ipcRenderer.on('open-func-area', () => {
+            // that.printHtml()
+            that.socket.emit("open_text_file_function")
+        })
     }
 
     newFile(model){
@@ -130,19 +133,13 @@ class FileContainerView extends View
         
         this.fileContainerComponentTab.subscribePlaceholder(model.namespace)
         this.fileContainerComponentTab.updatePlaceholder(model)
-        // if (model.namespace ==this.model.activeTextFileModel) {
-        //     this.fileContainerComponentTab.displayFile(model)
-        // }
+        if (model.namespace == model.activeTextFileModel) {
+            this.fileContainerComponentTab.displayFile(model)
+        }
     }
 
     displayFile(namespace){
-        this.socket.emit("display_file", {namespace: namespace}, (response) => {
-            if(response.status == status.SUCCESS){
-                that.model = response.model
-            }else{
-                alert(response.msg)
-            }
-        })
+        this.socket.emit("display_file", namespace)
     }
 
     getConfig(){
@@ -162,6 +159,10 @@ class FileContainerView extends View
     newChart(){
         this.socket.emit("new_chart")
     }
+
+    newStatistic(){
+        this.socket.emit("new_statistic")
+    }
 }
 
 class TextFileView extends View
@@ -169,9 +170,12 @@ class TextFileView extends View
     constructor(fileContainerView, model){
         super(model.namespace, fileContainerView.container)
         this.model = model
-
         new TextFileOriginalView(this)
         new TextFileFunctionView(this)
+    }
+
+    onDelete(){
+        super.delete()
     }
 }
 
@@ -182,6 +186,7 @@ class TextFileOriginalView extends View
         this.textFileOriginalComponentTable = new TextFileOriginalComponentTable(this)
         
         this.container.style.border = '1px solid #ddd'
+        this.socket.emit("set_height", 1)
         this.scroll(0)
     }
 
@@ -191,10 +196,12 @@ class TextFileOriginalView extends View
 
     onSetHeight(model){
         this.textFileOriginalComponentTable.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
+        this.textFileOriginalComponentTable.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
+        this.textFileOriginalComponentTable.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
     }
 
     onRefresh(model){
-        this.textFileOriginalComponentTable.refresh(model.displayLines)
+        this.textFileOriginalComponentTable.refresh(model)
     }
 }
 
@@ -204,17 +211,24 @@ class TextFileFunctionView extends View
         super(`${textFileView.namespace}${ns.TEXTFILEFUNCTION}`, textFileView.container)
 
         this.container.style.border = '1px solid #ddd'
+        this.container.style.height = '0px'
         this.textFileFunctionComponentTab = new TextFileFunctionComponentTab(this)
+        this.textFileFunctionComponentTab.searchTitle.style.backgroundColor = '#333'
         new SearchFunctionView(this)
         new ChartFunctionView(this)
-    }
-
-    setHeight(height){
-        this.container.style.height = height
+        new StatisticFunctionView(this)
     }
 
     onSetHeight(model){
         this.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
+    }
+
+    onSelectFunction(func){
+        this.socket.emit("select_function", func)
+    }
+
+    viewHidden(){
+        this.socket.emit("hidden")
     }
 }
 
@@ -229,7 +243,9 @@ class SearchFunctionView extends View
     onNewSearch(model){
         this.searchFunctionComponentList.subscribePlaceholder(model.namespace)
         var tmpSearchAtomView = new SearchAtomView(model, this.searchFunctionComponentList.getPlaceholder(model.namespace))
-        tmpSearchAtomView.search(model)
+        if (model.expSearch != '') {
+            tmpSearchAtomView.search(model)
+        }
     }
 }
 
@@ -243,6 +259,19 @@ class ChartFunctionView extends View
     onNewChart(model){
         this.chartFunctionComponentList.subscribePlaceholder(model.namespace)
         new ChartAtomView(model, this.chartFunctionComponentList.getPlaceholder(model.namespace))
+    }
+}
+
+class StatisticFunctionView extends View
+{
+    constructor(textFileFunctionView){
+        super(`${textFileFunctionView.namespace}${ns.STATISTICFUNCTION}`, textFileFunctionView.container)
+        this.statisticFunctionComponentList = new StatisticFunctionComponentList(this)
+    }
+
+    onNewStatistic(model){
+        this.statisticFunctionComponentList.subscribePlaceholder(model.namespace)
+        new StatisticAtomView(model, this.statisticFunctionComponentList.getPlaceholder(model.namespace))
     }
 }
 
@@ -267,14 +296,16 @@ class SearchAtomView extends View
         this.socket.emit("scroll", point)
     }
 
-    delete(){
+    onDelete(){
         super.delete()
-        delete this.searchFunctionView.searchAtomViews[this.namespace]
+        this.socket.emit("delete")
     }
 
     onRefresh(model){
         this.model = model
-        this.onUpdateDialog(this.model)
+        if (!this.searchAtomComponentDialog.alias.value){
+            this.onUpdateDialog(model)
+        }
         this.searchAtomComponentTable.refresh(this.model)
     }
 
@@ -305,13 +336,37 @@ class ChartAtomView extends View
 
     onRefresh(model){
         this.model = model
-        console.log(this.model)
         this.chartAtomComponentSequentialChart.refresh(this.model.selectLines)
         this.chartAtomComponentSequentialChart.chart.resize({height:'400px', width:'1000px'})
     }
 
     onDisplayDialog(){
         this.chartAtomComponentSvgDialog.display()
+    }
+}
+
+class StatisticAtomView extends View
+{
+    constructor(model, container){
+        super(model.namespace, container)
+        this.model = model
+        this.StatisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
+        this.statisticAtomComponentCustom = new StatisticAtomComponentCustom(this)
+
+        this.onDisplayDialog()
+    }
+
+    statistic(model){
+        this.socket.emit("statistic", model)
+    }
+
+    onRefresh(model){
+        this.model = model
+        this.statisticAtomComponentCustom.refresh(this.model)
+    }
+
+    onDisplayDialog(){
+        this.StatisticAtomComponentDialog.display()
     }
 }
 export {TextAnalysisView} 

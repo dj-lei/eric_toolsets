@@ -4,6 +4,6 @@
   "TEXTFILEORIGINAL": "/TextFileOriginal",
   "TEXTFILEFUNCTION": "/TextFileFunction",
   "SEARCHFUNCTION": "/SearchFunction",
-  "KEYVALUETREEFUNCTION": "/KeyValueTreeFunction",
-  "CHARTFUNCTION": "/ChartFunction"
+  "CHARTFUNCTION": "/ChartFunction",
+  "STATISTICFUNCTION": "/StatisticFunction"
 }

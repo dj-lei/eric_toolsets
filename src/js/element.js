@@ -122,6 +122,17 @@ class Component extends Element
         rangeInput.style.width = '1%'
         rangeInput.value=0
         rangeInput.step=1
+
+        rangeInput.style.transition = "opacity .2s"
+        rangeInput.style.direction = "rtl"
+        rangeInput.style.background = "#d3d3d3"
+        rangeInput.style.outline = "none"
+        rangeInput.style.opacity = 0.7
+
+        rangeInput.style.webkitTransform = "rotateX(180deg)"
+        rangeInput.style.webkitAppearance = "slider-vertical"
+        rangeInput.style.webkitTransition = ".2s"
+
         return rangeInput
     }
 

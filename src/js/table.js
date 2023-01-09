@@ -8,16 +8,16 @@ class Table extends Component
         super(position)
         this.table = ''
         this.slider = ''
-        this.count = 10
-
+        this.count = 0
+        this.container.style.display = 'inline-block'
         this.table = this.createElementTable()
-        this.slider = this.createElementRangeInput()
+        this.slider = this.createElementRangeInput(this.count)
     }
 
     deleteTableAllChilds(){
         while (this.table.firstChild) {
             this.table.removeChild(this.table.lastChild)
-          }
+        }
     }
 }
 
@@ -27,11 +27,9 @@ class TextFileOriginalComponentTable extends Table
         super(textFileOriginalView.container)
         this.textFileOriginalView = textFileOriginalView
 
-        this.container.style.overflow = 'hidden'
-
         let that = this
         this.slider.addEventListener('input', (event) => {
-            that.textFileOriginalView.jump(parseInt(event.target.value))
+            that.textFileOriginalView.scroll(parseInt(event.target.value))
         })
 
         this.table.addEventListener("wheel", function(e){
@@ -49,9 +47,10 @@ class TextFileOriginalComponentTable extends Table
         this.container.append(this.slider)
     }
 
-    refresh(lines){
+    refresh(model){
         this.deleteTableAllChilds()
-        lines.forEach((line) => {
+        this.slider.max = model.count
+        model.displayLines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
@@ -78,13 +77,15 @@ class SearchAtomComponentTable extends Table
     constructor(searchAtomView){
         super(searchAtomView.container)
         this.searchAtomView = searchAtomView
+        this.collapsible = ''
 
         let that = this
+        this.slider.style.height = `${18 * 15}px`
         var del = this.createElementButton('X')
         del.style.backgroundColor = 'red'
         del.style.width = '2%'
         del.addEventListener("click", function() {
-            that.searchAtomView.delete()
+            that.searchAtomView.onDelete()
         })
 
         var search = this.createElementButton('O')
@@ -94,12 +95,11 @@ class SearchAtomComponentTable extends Table
             that.searchAtomView.searchAtomComponentDialog.display()
         })
 
-        var collapsible = this.createElementButton('')
-        collapsible.style.backgroundColor = '#777'
-        collapsible.style.width = '94%'
-        collapsible.style.textAlign = 'left'
-        collapsible.innerHTML = '+ ' + that.searchAtomView.model.desc.value + ` (${that.searchAtomView.model.count} hits)`
-        collapsible.addEventListener("click", function() {
+        this.collapsible = this.createElementButton('')
+        this.collapsible.style.backgroundColor = '#777'
+        this.collapsible.style.width = '94%'
+        this.collapsible.style.textAlign = 'left'
+        this.collapsible.addEventListener("click", function() {
             // that.parent.shutAllSearch()
             // if (that.resTable.style.display === "block") {
             //     that.resTable.style.display = "none"
@@ -110,6 +110,15 @@ class SearchAtomComponentTable extends Table
             //     that.parent.llt.uid = 'O/'+that.parent.uid+'/'+that.uid
             //     that.parent.llt.refresh(that.parent.llt.point)
             // }
+            if (that.table.style.display === "inline-block") {
+                that.table.style.display = "none"
+                that.slider.style.display = "none"
+                // that.parent.llt.refresh(that.parent.llt.point)
+            } else {
+                that.table.style.display = "inline-block"
+                that.slider.style.display = "inline-block"
+                // that.parent.llt.refresh(that.parent.llt.point)
+            }
         })
 
         this.slider.addEventListener('input', (event) => {
@@ -129,13 +138,15 @@ class SearchAtomComponentTable extends Table
 
         this.container.append(del)
         this.container.append(search)
-        this.container.append(collapsible)
+        this.container.append(this.collapsible)
         this.container.append(this.table)
         this.container.append(this.slider)
     }
 
     refresh(model){
         this.deleteTableAllChilds()
+        this.slider.max = model.count
+        this.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
         model.displayLines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
