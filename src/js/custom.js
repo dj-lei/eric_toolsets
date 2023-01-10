@@ -18,7 +18,9 @@ class StatisticAtomComponentCustom extends Custom
 
     init(){
         this.exp = document.createElement('p')
+        this.exp.style.color = "white"
         this.result = document.createElement('p')
+        this.result.style.color = "white"
         this.container.append(this.exp)
         this.container.append(this.result)
     }

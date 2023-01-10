@@ -22,7 +22,7 @@ class svg extends Component
         this.bottomBtnSets = this.createElementDiv()
         this.bottomBtnSets.style.position = 'fixed'
         this.bottomBtnSets.style.bottom = 0
-        this.bottomBtnSets.style.width = '100%'
+        this.bottomBtnSets.style.width = '50%'
         this.container.append(this.bottomBtnSets)
 
         var zoom = d3.zoom().scaleExtent([scaleMin, scaleMax]).on("zoom", zoomed)
@@ -46,8 +46,7 @@ class ChartAtomComponentSvg extends svg
     constructor(chartAtomView, container){
         super(container)
         this.chartAtomView = chartAtomView
-        this.draw(this.chartAtomView.model.keyValueTree)
-
+        
         let that = this
         var cancelBtn = this.createElementButton('CANCEL')
         cancelBtn.style.backgroundColor = 'red'
@@ -65,6 +64,11 @@ class ChartAtomComponentSvg extends svg
         this.bottomBtnSets.appendChild(cancelBtn)
         this.bottomBtnSets.appendChild(clearBtn)
         this.bottomBtnSets.appendChild(applyBtn)
+    }
+
+    update(){
+        this.clear()
+        this.draw(this.chartAtomView.model.keyValueTree)
     }
 
     draw(data){
@@ -247,7 +251,12 @@ class ChartAtomComponentSvg extends svg
     }
 
     apply(){
-        this.chartAtomView.apply()
+        let model = {
+            namespace: this.chartAtomView.namespace,
+            alias: "sss",
+            key_value_tree: this.chartAtomView.model.keyValueTree,
+        }
+        this.chartAtomView.apply(model)
     }
 
 }

@@ -1,4 +1,5 @@
 import { io } from "socket.io-client"
+import common from '@/plugins/common'
 
 const server = "http://127.0.0.1:8000"
 
@@ -15,12 +16,8 @@ class Element
         this.container.style.display = 'none'
     }
 
-    display(display){
-        if (display) {
-            this.container.style.display = display
-        }else{
-            this.container.style.display = 'block'
-        }
+    display(){
+        this.container.style.display = 'block'
     }
 
     delete(){
@@ -43,8 +40,8 @@ class View extends Element
         this.container.setAttribute("name", this.namespace)
         this.socket = io(`${server}${this.namespace}`)
 
-        let that = this
-        Object.getOwnPropertyNames(Object.getPrototypeOf(this)).forEach((functionName) => {
+        var funcs = common.arrayExtend(Object.getOwnPropertyNames(Object.getPrototypeOf(this)), Object.getOwnPropertyNames(Object.getPrototypeOf(this.__proto__)))
+        funcs.forEach((functionName) => {
             if(functionName.slice(0,2) === 'on'){
                 var listenName = functionName.slice(2)
                 listenName = listenName.charAt(0).toLowerCase() + listenName.slice(1)
@@ -53,15 +50,14 @@ class View extends Element
                 })
             }
         })
+    }
 
-        this.socket.on("display", () => {
-            that.display()
-        })
+    onDisplay(){
+        this.display()
+    }
 
-        this.socket.on("hidden", () => {
-            that.hidden()
-        })
-
+    onHidden(){
+        this.hidden()
     }
 }
 
@@ -168,6 +164,11 @@ class Component extends Element
         table.style.whiteSpace = 'nowrap'
         table.style.border = 'none'
         return table
+    }
+
+    createElementSelect(){
+        var select = document.createElement('select')
+        return select
     }
 }
 

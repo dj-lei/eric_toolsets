@@ -217,6 +217,7 @@ class ChartAtomComponentSvgDialog extends Dialog
     constructor(chartAtomView){
         super(chartAtomView.container)
         this.subContainer.style.width = '90%' 
+        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
     }
 }
 
@@ -229,27 +230,38 @@ class StatisticAtomComponentDialog extends Dialog
         this.alias = ''
         this.desc = ''
         this.exp = ''
+        this.type = 'code'
 
         this.init()
     }
 
-    init(){
+    init(graphAlias){
         let that = this
+        
+        var types = ['code', 'graph']
+        this.select = this.createElementSelect()
+        for (var x in types) {
+            this.select.options[this.select.options.length] = new Option(x, x)
+        }
+        this.subContainer.appendChild(this.select)
+
+        //******************** code *******************/
+        var codeContainer = this.createElementDiv()
 
         // alias
         this.alias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
-        this.subContainer.appendChild(this.alias)
+        codeContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        codeContainer.appendChild(this.alias)
 
         // search description
         this.desc = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Express Description'))
-        this.subContainer.appendChild(this.desc)
+        codeContainer.appendChild(this.createElementH4('Express Description'))
+        codeContainer.appendChild(this.desc)
 
         // search regex express 
         this.exp = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Python Express'))
-        this.subContainer.appendChild(this.exp)
+        codeContainer.appendChild(this.createElementH4('Python Express'))
+        codeContainer.appendChild(this.exp)
 
         // search and cancel button
         var apply = this.createElementButton('STATISTIC')
@@ -259,8 +271,25 @@ class StatisticAtomComponentDialog extends Dialog
         cancel.style.backgroundColor = 'red'
         cancel.style.width = '50%'
         cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(apply)
-        this.subContainer.appendChild(cancel)
+        codeContainer.appendChild(apply)
+        codeContainer.appendChild(cancel)
+        this.subContainer.appendChild(codeContainer)
+
+        //******************** graph *******************/
+        var graphContainer = this.createElementDiv()
+        var graphSelect = this.createElementSelect()
+        for (var x in graphAlias) {
+            graphSelect.options[graphSelect.options.length] = new Option(x, x)
+        }
+        graphContainer.appendChild(graphSelect)
+
+        this.select.onchange = function() {
+            if (types[this.value] == 'code') {
+                codeContainer.style.display = 'block'
+            }else if (types[this.value] == 'graph') {
+                graphContainer.style.display = 'block'
+            }
+        }
     }
 
     statistic(){

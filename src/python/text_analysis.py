@@ -45,12 +45,13 @@ class FileContainerModel(Model):
         new_file_namespace = self.namespace+'/'+createUuid4()
         self.active_text_file_model = new_file_namespace
         self.text_file_models[new_file_namespace] = TextFileModel(self, new_file_namespace, path)
-        return Response(status.SUCCESS, msg.NONE, self.text_file_models[new_file_namespace].model()).__dict__
+        return Response(status.SUCCESS, msg.NONE, self.text_file_models[new_file_namespace].model()).__dict__, self.active_text_file_model
 
     async def on_display_file(self, sid, namespace):
+        for text_file_model in self.text_file_models.keys():
+            await self.text_file_models[text_file_model].on_hidden(sid)
         self.active_text_file_model = namespace
-        await self.text_file_models[self.active_text_file_model].hidden()
-        await self.text_file_models[namespace].display()
+        await self.text_file_models[namespace].on_display(sid)
 
     async def on_delete_file(self, sid, namespace):
         await self.text_file_models[namespace].delete()
@@ -98,11 +99,23 @@ class TextFileModel(Model):
         
     def get_config(self):
         self.config['search'] = []
+        self.config['chart'] = []
+        self.config['statistic'] = []
         for search_atom_model in self.text_file_function_model.search_function_model.search_atom_models.keys():
             model = self.text_file_function_model.search_function_model.search_atom_models[search_atom_model].__dict__
             tmp = {'namespace':model['namespace'], 'alias':model['alias'], 'desc':model['desc'], 'exp_search':model['exp_search'], 'exp_extract':model['exp_extract'],
             'exp_mark':model['exp_mark'], 'is_case_sensitive':model['is_case_sensitive'], 'forward_rows':model['forward_rows'], 'backward_rows':model['backward_rows']}
             self.config['search'].append(tmp)
+
+        for chart_atom_model in self.text_file_function_model.chart_function_model.chart_atom_models.keys():
+            model = self.text_file_function_model.chart_function_model.chart_atom_models[chart_atom_model].__dict__
+            tmp = {'namespace':model['namespace'], 'alias':model['alias'], 'key_value_tree': model['key_value_tree']}
+            self.config['chart'].append(tmp)
+
+        for statistic_atom_model in self.text_file_function_model.statistic_function_model.statistic_atom_models.keys():
+            model = self.text_file_function_model.statistic_function_model.statistic_atom_models[statistic_atom_model].__dict__
+            tmp = {'namespace':model['namespace'], 'alias':model['alias'], 'exp':model['exp']}
+            self.config['statistic'].append(tmp)
         return Response(status.SUCCESS, msg.NONE, self.config).__dict__
 
     async def load_config(self, sid, config):
@@ -110,6 +123,10 @@ class TextFileModel(Model):
         self.config = json.loads(config[1])
         search_atom_models = self.config['search']
         await self.text_file_function_model.search_function_model.load_config(sid, search_atom_models)
+        chart_atom_models = self.config['chart']
+        await self.text_file_function_model.chart_function_model.load_config(sid, chart_atom_models)
+        statistic_atom_models = self.config['statistic']
+        await self.text_file_function_model.statistic_function_model.load_config(sid, statistic_atom_models)
         
         return Response(status.SUCCESS, msg.NONE, self.model()).__dict__
 
@@ -183,7 +200,7 @@ class TextFileFunctionModel(Model):
         self.rateHeight = rate
         await self.emit('setHeight', self.model(), namespace=self.namespace)
 
-    async def on_select_function(self, sid, function):
+    async def on_select(self, sid, function):
         if function == 'search':
             await self.search_function_model.on_display(sid)
             await self.chart_function_model.on_hidden(sid)
@@ -200,6 +217,9 @@ class TextFileFunctionModel(Model):
     async def on_hidden(self, sid):
         await self.text_file_model.on_adjust_view_rate(sid, 1)
 
+    async def on_select_func(self, sid, func):
+        await self.emit('selectFunction', func, namespace=self.namespace)
+
 
 class SearchFunctionModel(Model):
     def __init__(self, text_file_function_model):
@@ -210,9 +230,9 @@ class SearchFunctionModel(Model):
 
     async def load_config(self, sid, search_atom_models):
         for search_atom_model in search_atom_models:
-            search_atom_model_ins = SearchAtomModel(self, search_atom_model['namespace'])
+            search_atom_model['namespace'] = self.namespace+'/'+search_atom_model['namespace'].split('/')[-1]
+            SearchAtomModel(self, search_atom_model['namespace'])
             await self.emit('newSearch', search_atom_model, namespace=self.namespace)
-            # await search_atom_model_ins.on_search(sid, search_atom_model)
 
     def is_register(self, namespace):
         if namespace in self.search_atom_models:
@@ -228,6 +248,7 @@ class SearchFunctionModel(Model):
         if not self.tmp_search_atom_model:
             new_search_namespace = self.namespace+'/'+createUuid4()
             self.tmp_search_atom_model = SearchAtomModel(self, new_search_namespace)
+            await self.text_file_function_model.on_select_func(sid, 'search')
             await self.emit('newSearch', self.tmp_search_atom_model.model(), namespace=self.namespace)
         else:
             await self.tmp_search_atom_model.on_display_dialog()
@@ -244,6 +265,12 @@ class ChartFunctionModel(Model):
         self.chart_atom_models = {}
         self.tmp_chart_atom_model = None
 
+    async def load_config(self, sid, chart_atom_models):
+        for chart_atom_model in chart_atom_models:
+            chart_atom_model['namespace'] = self.namespace+'/'+chart_atom_model['namespace'].split('/')[-1]
+            ChartAtomModel(self, chart_atom_model['namespace'])
+            await self.emit('newChart', chart_atom_model, namespace=self.namespace)
+
     def is_register(self, namespace):
         if namespace in self.chart_atom_models:
             return True
@@ -258,6 +285,7 @@ class ChartFunctionModel(Model):
         if not self.tmp_chart_atom_model:
             new_chart_namespace = self.namespace+'/'+createUuid4()
             self.tmp_chart_atom_model = ChartAtomModel(self, new_chart_namespace)
+            await self.text_file_function_model.on_select_func(sid, 'chart')
             await self.emit('newChart', self.tmp_chart_atom_model.model(), namespace=self.namespace)
         else:
             await self.tmp_chart_atom_model.on_display_dialog()
@@ -269,6 +297,12 @@ class StatisticFunctionModel(Model):
         self.text_file_function_model = text_file_function_model
         self.statistic_atom_models = {}
         self.tmp_statistic_atom_model = None
+    
+    async def load_config(self, sid, statistic_atom_models):
+        for statistic_atom_model in statistic_atom_models:
+            statistic_atom_model['namespace'] = self.namespace+'/'+statistic_atom_model['namespace'].split('/')[-1]
+            StatisticAtomModel(self, statistic_atom_model['namespace'])
+            await self.emit('newStatistic', statistic_atom_model, namespace=self.namespace)
 
     def is_register(self, namespace):
         if namespace in self.statistic_atom_models:
@@ -277,13 +311,14 @@ class StatisticFunctionModel(Model):
             return False
 
     def register_new_search(self, statistic_atom_model):
-        self.chart_atom_models[statistic_atom_model.namespace] = statistic_atom_model
+        self.statistic_atom_models[statistic_atom_model.namespace] = statistic_atom_model
         self.tmp_statistic_atom_model = None
 
     async def new_statistic(self, sid):
         if not self.tmp_statistic_atom_model:
             new_statistic_namespace = self.namespace+'/'+createUuid4()
             self.tmp_statistic_atom_model = StatisticAtomModel(self, new_statistic_namespace)
+            await self.text_file_function_model.on_select_func(sid, 'statistic')
             await self.emit('newStatistic', self.tmp_statistic_atom_model.model(), namespace=self.namespace)
         else:
             await self.tmp_statistic_atom_model.on_display_dialog()
@@ -329,7 +364,7 @@ class SearchAtomModel(Model):
         self.search()
         if not self.search_function_model.is_register(self.namespace):
             self.search_function_model.register_new_search(self)
-            await self.search_function_model.text_file_function_model.on_select_function(sid, 'search')
+            await self.search_function_model.text_file_function_model.on_select_func(sid, 'search')
             await self.search_function_model.text_file_function_model.text_file_model.on_adjust_view_rate(sid, 0.5)
         await self.on_scroll(sid, 0)
 
@@ -338,6 +373,7 @@ class SearchAtomModel(Model):
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def on_display_dialog(self):
+        await self.search_function_model.text_file_function_model.on_select_func('', 'search')
         await self.emit('displayDialog', namespace=self.namespace)
 
     def scroll(self, point):
@@ -379,7 +415,7 @@ class SearchAtomModel(Model):
                         if key == 'timestamp':
                             continue
                         if key not in self.res_key_value:
-                            self.res_key_value[key] = {'name':key, 'type': type(r.named[key]).__name__, 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                            self.res_key_value[key] = {'search_alias': self.alias, 'name':key, 'type': type(r.named[key]).__name__, 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
                         self.res_key_value[key]['global_index'].append(unit[0]+self.backward_rows)
                         self.res_key_value[key]['search_index'].append(search_index)
                         self.res_key_value[key]['value'].append(r.named[key])
@@ -390,7 +426,7 @@ class SearchAtomModel(Model):
             for exp in self.exp_mark:
                 if len(re.findall(exp['exp'], string)) > 0:
                     if exp['alias'] not in self.res_key_value:
-                        self.res_key_value[exp['alias']] = {'name':exp['alias'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                        self.res_key_value[exp['alias']] = {'search_alias': self.alias, 'name':exp['alias'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
                     self.res_key_value[exp['alias']]['global_index'].append(unit[0]+self.backward_rows)
                     self.res_key_value[exp['alias']]['search_index'].append(search_index)
                     self.res_key_value[exp['alias']]['value'].append(exp['color'])
@@ -417,7 +453,8 @@ class ChartAtomModel(Model):
         self.select_lines = {}
 
     def model(self):
-        self.reload_key_value_tree()
+        if self.key_value_tree == {}:
+            self.reload_key_value_tree()
         return {'namespace': self.namespace, 'alias': self.alias, 'keyValueTree': self.key_value_tree, 'selectLines':self.select_lines}
 
     def reload_key_value_tree(self):
@@ -431,16 +468,18 @@ class ChartAtomModel(Model):
                 keys.append({'name': key, 'check': False})
             self.key_value_tree['children'].append({'uid': namespace, 'name': search_atom_models[namespace].alias, 'check': False, 'children': keys})
 
-    async def on_draw(self, sid, key_value_tree):
-        self.key_value_tree = key_value_tree
+    async def on_draw(self, sid, model):
+        self.__dict__.update(model)
 
         selected_key = {}
         for search_atom_model in self.key_value_tree['children']:
             for key in search_atom_model['children']:
                 if key['check'] == True:
-                    key_value = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models[search_atom_model['uid']].res_key_value.__dict__[key['name']]
+                    namespace = self.chart_function_model.text_file_function_model.text_file_model.namespace
+                    namespace = namespace + '/' + '/'.join(search_atom_model['uid'].split('/')[-3:])
+                    key_value = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models[namespace].res_key_value.__dict__[key['name']]
                     if len(key_value.global_index) > 0:
-                        selected_key[search_atom_model['uid']+'.'+key['name']] = key_value
+                        selected_key[namespace+'.'+key['name']] = key_value
 
         final = {}
         for key in selected_key.keys():
@@ -466,11 +505,12 @@ class ChartAtomModel(Model):
 
         if not self.chart_function_model.is_register(self.namespace):
             self.chart_function_model.register_new_search(self)
-            await self.chart_function_model.text_file_function_model.on_select_function(sid, 'chart')
+            await self.chart_function_model.text_file_function_model.on_select_func(sid, 'chart')
             await self.chart_function_model.text_file_function_model.text_file_model.on_adjust_view_rate(sid, 0.5)
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def on_display_dialog(self):
+        await self.chart_function_model.text_file_function_model.on_select_func('', 'chart')
         await self.emit('displayDialog', namespace=self.namespace)
 
 
@@ -483,6 +523,10 @@ class StatisticAtomModel(Model):
         self.exp = ''
         self.exp_optimized = ''
         self.result = ''
+        self.type = 'code'
+
+        self.first_graph = []
+        self.second_graph = []
 
     def model(self):
         return {'namespace': self.namespace, 'alias': self.alias, 'exp': self.exp, 'result':self.result}
@@ -490,15 +534,34 @@ class StatisticAtomModel(Model):
     async def on_statistic(self, sid, model):
         self.__dict__.update(model)
 
+        if self.type == 'code':
+            self.code_statistic()
+        elif self.type == 'code':
+            self.graph_statistic()
+
+        if not self.statistic_function_model.is_register(self.namespace):
+            self.statistic_function_model.register_new_search(self)
+            await self.statistic_function_model.text_file_function_model.on_select_func(sid, 'statistic')
+            await self.statistic_function_model.text_file_function_model.text_file_model.on_adjust_view_rate(sid, 0.5)
+        await self.emit('refresh', self.model(), namespace=self.namespace)
+
+    def code_statistic(self):
         search_atom_models = self.statistic_function_model.text_file_function_model.search_function_model.search_atom_models
         self.exp_optimized = "self.result = " + self.exp
         for search_atom_model in search_atom_models.keys():
             ins = search_atom_models[search_atom_model].alias + '.'
             if (ins) in self.exp:
                 self.exp_optimized = self.exp_optimized.replace(ins, 'self.statistic_function_model.text_file_function_model.search_function_model.search_atom_models["'+search_atom_model+'"].res_key_value.')
-        print(self.exp_optimized)
         exec(self.exp_optimized)
-        await self.emit('refresh', self.model(), namespace=self.namespace)
 
-    async def display_dialog(self):
+    def graph_statistic(self):
+        self.result = []
+        for index, _ in enumerate(self.first_graph):
+            path, score = cal_lcss_path_and_score(self.first_graph[index], self.second_graph[index])
+            std1 = np.std(self.first_graph[index])
+            std2 = np.std(self.second_graph[index])
+            self.result.append(path, score, std1, std2)
+
+    async def on_display_dialog(self):
+        await self.statistic_function_model.text_file_function_model.on_select_func('', 'statistic')
         await self.emit('displayDialog', namespace=self.namespace)

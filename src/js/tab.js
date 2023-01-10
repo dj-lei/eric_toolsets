@@ -53,9 +53,10 @@ class FileContainerComponentTab extends Tab
 
     displayFile(model)
     {
-        this.tabs[this.fileContainerView.model.activeTextFileModel].title.style.backgroundColor = "#555"
+        this.tabs[this.fileContainerView.activeTextFileModel].title.style.backgroundColor = "#555"
         this.tabs[model.namespace].title.style.backgroundColor = "#333"
-        this.fileContainerView.displayFile(model.namespace)
+        this.fileContainerView.onDisplayFile(model.namespace)
+        this.fileContainerView.activeTextFileModel = model.namespace
     }
 
     deleteFile(model){
@@ -78,9 +79,6 @@ class TextFileFunctionComponentTab extends Tab
         this.searchTitle.innerHTML = 'Search'
         this.searchTitle.addEventListener('click', function()
         {
-            that.searchTitle.style.backgroundColor = '#333'
-            that.chartTitle.style.backgroundColor = '#555'
-            that.statisticTitle.style.backgroundColor = '#555'
             that.textFileFunctionView.onSelectFunction('search')
         })
 
@@ -93,9 +91,6 @@ class TextFileFunctionComponentTab extends Tab
         this.chartTitle.innerHTML = 'Chart'
         this.chartTitle.addEventListener('click', function()
         {
-            that.searchTitle.style.backgroundColor = '#555'
-            that.chartTitle.style.backgroundColor = '#333'
-            that.statisticTitle.style.backgroundColor = '#555'
             that.textFileFunctionView.onSelectFunction('chart')
         })
 
@@ -107,9 +102,6 @@ class TextFileFunctionComponentTab extends Tab
         this.statisticTitle.innerHTML = 'Statistic'
         this.statisticTitle.addEventListener('click', function()
         {
-            that.searchTitle.style.backgroundColor = '#555'
-            that.chartTitle.style.backgroundColor = '#555'
-            that.statisticTitle.style.backgroundColor = '#333'
             that.textFileFunctionView.onSelectFunction('statistic')
         })
 
@@ -123,19 +115,25 @@ class TextFileFunctionComponentTab extends Tab
         hidden.fontSize = '30px'
         hidden.innerHTML = '-'
         hidden.addEventListener("click", function() {
-            that.textFileFunctionView.viewHidden()
+            that.textFileFunctionView.hidden()
         })
     }
 
-    openTablink(tablink)
+    openFunction(func)
     {
-        // if(tablink == 'Search'){
-
-        // }else if(tablink == 'KeyValueTree'){
-
-        // }else if(tablink == 'Chart'){
-
-        // }
+        if(func == 'search'){
+            this.searchTitle.style.backgroundColor = '#333'
+            this.chartTitle.style.backgroundColor = '#555'
+            this.statisticTitle.style.backgroundColor = '#555'
+        }else if(func == 'chart'){
+            this.searchTitle.style.backgroundColor = '#555'
+            this.chartTitle.style.backgroundColor = '#333'
+            this.statisticTitle.style.backgroundColor = '#555'
+        }else if(func == 'statistic'){
+            this.searchTitle.style.backgroundColor = '#555'
+            this.chartTitle.style.backgroundColor = '#555'
+            this.statisticTitle.style.backgroundColor = '#333'
+        }
     }
 }
 

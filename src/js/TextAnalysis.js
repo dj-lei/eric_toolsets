@@ -82,15 +82,23 @@ class FileContainerView extends View
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.FILECONTAINER}`, textAnalysisView.container)
         this.fileContainerComponentTab = new FileContainerComponentTab(this)
-
+        this.activeTextFileModel = ''
         let that = this
+        
         ipcRenderer.on('open-file', async function () {
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
+                var count = 0
                 file.filePaths.forEach((path) => {
-                    that.socket.emit("new_file", path, (response) => {
+                    that.socket.emit("new_file", path, (response, activeTextFileModel) => {
                         if(response.status == status.SUCCESS){
+                            count = count + 1
+                            
                             that.newFile(response.model)
+                            if(count == file.filePaths.length){
+                                that.activeTextFileModel = activeTextFileModel
+                                that.fileContainerComponentTab.displayFile(response.model)
+                            }
                         }else{
                             alert(response.msg)
                         }
@@ -133,12 +141,12 @@ class FileContainerView extends View
         
         this.fileContainerComponentTab.subscribePlaceholder(model.namespace)
         this.fileContainerComponentTab.updatePlaceholder(model)
-        if (model.namespace == model.activeTextFileModel) {
-            this.fileContainerComponentTab.displayFile(model)
-        }
+        // if (model.namespace == this.activeTextFileModel) {
+        //     this.fileContainerComponentTab.displayFile(model)
+        // }
     }
 
-    displayFile(namespace){
+    onDisplayFile(namespace){
         this.socket.emit("display_file", namespace)
     }
 
@@ -223,11 +231,16 @@ class TextFileFunctionView extends View
         this.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
     }
 
-    onSelectFunction(func){
-        this.socket.emit("select_function", func)
+    onOpenFunction(func){
+        this.textFileFunctionComponentTab.openFunction(func)
     }
 
-    viewHidden(){
+    onSelectFunction(func){
+        this.textFileFunctionComponentTab.openFunction(func)
+        this.socket.emit("select", func)
+    }
+
+    hidden(){
         this.socket.emit("hidden")
     }
 }
@@ -258,7 +271,10 @@ class ChartFunctionView extends View
 
     onNewChart(model){
         this.chartFunctionComponentList.subscribePlaceholder(model.namespace)
-        new ChartAtomView(model, this.chartFunctionComponentList.getPlaceholder(model.namespace))
+        var tmpChartAtomView = new ChartAtomView(model, this.chartFunctionComponentList.getPlaceholder(model.namespace))
+        if (!model.selectLines) {
+            tmpChartAtomView.apply(model)
+        }
     }
 }
 
@@ -271,7 +287,10 @@ class StatisticFunctionView extends View
 
     onNewStatistic(model){
         this.statisticFunctionComponentList.subscribePlaceholder(model.namespace)
-        new StatisticAtomView(model, this.statisticFunctionComponentList.getPlaceholder(model.namespace))
+        var tmpStatisticAtomView = new StatisticAtomView(model, this.statisticFunctionComponentList.getPlaceholder(model.namespace))
+        if (model.exp != '') {
+            tmpStatisticAtomView.statistic(model)
+        }
     }
 }
 
@@ -330,18 +349,24 @@ class ChartAtomView extends View
         this.onDisplayDialog()
     }
 
-    apply(){
-        this.socket.emit("draw", this.model.keyValueTree)
+    apply(model){
+        this.chartAtomComponentSvgDialog.hidden()
+        this.socket.emit("draw", model)
     }
 
     onRefresh(model){
         this.model = model
+        this.onUpdateDialog()
         this.chartAtomComponentSequentialChart.refresh(this.model.selectLines)
-        this.chartAtomComponentSequentialChart.chart.resize({height:'400px', width:'1000px'})
+        this.chartAtomComponentSequentialChart.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 20)}px`, width:`${document.body.offsetWidth}px`})
     }
 
     onDisplayDialog(){
         this.chartAtomComponentSvgDialog.display()
+    }
+
+    onUpdateDialog(){
+        this.chartAtomComponentSvg.update()
     }
 }
 
@@ -350,13 +375,14 @@ class StatisticAtomView extends View
     constructor(model, container){
         super(model.namespace, container)
         this.model = model
-        this.StatisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
+        this.statisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
         this.statisticAtomComponentCustom = new StatisticAtomComponentCustom(this)
 
         this.onDisplayDialog()
     }
 
     statistic(model){
+        this.statisticAtomComponentDialog.hidden()
         this.socket.emit("statistic", model)
     }
 
@@ -366,7 +392,7 @@ class StatisticAtomView extends View
     }
 
     onDisplayDialog(){
-        this.StatisticAtomComponentDialog.display()
+        this.statisticAtomComponentDialog.display()
     }
 }
 export {TextAnalysisView} 
