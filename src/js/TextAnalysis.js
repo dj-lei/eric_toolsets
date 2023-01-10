@@ -1,12 +1,11 @@
 import status from '@/config/status.json'
 import ns from '@/config/namespace.json'
-import common from '@/plugins/common'
 
 import { ipcRenderer } from 'electron'
 import { View } from './element'
 import { SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
-import { TextFileOriginalComponentTable, SearchAtomComponentTable, StatisticFunctionComponentTable } from './table'
+import { TextFileOriginalComponentTable, SearchAtomComponentTable } from './table'
 import { SearchFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
 import { ChartAtomComponentSvg } from './svg'
 import { ChartAtomComponentSequentialChart } from './chart'
@@ -386,6 +385,10 @@ class StatisticAtomView extends View
         this.socket.emit("statistic", model)
     }
 
+    getCompareGraph(alias){
+        this.socket.emit("get_compare_graph", alias)
+    }
+
     onRefresh(model){
         this.model = model
         this.statisticAtomComponentCustom.refresh(this.model)
@@ -395,4 +398,5 @@ class StatisticAtomView extends View
         this.statisticAtomComponentDialog.display()
     }
 }
+
 export {TextAnalysisView} 

@@ -2,6 +2,7 @@ import common from '@/plugins/common'
 import { ipcRenderer } from 'electron'
 
 import { Component } from './element'
+import { SequentialChart } from './chart'
 
 class Dialog extends Component
 {
@@ -278,15 +279,22 @@ class StatisticAtomComponentDialog extends Dialog
         //******************** graph *******************/
         var graphContainer = this.createElementDiv()
         var graphSelect = this.createElementSelect()
+        this.graph = new SequentialChart(this.container)
+
         for (var x in graphAlias) {
             graphSelect.options[graphSelect.options.length] = new Option(x, x)
+        }
+        graphSelect.onchange = function() {
+            that.statisticAtomView.getCompareGraph(graphAlias[this.value])
         }
         graphContainer.appendChild(graphSelect)
 
         this.select.onchange = function() {
             if (types[this.value] == 'code') {
+                that.type = 'code'
                 codeContainer.style.display = 'block'
             }else if (types[this.value] == 'graph') {
+                that.type = 'graph'
                 graphContainer.style.display = 'block'
             }
         }
@@ -303,9 +311,14 @@ class StatisticAtomComponentDialog extends Dialog
     }
 
     update(model){
-        this.alias.value = model.alias
-        this.desc.value = model.desc
-        this.exp.value = model.exp
+        if (this.type == 'code') {
+            this.alias.value = model.alias
+            this.desc.value = model.desc
+            this.exp.value = model.exp
+        }else if (this.type == 'graph') {
+            this.graph.draw(model.compareGraph)
+        }
+
     }
 }
 

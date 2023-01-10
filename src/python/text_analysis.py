@@ -74,6 +74,14 @@ class FileContainerModel(Model):
     async def on_open_text_file_function(self, sid):
         await self.text_file_models[self.active_text_file_model].on_adjust_view_rate(sid, 0.5)
 
+    async def on_work_flow(self, sid, dir):
+        files = []
+        for file in files:
+            ins = TextFileModel(self, namespace, path)
+            ins.search()
+            ins.draw()
+            ins.statistic()
+            self.emit('refresh', ins.model())
 
 class TextFileModel(Model):
     def __init__(self, file_container_model, namespace, path):
@@ -360,10 +368,8 @@ class SearchAtomModel(Model):
     async def on_search(self, sid, model):
         self.__dict__.update(model)
 
-        self.res_search_units = []
         self.search()
         if not self.search_function_model.is_register(self.namespace):
-            self.search_function_model.register_new_search(self)
             await self.search_function_model.text_file_function_model.on_select_func(sid, 'search')
             await self.search_function_model.text_file_function_model.text_file_model.on_adjust_view_rate(sid, 0.5)
         await self.on_scroll(sid, 0)
@@ -385,6 +391,8 @@ class SearchAtomModel(Model):
             self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.search_function_model.text_file_function_model.text_file_model.lines[line]+'</td>')
 
     def search(self):
+        self.res_search_units = []
+
         for index, line in enumerate(self.search_function_model.text_file_function_model.text_file_model.lines):
             if self.is_case_sensitive:
                 if len(re.findall(self.exp_search, line)) > 0:
@@ -397,6 +405,7 @@ class SearchAtomModel(Model):
             self.res_lines.extend(unit)
         self.count = len(self.res_search_units)
         self.res_lines = sorted(set(self.res_lines),key=self.res_lines.index)
+        self.search_function_model.register_new_search(self)
 
     def extract(self):
         if len(self.exp_extract) == 0:
@@ -529,7 +538,21 @@ class StatisticAtomModel(Model):
         self.second_graph = []
 
     def model(self):
-        return {'namespace': self.namespace, 'alias': self.alias, 'exp': self.exp, 'result':self.result}
+        return {'namespace': self.namespace, 'alias': self.alias, 'exp': self.exp, 'result':self.result, 'compareGraph': self.second_graph}
+
+    async def on_get_compare_graph(self, sid, alias):
+        compare_graph = self.statistic_function_model.text_file_function_model.text_file_model.config['compare_graphs']
+        self.second_graph = compare_graph[alias]
+        search_atom_models = self.statistic_function_model.text_file_function_model.search_function_model.search_atom_models
+        for namespace in search_atom_models.keys():
+            if search_atom_models[namespace].alias == compare_graph['alias']:
+                search_atom_model = search_atom_models[namespace]
+                for markindex, marktime in enumerate(search_atom_model.res_key_value.__dict__[compare_graph['mark']].timestamp):
+                    for key in compare_graph['key']:
+                        key_value = search_atom_model.res_key_value.__dict__[key]
+                        for index, timestamp in enumerate(key_value.timestamp):
+                            if timestamp in range(marktime - compare_graph['upper_boundary'], marktime + compare_graph['lower_boundary']):
+                                 self.first_graph[markindex][key].append(key_value.value[index])
 
     async def on_statistic(self, sid, model):
         self.__dict__.update(model)

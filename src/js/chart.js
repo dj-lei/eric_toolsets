@@ -465,4 +465,5 @@ class ChartAtomComponentSequentialChart extends SequentialChart
     //   this.parent.applyChartConfig(this.uid, this.config.desc.value)
     // }
 }
-export {ChartAtomComponentSequentialChart}
+
+export {SequentialChart, ChartAtomComponentSequentialChart}
