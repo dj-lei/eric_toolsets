@@ -3,7 +3,7 @@ import ns from '@/config/namespace.json'
 
 import { ipcRenderer } from 'electron'
 import { View } from './element'
-import { SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog } from './dialog'
+import { TextFileComponentRegisterCompareGraphDialog, SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
 import { TextFileOriginalComponentTable, SearchAtomComponentTable } from './table'
 import { SearchFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
@@ -21,6 +21,10 @@ class TextAnalysisView extends View
         this.initMenu()
 
         new FileContainerView(this)
+    }
+
+    onNewObject(args){
+        window[args.className](args)
     }
 
     printHtml(){
@@ -149,6 +153,10 @@ class FileContainerView extends View
         this.socket.emit("display_file", namespace)
     }
 
+    onDisplayCompareGraphDialog(chartAtomModel){
+        this.fileContainerComponentRegisterCompareGraphDialog.update(chartAtomModel)
+    }
+
     getConfig(){
         this.socket.emit("get_config", async (response) => {
             await ipcRenderer.invoke('export-config', JSON.stringify(response.model))
@@ -177,8 +185,14 @@ class TextFileView extends View
     constructor(fileContainerView, model){
         super(model.namespace, fileContainerView.container)
         this.model = model
+
+        this.textFileComponentRegisterCompareGraphDialog = new TextFileComponentRegisterCompareGraphDialog(this)
         new TextFileOriginalView(this)
         new TextFileFunctionView(this)
+    }
+
+    registerCompareGraph(compareGraph){
+        this.socket.emit("register_compare_graph", compareGraph)
     }
 
     onDelete(){
@@ -358,6 +372,10 @@ class ChartAtomView extends View
         this.onUpdateDialog()
         this.chartAtomComponentSequentialChart.refresh(this.model.selectLines)
         this.chartAtomComponentSequentialChart.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 20)}px`, width:`${document.body.offsetWidth}px`})
+    }
+
+    onDisplayCompareGraphDialog(model){
+        this.socket.emit("display_compare_graph_dialog", model)
     }
 
     onDisplayDialog(){

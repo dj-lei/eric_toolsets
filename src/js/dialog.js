@@ -2,7 +2,7 @@ import common from '@/plugins/common'
 import { ipcRenderer } from 'electron'
 
 import { Component } from './element'
-import { SequentialChart } from './chart'
+import { FileContainerComponentCompareGraphSequentialChart } from './chart'
 
 class Dialog extends Component
 {
@@ -30,6 +30,66 @@ class Dialog extends Component
     async browseFilesDirectory(_callback){
         let content = await ipcRenderer.invoke('open-dir')
         _callback(content.filePaths[0])
+    }
+}
+
+class TextFileComponentRegisterCompareGraphDialog extends Dialog
+{
+    constructor(textFileView){
+        super(textFileView.container)
+        this.textFileView = textFileView
+        this.textFileComponentCompareGraphSequentialChart = ''
+
+        this.desc = ''
+        this.markAlias = ''
+        this.markTimestampForwardSecond = 0
+        this.markTimestampBackwardSecond = 0
+
+        this.init()
+    }
+
+    init(){
+        this.desc = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Description'))
+        this.subContainer.appendChild(this.desc)
+
+        this.markAlias = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Mark Alias'))
+        this.subContainer.appendChild(this.markAlias)
+
+        this.markTimestampForwardSecond = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Mark Timestamp Forward Second'))
+        this.subContainer.appendChild(this.markTimestampForwardSecond)
+
+        this.markTimestampBackwardSecond = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Mark Timestamp Backward Second'))
+        this.subContainer.appendChild(this.markTimestampBackwardSecond)
+
+        // this.textFileComponentCompareGraphSequentialChart = new FileContainerComponentCompareGraphSequentialChart(this, this.subContainer)
+        // search and cancel button
+        var register = this.createElementButton('REGISTER')
+        register.style.width = '50%'
+        register.onclick = function(){that.register()}
+        var cancel = this.createElementButton('CANCEL')
+        cancel.style.backgroundColor = 'red'
+        cancel.style.width = '50%'
+        cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(register)
+        this.subContainer.appendChild(cancel)
+    }
+
+    register(){
+        compareGraph = {
+            desc: this.desc,
+            markAlias: this.markAlias,
+            markTimestampForwardSecond: this.markTimestampForwardSecond,
+            markTimestampBackwardSecond: this.markTimestampBackwardSecond
+        }
+        this.fileContainerView.registerCompareGraph()
+    }
+
+    update(chartAtomModel){
+
     }
 }
 
@@ -281,7 +341,7 @@ class StatisticAtomComponentDialog extends Dialog
         var graphSelect = this.createElementSelect()
         this.graph = new SequentialChart(this.container)
 
-        for (var x in graphAlias) {
+        for (x in graphAlias) {
             graphSelect.options[graphSelect.options.length] = new Option(x, x)
         }
         graphSelect.onchange = function() {
@@ -322,4 +382,4 @@ class StatisticAtomComponentDialog extends Dialog
     }
 }
 
-export {SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog}
+export {TextFileComponentRegisterCompareGraphDialog, SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog}

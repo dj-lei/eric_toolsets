@@ -1,7 +1,5 @@
 import { Component } from './element'
 
-import common from '@/plugins/common'
-
 class Table extends Component
 {
     constructor(position){

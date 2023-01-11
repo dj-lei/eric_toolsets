@@ -20,12 +20,64 @@ class Model(socketio.AsyncNamespace):
     def __init__(self, namespace):
         super().__init__(namespace)
         socket_server.sio.register_namespace(self)
+        pub.subscribe(self.action, self.namespace)
+        self.subscribes = []
+
+    # def __init_subclass__(self, **kwargs):
+    #     super().__init_subclass__(**kwargs)
+    #     self.new_view_object(self)
+
+    async def new_view_object(self):
+        await self.emit('newObject', {'className': self.__class__.__name__.replace('Model', 'View') , 'namespace': self.namespace}, namespace=ns.TEXTANALYSIS)
+
+    def action(self, action, arg, topic=pub.AUTO_TOPIC):
+        if topic.getName() != self.namespace:
+            locals()[action](arg)
+
+    def publish(self): #notice subscriber refresh
+        pub.sendMessage(self.namespace, self)
+
+    def listener(self, obj, topic=pub.AUTO_TOPIC):
+        self.subscribes[topic.getName()] = obj
+        for namespace in self.subscribes.keys():
+            if self.subscribes[namespace] == None:
+                return 
+        self.refresh()
+
+    def refresh(self):
+        pass
 
     async def on_hidden(self, sid):
         await self.emit('hidden', namespace=self.namespace)
 
     async def on_display(self, sid):
         await self.emit('display', namespace=self.namespace)
+
+    def subscribe_init(self, namespace):
+        self.subscribes[namespace] = None
+        pub.subscribe(self.refresh, namespace)
+        return self.subscribes[namespace]
+
+    def get_file_container_model(self):
+        return self.subscribe_init('/'.join(self.namespace.split('/')[0:3]))
+
+    def get_text_file_model(self):
+        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]))
+
+    def get_text_file_original_model(self):
+        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEORIGINAL))
+
+    def get_text_file_function_model(self):
+        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION))
+
+    def get_search_function_model(self):
+        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.SEARCHFUNCTION))
+
+    def get_chart_function_model(self):
+        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.CHARTFUNCTION))
+
+    def get_statistic_function_model(self):
+        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.STATISTICFUNCTION))
 
 
 class TextAnalysisModel(socketio.AsyncNamespace):
@@ -36,10 +88,11 @@ class TextAnalysisModel(socketio.AsyncNamespace):
 
 class FileContainerModel(Model):
     def __init__(self, text_analysis_model):
-        super().__init__(text_analysis_model.namespace+ns.FILECONTAINER)
+        super().__init__("test")
         self.text_analysis_model = text_analysis_model
         self.text_file_models = {}
         self.active_text_file_model = ''
+        self.new_view_object()
 
     def on_new_file(self, sid, path):
         new_file_namespace = self.namespace+'/'+createUuid4()
@@ -83,6 +136,7 @@ class FileContainerModel(Model):
             ins.statistic()
             self.emit('refresh', ins.model())
 
+
 class TextFileModel(Model):
     def __init__(self, file_container_model, namespace, path):
         super().__init__(namespace)
@@ -109,6 +163,7 @@ class TextFileModel(Model):
         self.config['search'] = []
         self.config['chart'] = []
         self.config['statistic'] = []
+        self.config['compare_graph'] = []
         for search_atom_model in self.text_file_function_model.search_function_model.search_atom_models.keys():
             model = self.text_file_function_model.search_function_model.search_atom_models[search_atom_model].__dict__
             tmp = {'namespace':model['namespace'], 'alias':model['alias'], 'desc':model['desc'], 'exp_search':model['exp_search'], 'exp_extract':model['exp_extract'],
@@ -141,6 +196,14 @@ class TextFileModel(Model):
     async def on_adjust_view_rate(self, sid, rate):
         await self.text_file_original_model.on_set_height(sid, rate)
         await self.text_file_function_model.on_set_height(sid, 1 - rate)
+
+    async def on_register_compare_graph(self, sid, compare_graph):
+        if self.config == {}:
+            self.config['compare_graph'] = []
+        self.config['compare_graph'].append(compare_graph)
+
+    async def on_display_compare_graph_dialog(self, sid, chart_atom_model):
+        await self.emit('displayCompareGraphDialog', chart_atom_model, namespace=self.namespace)
 
 
 class TextFileOriginalModel(Model):
@@ -470,12 +533,12 @@ class ChartAtomModel(Model):
         self.key_value_tree = {}
         text_file_model = self.chart_function_model.text_file_function_model.text_file_model
         search_atom_models = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models
-        self.key_value_tree = {'uid': text_file_model.namespace, 'name': text_file_model.file_name, 'check': False, 'children': []}
+        self.key_value_tree = {'namespace': text_file_model.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
         for namespace in search_atom_models.keys():
             keys = []
             for key in search_atom_models[namespace].res_key_value.__dict__.keys():
                 keys.append({'name': key, 'check': False})
-            self.key_value_tree['children'].append({'uid': namespace, 'name': search_atom_models[namespace].alias, 'check': False, 'children': keys})
+            self.key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': search_atom_models[namespace].alias, 'check': False, 'children': keys})
 
     async def on_draw(self, sid, model):
         self.__dict__.update(model)
@@ -485,10 +548,11 @@ class ChartAtomModel(Model):
             for key in search_atom_model['children']:
                 if key['check'] == True:
                     namespace = self.chart_function_model.text_file_function_model.text_file_model.namespace
-                    namespace = namespace + '/' + '/'.join(search_atom_model['uid'].split('/')[-3:])
+                    namespace = namespace + '/' + search_atom_model['namespace']
+                    search_alias = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models[namespace].alias
                     key_value = self.chart_function_model.text_file_function_model.search_function_model.search_atom_models[namespace].res_key_value.__dict__[key['name']]
                     if len(key_value.global_index) > 0:
-                        selected_key[namespace+'.'+key['name']] = key_value
+                        selected_key[search_alias+'.'+key['name']] = key_value
 
         final = {}
         for key in selected_key.keys():
@@ -521,6 +585,9 @@ class ChartAtomModel(Model):
     async def on_display_dialog(self):
         await self.chart_function_model.text_file_function_model.on_select_func('', 'chart')
         await self.emit('displayDialog', namespace=self.namespace)
+
+    async def on_display_compare_graph_dialog(self, sid):
+        await self.chart_function_model.text_file_function_model.text_file_model.on_display_compare_graph_dialog(sid, self)
 
 
 class StatisticAtomModel(Model):
@@ -580,7 +647,7 @@ class StatisticAtomModel(Model):
     def graph_statistic(self):
         self.result = []
         for index, _ in enumerate(self.first_graph):
-            path, score = cal_lcss_path_and_score(self.first_graph[index], self.second_graph[index])
+            path, score = lcss_path(self.first_graph[index], self.second_graph[index])
             std1 = np.std(self.first_graph[index])
             std2 = np.std(self.second_graph[index])
             self.result.append(path, score, std1, std2)
