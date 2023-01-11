@@ -34,8 +34,8 @@ class Element
 
 class View extends Element
 {
-    constructor(namespace, position){
-        super(position)
+    constructor(namespace){
+        super(document.getElementById(namespace))
         this.namespace = namespace
         this.container.setAttribute("name", this.namespace)
         this.socket = io(`${server}${this.namespace}`)

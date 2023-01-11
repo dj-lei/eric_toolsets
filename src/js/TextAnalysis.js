@@ -92,21 +92,23 @@ class FileContainerView extends View
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
                 var count = 0
-                file.filePaths.forEach((path) => {
-                    that.socket.emit("new_file", path, (response, activeTextFileModel) => {
-                        if(response.status == status.SUCCESS){
-                            count = count + 1
+                that.socket.emit("new_file", file.filePaths)
+                // file.filePaths.forEach((path) => {
+                    
+                    // that.socket.emit("new_file", path, (response, activeTextFileModel) => {
+                        // if(response.status == status.SUCCESS){
+                        //     count = count + 1
                             
-                            that.newFile(response.model)
-                            if(count == file.filePaths.length){
-                                that.activeTextFileModel = activeTextFileModel
-                                that.fileContainerComponentTab.displayFile(response.model)
-                            }
-                        }else{
-                            alert(response.msg)
-                        }
-                    })
-                })
+                        //     that.newFile(response.model)
+                        //     if(count == file.filePaths.length){
+                        //         that.activeTextFileModel = activeTextFileModel
+                        //         that.fileContainerComponentTab.displayFile(response.model)
+                        //     }
+                        // }else{
+                        //     alert(response.msg)
+                        // }
+                    // })
+                // })
             }
         })
         // ipcRenderer.on('save-theme', async function () {
@@ -139,14 +141,9 @@ class FileContainerView extends View
         })
     }
 
-    newFile(model){
-        new TextFileView(this, model)
-        
-        this.fileContainerComponentTab.subscribePlaceholder(model.namespace)
-        this.fileContainerComponentTab.updatePlaceholder(model)
-        // if (model.namespace == this.activeTextFileModel) {
-        //     this.fileContainerComponentTab.displayFile(model)
-        // }
+    onNewFile(textFileModel){
+        this.fileContainerComponentTab.subscribePlaceholder(textFileModel.namespace)
+        this.fileContainerComponentTab.updatePlaceholder(textFileModel)
     }
 
     onDisplayFile(namespace){
@@ -182,8 +179,8 @@ class FileContainerView extends View
 
 class TextFileView extends View
 {
-    constructor(fileContainerView, model){
-        super(model.namespace, fileContainerView.container)
+    constructor(model){
+        super(model.namespace)
         this.model = model
 
         this.textFileComponentRegisterCompareGraphDialog = new TextFileComponentRegisterCompareGraphDialog(this)

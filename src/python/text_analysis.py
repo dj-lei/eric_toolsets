@@ -20,19 +20,13 @@ class Model(socketio.AsyncNamespace):
     def __init__(self, namespace):
         super().__init__(namespace)
         socket_server.sio.register_namespace(self)
-        pub.subscribe(self.action, self.namespace)
+        self.subscribe_namespace = self.namespace.replace('/','_')[1:]
+        pub.subscribe(self.action, self.subscribe_namespace)
         self.subscribes = []
 
-    # def __init_subclass__(self, **kwargs):
-    #     super().__init_subclass__(**kwargs)
-    #     self.new_view_object(self)
-
-    async def new_view_object(self):
-        await self.emit('newObject', {'className': self.__class__.__name__.replace('Model', 'View') , 'namespace': self.namespace}, namespace=ns.TEXTANALYSIS)
-
-    def action(self, action, arg, topic=pub.AUTO_TOPIC):
-        if topic.getName() != self.namespace:
-            locals()[action](arg)
+    def action(self, action, args, topic=pub.AUTO_TOPIC):
+        if topic.getName() != self.subscribe_namespace:
+            locals()[action](args)
 
     def publish(self): #notice subscriber refresh
         pub.sendMessage(self.namespace, self)
@@ -46,6 +40,9 @@ class Model(socketio.AsyncNamespace):
 
     def refresh(self):
         pass
+
+    async def new_view_object(self):
+        await self.emit('newObject', {'className':self.__class__.__name__.replace('Model', 'View'), 'namespace': self.namespace}, namespace = ns.TEXTANALYSIS)
 
     async def on_hidden(self, sid):
         await self.emit('hidden', namespace=self.namespace)
@@ -81,24 +78,25 @@ class Model(socketio.AsyncNamespace):
 
 
 class TextAnalysisModel(socketio.AsyncNamespace):
-    def __init__(self, namespace=ns.TEXTANALYSIS):
-        super().__init__(namespace)
-        self.file_container_model = FileContainerModel(self)
-
+    def __init__(self):
+        super().__init__(ns.TEXTANALYSIS)
+        FileContainerModel(self)
 
 class FileContainerModel(Model):
     def __init__(self, text_analysis_model):
-        super().__init__("test")
-        self.text_analysis_model = text_analysis_model
+        super().__init__(text_analysis_model.namespace + ns.FILECONTAINER)
         self.text_file_models = {}
         self.active_text_file_model = ''
-        self.new_view_object()
 
-    def on_new_file(self, sid, path):
-        new_file_namespace = self.namespace+'/'+createUuid4()
-        self.active_text_file_model = new_file_namespace
-        self.text_file_models[new_file_namespace] = TextFileModel(self, new_file_namespace, path)
-        return Response(status.SUCCESS, msg.NONE, self.text_file_models[new_file_namespace].model()).__dict__, self.active_text_file_model
+    async def on_new_file(self, sid, file_paths):
+        for path in file_paths:
+            new_file_namespace = self.namespace+'/'+createUuid4()
+            self.active_text_file_model = new_file_namespace
+            
+            self.text_file_models[new_file_namespace] = TextFileModel(new_file_namespace, path)
+            await self.emit('newFile', self.text_file_models[new_file_namespace].model(), namespace=self.namespace)
+            await self.text_file_models[new_file_namespace].new_view_object()
+            # return Response(status.SUCCESS, msg.NONE, self.text_file_models[new_file_namespace].model()).__dict__, self.active_text_file_model
 
     async def on_display_file(self, sid, namespace):
         for text_file_model in self.text_file_models.keys():
@@ -138,9 +136,8 @@ class FileContainerModel(Model):
 
 
 class TextFileModel(Model):
-    def __init__(self, file_container_model, namespace, path):
+    def __init__(self, namespace, path):
         super().__init__(namespace)
-        self.file_container_model = file_container_model
         self.path = path
         self.file_name = path.split('\\')[-1]
         self.config = {}
@@ -209,12 +206,11 @@ class TextFileModel(Model):
 class TextFileOriginalModel(Model):
     def __init__(self, text_file_model):
         super().__init__(text_file_model.namespace+ns.TEXTFILEORIGINAL)
-        self.text_file_model = text_file_model
         self.rateHeight = 1
         self.step = 1
         self.point = 0
         self.range = 60
-        self.count =  len(self.text_file_model.lines)
+        self.count =  len(text_file_model.lines)
         self.exp_mark = False
         self.display_lines = []
 
@@ -257,7 +253,6 @@ class TextFileOriginalModel(Model):
 class TextFileFunctionModel(Model):
     def __init__(self, text_file_model):
         super().__init__(text_file_model.namespace+ns.TEXTFILEFUNCTION)
-        self.text_file_model = text_file_model
         self.rateHeight = 0.5
 
         self.search_function_model = SearchFunctionModel(self)
@@ -295,7 +290,6 @@ class TextFileFunctionModel(Model):
 class SearchFunctionModel(Model):
     def __init__(self, text_file_function_model):
         super().__init__(text_file_function_model.namespace+ns.SEARCHFUNCTION)
-        self.text_file_function_model = text_file_function_model
         self.search_atom_models = {}
         self.tmp_search_atom_model = None
 
@@ -332,7 +326,6 @@ class SearchFunctionModel(Model):
 class ChartFunctionModel(Model):
     def __init__(self, text_file_function_model):
         super().__init__(text_file_function_model.namespace+ns.CHARTFUNCTION)
-        self.text_file_function_model = text_file_function_model
         self.chart_atom_models = {}
         self.tmp_chart_atom_model = None
 
@@ -365,7 +358,6 @@ class ChartFunctionModel(Model):
 class StatisticFunctionModel(Model):
     def __init__(self, text_file_function_model):
         super().__init__(text_file_function_model.namespace+ns.STATISTICFUNCTION)
-        self.text_file_function_model = text_file_function_model
         self.statistic_atom_models = {}
         self.tmp_statistic_atom_model = None
     
