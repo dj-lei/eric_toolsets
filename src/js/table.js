@@ -27,7 +27,7 @@ class TextFileOriginalComponentTable extends Table
 
         let that = this
         this.slider.addEventListener('input', (event) => {
-            that.textFileOriginalView.scroll(parseInt(event.target.value))
+            that.textFileOriginalView.controlScroll(parseInt(event.target.value))
         })
 
         this.table.addEventListener("wheel", function(e){
@@ -36,7 +36,7 @@ class TextFileOriginalComponentTable extends Table
             }else{
                 that.slider.value = parseInt(that.slider.value) + 1
             }
-            that.textFileOriginalView.scroll(parseInt(that.slider.value))
+            that.textFileOriginalView.controlScroll(parseInt(that.slider.value))
             e.preventDefault()
             e.stopPropagation()
         })

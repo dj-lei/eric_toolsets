@@ -39,7 +39,7 @@ class FileContainerComponentTab extends Tab
         title.innerHTML = model.fileName
         title.addEventListener('click', function()
         {
-            that.displayFile(model)
+            that.fileContainerView.controlDisplayFile(model.namespace)
         })
 
         var close = this.createElementButton('X')
@@ -53,10 +53,8 @@ class FileContainerComponentTab extends Tab
 
     displayFile(model)
     {
-        this.tabs[this.fileContainerView.activeTextFileModel].title.style.backgroundColor = "#555"
+        this.tabs[model.activeTextFileModel].title.style.backgroundColor = "#555"
         this.tabs[model.namespace].title.style.backgroundColor = "#333"
-        this.fileContainerView.onDisplayFile(model.namespace)
-        this.fileContainerView.activeTextFileModel = model.namespace
     }
 
     deleteFile(model){

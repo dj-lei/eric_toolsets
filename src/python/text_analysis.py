@@ -20,26 +20,20 @@ class Model(socketio.AsyncNamespace):
     def __init__(self, namespace):
         super().__init__(namespace)
         socket_server.sio.register_namespace(self)
-        self.subscribe_namespace = self.namespace.replace('/','_')[1:]
-        pub.subscribe(self.action, self.subscribe_namespace)
-        self.subscribes = []
+        self.snamespace = self.namespace.replace('/','').lower()
+        # pub.subscribe(self.action, self.snamespace)
+        self.subscribes = {}
 
     def action(self, action, args, topic=pub.AUTO_TOPIC):
         if topic.getName() != self.subscribe_namespace:
             locals()[action](args)
 
     def publish(self): #notice subscriber refresh
-        pub.sendMessage(self.namespace, self)
+        print(self.snamespace)
+        pub.sendMessage(self.snamespace, arg = self)
 
-    def listener(self, obj, topic=pub.AUTO_TOPIC):
-        self.subscribes[topic.getName()] = obj
-        for namespace in self.subscribes.keys():
-            if self.subscribes[namespace] == None:
-                return 
-        self.refresh()
-
-    def refresh(self):
-        pass
+    # def listener(self, obj, topic):
+    #     self.subscribes[topic.getName()] = obj
 
     async def new_view_object(self):
         await self.emit('newObject', {'className':self.__class__.__name__.replace('Model', 'View'), 'namespace': self.namespace}, namespace = ns.TEXTANALYSIS)
@@ -50,37 +44,40 @@ class Model(socketio.AsyncNamespace):
     async def on_display(self, sid):
         await self.emit('display', namespace=self.namespace)
 
-    def subscribe_init(self, namespace):
+    def subscribe_namespace(self, namespace):
+        namespace = namespace.lower()
+        print(namespace)
         self.subscribes[namespace] = None
-        pub.subscribe(self.refresh, namespace)
+        pub.subscribe(self.listener, namespace)
         return self.subscribes[namespace]
 
-    def get_file_container_model(self):
-        return self.subscribe_init('/'.join(self.namespace.split('/')[0:3]))
+    def subscribe_file_container_model(self):
+        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:3]))
 
-    def get_text_file_model(self):
-        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]))
+    def subscribe_text_file_model(self):
+        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]))
 
-    def get_text_file_original_model(self):
-        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEORIGINAL))
+    def subscribe_text_file_original_model(self):
+        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEORIGINAL))
 
-    def get_text_file_function_model(self):
-        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION))
+    def subscribe_text_file_function_model(self):
+        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION))
 
-    def get_search_function_model(self):
-        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.SEARCHFUNCTION))
+    def subscribe_search_function_model(self):
+        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.SEARCHFUNCTION))
 
-    def get_chart_function_model(self):
-        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.CHARTFUNCTION))
+    def subscribe_chart_function_model(self):
+        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.CHARTFUNCTION))
 
-    def get_statistic_function_model(self):
-        return self.subscribe_init('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.STATISTICFUNCTION))
+    def subscribe_statistic_function_model(self):
+        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.STATISTICFUNCTION))
 
 
 class TextAnalysisModel(socketio.AsyncNamespace):
     def __init__(self):
         super().__init__(ns.TEXTANALYSIS)
         FileContainerModel(self)
+
 
 class FileContainerModel(Model):
     def __init__(self, text_analysis_model):
@@ -96,7 +93,23 @@ class FileContainerModel(Model):
             self.text_file_models[new_file_namespace] = TextFileModel(new_file_namespace, path)
             await self.emit('newFile', self.text_file_models[new_file_namespace].model(), namespace=self.namespace)
             await self.text_file_models[new_file_namespace].new_view_object()
-            # return Response(status.SUCCESS, msg.NONE, self.text_file_models[new_file_namespace].model()).__dict__, self.active_text_file_model
+
+            tmp_text_file_original_model = TextFileOriginalModel(self.text_file_models[new_file_namespace])
+            await tmp_text_file_original_model.new_view_object()
+
+            tmp_text_file_function_model = TextFileFunctionModel(self.text_file_models[new_file_namespace])
+            await tmp_text_file_function_model.new_view_object()
+
+            tmp_search_function_model = SearchFunctionModel(tmp_text_file_function_model)
+            await tmp_search_function_model.new_view_object()
+            tmp_chart_function_model = ChartFunctionModel(tmp_text_file_function_model)
+            await tmp_chart_function_model.new_view_object()
+            tmp_statistic_function_model = StatisticFunctionModel(tmp_text_file_function_model)
+            await tmp_statistic_function_model.new_view_object()
+
+            self.text_file_models[new_file_namespace].publish()
+            await tmp_text_file_original_model.on_set_height(sid, 1)
+            await tmp_text_file_original_model.on_scroll(sid, 0)
 
     async def on_display_file(self, sid, namespace):
         for text_file_model in self.text_file_models.keys():
@@ -125,15 +138,6 @@ class FileContainerModel(Model):
     async def on_open_text_file_function(self, sid):
         await self.text_file_models[self.active_text_file_model].on_adjust_view_rate(sid, 0.5)
 
-    async def on_work_flow(self, sid, dir):
-        files = []
-        for file in files:
-            ins = TextFileModel(self, namespace, path)
-            ins.search()
-            ins.draw()
-            ins.statistic()
-            self.emit('refresh', ins.model())
-
 
 class TextFileModel(Model):
     def __init__(self, namespace, path):
@@ -144,19 +148,16 @@ class TextFileModel(Model):
 
         with open(self.path, 'r') as f:
             self.lines = f.readlines()
-        
-        self.text_file_original_model = TextFileOriginalModel(self)
-        self.text_file_function_model = TextFileFunctionModel(self)
 
     def model(self):
         return {'namespace': self.namespace, 'fileName':self.file_name, 'path': self.path, 'config': self.config}
 
-    async def delete(self):
+    async def on_delete(self):
         await self.emit('delete', namespace=self.namespace)
         self.file_container_model.text_file_models[self.namespace] = ''
         del self.file_container_model.text_file_models[self.namespace]
         
-    def get_config(self):
+    def on_get_config(self):
         self.config['search'] = []
         self.config['chart'] = []
         self.config['statistic'] = []
@@ -178,7 +179,7 @@ class TextFileModel(Model):
             self.config['statistic'].append(tmp)
         return Response(status.SUCCESS, msg.NONE, self.config).__dict__
 
-    async def load_config(self, sid, config):
+    async def on_load_config(self, sid, config):
         self.path = config[0]
         self.config = json.loads(config[1])
         search_atom_models = self.config['search']
@@ -213,9 +214,14 @@ class TextFileOriginalModel(Model):
         self.count =  len(text_file_model.lines)
         self.exp_mark = False
         self.display_lines = []
+        self.text_file_model = self.subscribe_text_file_model()
 
     def model(self):
-        return {'rateHeight': self.rateHeight, 'point': self.point, 'range': self.range, 'count': self.count, 'displayLines': self.display_lines}
+        return {'namespace': self.namespace, 'rateHeight': self.rateHeight, 'point': self.point, 'range': self.range, 'count': self.count, 'displayLines': self.display_lines}
+
+    def listener(self, arg, topic=pub.AUTO_TOPIC):
+        self.text_file_model = arg
+        self.subscribes[topic.getName()] = arg
 
     async def on_scroll(self, sid, point):
         # def word_color_replace(word):
@@ -243,6 +249,7 @@ class TextFileOriginalModel(Model):
 
         #         reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.searchs[uid].cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
         #         lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
+        print(self.namespace)
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def on_set_height(self, sid, rate):
@@ -255,12 +262,8 @@ class TextFileFunctionModel(Model):
         super().__init__(text_file_model.namespace+ns.TEXTFILEFUNCTION)
         self.rateHeight = 0.5
 
-        self.search_function_model = SearchFunctionModel(self)
-        self.chart_function_model = ChartFunctionModel(self)
-        self.statistic_function_model = StatisticFunctionModel(self)
-
     def model(self):
-        return {'rateHeight': self.rateHeight}
+        return {'namespace': self.namespace, 'rateHeight': self.rateHeight}
 
     async def on_set_height(self, sid, rate):
         self.rateHeight = rate

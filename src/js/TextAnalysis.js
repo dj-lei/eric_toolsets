@@ -12,7 +12,10 @@ import { ChartAtomComponentSequentialChart } from './chart'
 import { StatisticAtomComponentCustom } from './custom'
 // import { TextLogicFlow } from './flow'
 
+import common from '@/plugins/common'
+
 const fs = require('fs')
+
 
 class TextAnalysisView extends View
 {
@@ -24,11 +27,25 @@ class TextAnalysisView extends View
     }
 
     onNewObject(args){
-        window[args.className](args)
-    }
-
-    printHtml(){
-        console.log(this.container)
+        if (args.className == 'TextFileView') {
+            new TextFileView(args.namespace)
+        }else if (args.className == 'TextFileOriginalView') {
+            new TextFileOriginalView(args.namespace)
+        }else if (args.className == 'TextFileFunctionView') {
+            new TextFileFunctionView(args.namespace)
+        }else if (args.className == 'SearchFunctionView') {
+            new SearchFunctionView(args.namespace)
+        }else if (args.className == 'ChartFunctionView') {
+            new ChartFunctionView(args.namespace)
+        }else if (args.className == 'StatisticFunctionView') {
+            new StatisticFunctionView(args.namespace)
+        }else if (args.className == 'SearchAtomView') {
+            new SearchAtomView(args.namespace)
+        }else if (args.className == 'ChartAtomView') {
+            new ChartAtomView(args.namespace)
+        }else if (args.className == 'StatisticAtomView') {
+            new StatisticAtomView(args.namespace)
+        }
     }
 
     initMenu(){
@@ -85,30 +102,12 @@ class FileContainerView extends View
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.FILECONTAINER}`, textAnalysisView.container)
         this.fileContainerComponentTab = new FileContainerComponentTab(this)
-        this.activeTextFileModel = ''
         let that = this
         
         ipcRenderer.on('open-file', async function () {
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
-                var count = 0
                 that.socket.emit("new_file", file.filePaths)
-                // file.filePaths.forEach((path) => {
-                    
-                    // that.socket.emit("new_file", path, (response, activeTextFileModel) => {
-                        // if(response.status == status.SUCCESS){
-                        //     count = count + 1
-                            
-                        //     that.newFile(response.model)
-                        //     if(count == file.filePaths.length){
-                        //         that.activeTextFileModel = activeTextFileModel
-                        //         that.fileContainerComponentTab.displayFile(response.model)
-                        //     }
-                        // }else{
-                        //     alert(response.msg)
-                        // }
-                    // })
-                // })
             }
         })
         // ipcRenderer.on('save-theme', async function () {
@@ -120,25 +119,59 @@ class FileContainerView extends View
         //     }
         // })
         ipcRenderer.on('export-config', async () => {
-            await that.getConfig()
+            await that.controlGetConfig()
         })
         ipcRenderer.on('import-config', async () => {
             let config = await ipcRenderer.invoke('import-config')
-            that.loadConfig(config)
+            that.controlLoadConfig(config)
         })
         ipcRenderer.on('new-search', () => {
-            that.newSearch()
+            that.controlNewSearch()
         })
         ipcRenderer.on('new-chart', () => {
-            that.newChart()
+            that.controlNewChart()
         })
         ipcRenderer.on('new-statistic', () => {
-            that.newStatistic()
+            that.controlNewStatistic()
         })
         ipcRenderer.on('open-func-area', () => {
-            // that.printHtml()
-            that.socket.emit("open_text_file_function")
+            that.printHtml()
+            // that.controlDisplayTextFileFunction()
         })
+    }
+
+    printHtml(){
+        console.log(this.container)
+    }
+
+    controlDisplayFile(namespace){
+        this.socket.emit("display_file", namespace)
+    }
+
+    controlGetConfig(){
+        this.socket.emit("get_config", async (response) => {
+            await ipcRenderer.invoke('export-config', JSON.stringify(response.model))
+        })
+    }
+
+    controlLoadConfig(config){
+        this.socket.emit("load_config", config)
+    }
+
+    controlNewSearch(){
+        this.socket.emit("new_search")
+    }
+
+    controlNewChart(){
+        this.socket.emit("new_chart")
+    }
+
+    controlNewStatistic(){
+        this.socket.emit("new_statistic")
+    }
+
+    controlDisplayTextFileFunction(){
+        this.socket.emit("display_text_file_function")
     }
 
     onNewFile(textFileModel){
@@ -146,51 +179,26 @@ class FileContainerView extends View
         this.fileContainerComponentTab.updatePlaceholder(textFileModel)
     }
 
-    onDisplayFile(namespace){
-        this.socket.emit("display_file", namespace)
+    onDisplayFile(textFileModel){
+        this.fileContainerComponentTab.displayFile(textFileModel)
     }
 
     onDisplayCompareGraphDialog(chartAtomModel){
         this.fileContainerComponentRegisterCompareGraphDialog.update(chartAtomModel)
     }
-
-    getConfig(){
-        this.socket.emit("get_config", async (response) => {
-            await ipcRenderer.invoke('export-config', JSON.stringify(response.model))
-        })
-    }
-
-    loadConfig(config){
-        this.socket.emit("load_config", config)
-    }
-
-    newSearch(){
-        this.socket.emit("new_search")
-    }
-
-    newChart(){
-        this.socket.emit("new_chart")
-    }
-
-    newStatistic(){
-        this.socket.emit("new_statistic")
-    }
 }
 
 class TextFileView extends View
 {
-    constructor(model){
-        super(model.namespace)
-        this.model = model
-
-        this.textFileComponentRegisterCompareGraphDialog = new TextFileComponentRegisterCompareGraphDialog(this)
-        new TextFileOriginalView(this)
-        new TextFileFunctionView(this)
+    constructor(namespace){
+        super(namespace, common.getParentContainer(namespace))
+        
+        // this.textFileComponentRegisterCompareGraphDialog = new TextFileComponentRegisterCompareGraphDialog(this)
     }
 
-    registerCompareGraph(compareGraph){
-        this.socket.emit("register_compare_graph", compareGraph)
-    }
+    // registerCompareGraph(compareGraph){
+    //     this.socket.emit("register_compare_graph", compareGraph)
+    // }
 
     onDelete(){
         super.delete()
@@ -199,16 +207,16 @@ class TextFileView extends View
 
 class TextFileOriginalView extends View
 {
-    constructor(textFileView){
-        super(`${textFileView.namespace}${ns.TEXTFILEORIGINAL}`, textFileView.container)
+    constructor(namespace){
+        super(namespace, common.getParentContainer(namespace))
         this.textFileOriginalComponentTable = new TextFileOriginalComponentTable(this)
         
         this.container.style.border = '1px solid #ddd'
-        this.socket.emit("set_height", 1)
-        this.scroll(0)
+        
+        console.log(this.socket.connected)
     }
 
-    scroll(point){
+    controlScroll(point){
         this.socket.emit("scroll", point)
     }
 
@@ -219,22 +227,20 @@ class TextFileOriginalView extends View
     }
 
     onRefresh(model){
+        console.log(model)
         this.textFileOriginalComponentTable.refresh(model)
     }
 }
 
 class TextFileFunctionView extends View
 {
-    constructor(textFileView){
-        super(`${textFileView.namespace}${ns.TEXTFILEFUNCTION}`, textFileView.container)
+    constructor(namespace){
+        super(namespace, common.getParentContainer(namespace))
 
         this.container.style.border = '1px solid #ddd'
         this.container.style.height = '0px'
         this.textFileFunctionComponentTab = new TextFileFunctionComponentTab(this)
         this.textFileFunctionComponentTab.searchTitle.style.backgroundColor = '#333'
-        new SearchFunctionView(this)
-        new ChartFunctionView(this)
-        new StatisticFunctionView(this)
     }
 
     onSetHeight(model){
@@ -257,9 +263,8 @@ class TextFileFunctionView extends View
 
 class SearchFunctionView extends View
 {
-    constructor(textFileFunctionView){
-        super(`${textFileFunctionView.namespace}${ns.SEARCHFUNCTION}`, textFileFunctionView.container)
-
+    constructor(namespace){
+        super(namespace, common.getParentContainer(namespace))
         this.searchFunctionComponentList = new SearchFunctionComponentList(this)
     }
 
@@ -274,8 +279,8 @@ class SearchFunctionView extends View
 
 class ChartFunctionView extends View
 {
-    constructor(textFileFunctionView){
-        super(`${textFileFunctionView.namespace}${ns.CHARTFUNCTION}`, textFileFunctionView.container)
+    constructor(namespace){
+        super(namespace, common.getParentContainer(namespace))
         this.chartFunctionComponentList = new ChartFunctionComponentList(this)
     }
 
@@ -290,8 +295,8 @@ class ChartFunctionView extends View
 
 class StatisticFunctionView extends View
 {
-    constructor(textFileFunctionView){
-        super(`${textFileFunctionView.namespace}${ns.STATISTICFUNCTION}`, textFileFunctionView.container)
+    constructor(namespace){
+        super(namespace, common.getParentContainer(namespace))
         this.statisticFunctionComponentList = new StatisticFunctionComponentList(this)
     }
 
@@ -306,8 +311,8 @@ class StatisticFunctionView extends View
 
 class SearchAtomView extends View
 {
-    constructor(model, container){
-        super(model.namespace, container)
+    constructor(namespace){
+        super(namespace, document.getElementById(namespace))
         this.model = model
 
         this.searchAtomComponentDialog = new SearchAtomComponentDialog(this)
@@ -349,8 +354,8 @@ class SearchAtomView extends View
 
 class ChartAtomView extends View
 {
-    constructor(model, container){
-        super(model.namespace, container)
+    constructor(namespace){
+        super(namespace, document.getElementById(namespace))
         this.model = model
         this.chartAtomComponentSvgDialog = new ChartAtomComponentSvgDialog(this)
         this.chartAtomComponentSvg = new ChartAtomComponentSvg(this, this.chartAtomComponentSvgDialog.subContainer)
@@ -386,8 +391,8 @@ class ChartAtomView extends View
 
 class StatisticAtomView extends View
 {
-    constructor(model, container){
-        super(model.namespace, container)
+    constructor(namespace){
+        super(namespace, document.getElementById(namespace))
         this.model = model
         this.statisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
         this.statisticAtomComponentCustom = new StatisticAtomComponentCustom(this)

@@ -34,10 +34,10 @@ class Element
 
 class View extends Element
 {
-    constructor(namespace){
-        super(document.getElementById(namespace))
+    constructor(namespace, position){
+        super(position)
         this.namespace = namespace
-        this.container.setAttribute("name", this.namespace)
+        this.container.id = this.namespace
         this.socket = io(`${server}${this.namespace}`)
 
         var funcs = common.arrayExtend(Object.getOwnPropertyNames(Object.getPrototypeOf(this)), Object.getOwnPropertyNames(Object.getPrototypeOf(this.__proto__)))
