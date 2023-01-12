@@ -212,8 +212,7 @@ class TextFileOriginalView extends View
         this.textFileOriginalComponentTable = new TextFileOriginalComponentTable(this)
         
         this.container.style.border = '1px solid #ddd'
-        
-        console.log(this.socket.connected)
+        this.controlScroll(0)
     }
 
     controlScroll(point){
@@ -226,7 +225,7 @@ class TextFileOriginalView extends View
         this.textFileOriginalComponentTable.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
     }
 
-    onRefresh(model){
+    onRefreshTable(model){
         console.log(model)
         this.textFileOriginalComponentTable.refresh(model)
     }

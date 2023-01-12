@@ -9,6 +9,22 @@ ns = json_to_object(json.load(open('../config/namespace.json')))
 status = json_to_object(json.load(open('../config/status.json')))
 msg = json_to_object(json.load(open('../config/msg.json')))
 
+class PubSub(socketio.AsyncNamespace):
+    def __init__(self):
+        self.room = {}
+
+    def subscribe(self, func, namespace):
+        if namespace not in self.room:
+            self.room[namespace] = []
+        self.room[namespace].append(func)
+
+    async def publish(self, namespace, args):
+        if namespace in self.room:
+            for func in self.room[namespace]:
+                await func(args)
+
+pub = PubSub()
+
 class Response(object):
     def __init__(self, status, msg, model):
         self.status = status
@@ -20,17 +36,16 @@ class Model(socketio.AsyncNamespace):
     def __init__(self, namespace):
         super().__init__(namespace)
         socket_server.sio.register_namespace(self)
-        self.snamespace = self.namespace.replace('/','').lower()
-        # pub.subscribe(self.action, self.snamespace)
+        # pub.subscribe(self.action, self.namespace)
         self.subscribes = {}
 
-    def action(self, action, args, topic=pub.AUTO_TOPIC):
-        if topic.getName() != self.subscribe_namespace:
-            locals()[action](args)
+    # def action(self, action, args, topic=pub.AUTO_TOPIC):
+    #     if topic.getName() != self.subscribe_namespace:
+    #         locals()[action](args)
 
-    def publish(self): #notice subscriber refresh
-        print(self.snamespace)
-        pub.sendMessage(self.snamespace, arg = self)
+    async def publish(self): #notice subscriber refresh
+        print(self.namespace)
+        await pub.publish(self.namespace, self)
 
     # def listener(self, obj, topic):
     #     self.subscribes[topic.getName()] = obj
@@ -45,32 +60,30 @@ class Model(socketio.AsyncNamespace):
         await self.emit('display', namespace=self.namespace)
 
     def subscribe_namespace(self, namespace):
-        namespace = namespace.lower()
-        print(namespace)
         self.subscribes[namespace] = None
         pub.subscribe(self.listener, namespace)
         return self.subscribes[namespace]
 
     def subscribe_file_container_model(self):
-        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:3]))
+        return self.subscribe_namespace('/'.join(self.namespace.split('/')[0:3]))
 
     def subscribe_text_file_model(self):
-        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]))
+        return self.subscribe_namespace('/'.join(self.namespace.split('/')[0:4]))
 
     def subscribe_text_file_original_model(self):
-        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEORIGINAL))
+        return self.subscribe_namespace('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEORIGINAL))
 
     def subscribe_text_file_function_model(self):
-        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION))
+        return self.subscribe_namespace('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION))
 
     def subscribe_search_function_model(self):
-        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.SEARCHFUNCTION))
+        return self.subscribe_namespace('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.SEARCHFUNCTION))
 
     def subscribe_chart_function_model(self):
-        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.CHARTFUNCTION))
+        return self.subscribe_namespace('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.CHARTFUNCTION))
 
     def subscribe_statistic_function_model(self):
-        return self.subscribe_namespace(''.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.STATISTICFUNCTION))
+        return self.subscribe_namespace('/'.join(self.namespace.split('/')[0:4]+ns.TEXTFILEFUNCTION+ns.STATISTICFUNCTION))
 
 
 class TextAnalysisModel(socketio.AsyncNamespace):
@@ -93,6 +106,7 @@ class FileContainerModel(Model):
             self.text_file_models[new_file_namespace] = TextFileModel(new_file_namespace, path)
             await self.emit('newFile', self.text_file_models[new_file_namespace].model(), namespace=self.namespace)
             await self.text_file_models[new_file_namespace].new_view_object()
+            # await self.text_file_models[new_file_namespace].on_delete()
 
             tmp_text_file_original_model = TextFileOriginalModel(self.text_file_models[new_file_namespace])
             await tmp_text_file_original_model.new_view_object()
@@ -107,9 +121,7 @@ class FileContainerModel(Model):
             tmp_statistic_function_model = StatisticFunctionModel(tmp_text_file_function_model)
             await tmp_statistic_function_model.new_view_object()
 
-            self.text_file_models[new_file_namespace].publish()
-            await tmp_text_file_original_model.on_set_height(sid, 1)
-            await tmp_text_file_original_model.on_scroll(sid, 0)
+            await self.text_file_models[new_file_namespace].publish()
 
     async def on_display_file(self, sid, namespace):
         for text_file_model in self.text_file_models.keys():
@@ -152,10 +164,11 @@ class TextFileModel(Model):
     def model(self):
         return {'namespace': self.namespace, 'fileName':self.file_name, 'path': self.path, 'config': self.config}
 
-    async def on_delete(self):
-        await self.emit('delete', namespace=self.namespace)
-        self.file_container_model.text_file_models[self.namespace] = ''
-        del self.file_container_model.text_file_models[self.namespace]
+    async def on_delete(self, sid):
+        print('-------------!!!---------')
+        # await self.emit('delete', namespace=self.namespace)
+        # self.file_container_model.text_file_models[self.namespace] = ''
+        # del self.file_container_model.text_file_models[self.namespace]
         
     def on_get_config(self):
         self.config['search'] = []
@@ -219,9 +232,9 @@ class TextFileOriginalModel(Model):
     def model(self):
         return {'namespace': self.namespace, 'rateHeight': self.rateHeight, 'point': self.point, 'range': self.range, 'count': self.count, 'displayLines': self.display_lines}
 
-    def listener(self, arg, topic=pub.AUTO_TOPIC):
+    async def listener(self, arg):
         self.text_file_model = arg
-        self.subscribes[topic.getName()] = arg
+        # self.subscribes[topic.getName()] = arg
 
     async def on_scroll(self, sid, point):
         # def word_color_replace(word):
@@ -249,8 +262,7 @@ class TextFileOriginalModel(Model):
 
         #         reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.searchs[uid].cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
         #         lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
-        print(self.namespace)
-        await self.emit('refresh', self.model(), namespace=self.namespace)
+        await self.emit('refreshTable', self.model(), namespace=self.namespace)
 
     async def on_set_height(self, sid, rate):
         self.rateHeight = rate
