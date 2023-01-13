@@ -117,7 +117,7 @@ class TextFileFunctionComponentTab extends Tab
         })
     }
 
-    openFunction(func)
+    displayFunction(func)
     {
         if(func == 'search'){
             this.searchTitle.style.backgroundColor = '#333'

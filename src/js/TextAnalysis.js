@@ -40,7 +40,7 @@ class TextAnalysisView extends View
         }else if (args.className == 'StatisticFunctionView') {
             new StatisticFunctionView(args.namespace)
         }else if (args.className == 'SearchAtomView') {
-            new SearchAtomView(args.namespace)
+            new SearchAtomView(args.namespace, args.model)
         }else if (args.className == 'ChartAtomView') {
             new ChartAtomView(args.namespace)
         }else if (args.className == 'StatisticAtomView') {
@@ -150,7 +150,11 @@ class FileContainerView extends View
 
     controlGetConfig(){
         this.socket.emit("get_config", async (response) => {
-            await ipcRenderer.invoke('export-config', JSON.stringify(response.model))
+            if(response.status == status.SUCCESS){
+                await ipcRenderer.invoke('export-config', JSON.stringify(response.model))
+            }else{
+                alert(response.msg)
+            }
         })
     }
 
@@ -194,6 +198,7 @@ class TextFileView extends View
         super(namespace, common.getParentContainer(namespace))
         
         // this.textFileComponentRegisterCompareGraphDialog = new TextFileComponentRegisterCompareGraphDialog(this)
+        this.socket.emit("publish")
     }
 
     // registerCompareGraph(compareGraph){
@@ -212,7 +217,7 @@ class TextFileOriginalView extends View
         this.textFileOriginalComponentTable = new TextFileOriginalComponentTable(this)
         
         this.container.style.border = '1px solid #ddd'
-        this.controlScroll(0)
+        // this.controlScroll(0)
     }
 
     controlScroll(point){
@@ -226,7 +231,6 @@ class TextFileOriginalView extends View
     }
 
     onRefreshTable(model){
-        console.log(model)
         this.textFileOriginalComponentTable.refresh(model)
     }
 }
@@ -240,23 +244,23 @@ class TextFileFunctionView extends View
         this.container.style.height = '0px'
         this.textFileFunctionComponentTab = new TextFileFunctionComponentTab(this)
         this.textFileFunctionComponentTab.searchTitle.style.backgroundColor = '#333'
+        this.controlHidden()
+    }
+
+    controlHidden(){
+        this.socket.emit("hidden")
+    }
+
+    controlSelectFunction(func){
+        this.socket.emit("select_function", func)
+    }
+
+    onDisplayFunction(func){
+        this.textFileFunctionComponentTab.displayFunction(func)
     }
 
     onSetHeight(model){
         this.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
-    }
-
-    onOpenFunction(func){
-        this.textFileFunctionComponentTab.openFunction(func)
-    }
-
-    onSelectFunction(func){
-        this.textFileFunctionComponentTab.openFunction(func)
-        this.socket.emit("select", func)
-    }
-
-    hidden(){
-        this.socket.emit("hidden")
     }
 }
 
@@ -269,10 +273,6 @@ class SearchFunctionView extends View
 
     onNewSearch(model){
         this.searchFunctionComponentList.subscribePlaceholder(model.namespace)
-        var tmpSearchAtomView = new SearchAtomView(model, this.searchFunctionComponentList.getPlaceholder(model.namespace))
-        if (model.expSearch != '') {
-            tmpSearchAtomView.search(model)
-        }
     }
 }
 
@@ -310,31 +310,29 @@ class StatisticFunctionView extends View
 
 class SearchAtomView extends View
 {
-    constructor(namespace){
+    constructor(namespace, model){
         super(namespace, document.getElementById(namespace))
-        this.model = model
 
         this.searchAtomComponentDialog = new SearchAtomComponentDialog(this)
         this.searchAtomComponentTable = new SearchAtomComponentTable(this)
 
-        this.onDisplayDialog()
+        if(model.expSearch != ''){
+            this.controlSearch(model)
+        }else{
+            this.onDisplayDialog()
+        }
     }
 
-    search(model){
+    controlSearch(model){
         this.socket.emit("search", model)
         this.searchAtomComponentDialog.hidden()
     }
 
-    scroll(point){
+    controlScroll(point){
         this.socket.emit("scroll", point)
     }
 
-    onDelete(){
-        super.delete()
-        this.socket.emit("delete")
-    }
-
-    onRefresh(model){
+    onRefreshTable(model){
         this.model = model
         if (!this.searchAtomComponentDialog.alias.value){
             this.onUpdateDialog(model)
@@ -348,6 +346,11 @@ class SearchAtomView extends View
 
     onUpdateDialog(model){
         this.searchAtomComponentDialog.update(model)
+    }
+
+    onDelete(){
+        super.delete()
+        this.socket.emit("delete")
     }
 }
 

@@ -179,7 +179,7 @@ class SearchAtomComponentDialog extends Dialog
             exp_extract: this.getExpExtractList(),
             exp_mark: this.getExpMarkList(),
         }
-        this.searchAtomView.search(model)
+        this.searchAtomView.controlSearch(model)
     }
 
     update(model){

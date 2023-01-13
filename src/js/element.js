@@ -50,6 +50,8 @@ class View extends Element
                 })
             }
         })
+
+        this.socket.emit("connected", this.namespace)
     }
 
     onDisplay(){

@@ -120,7 +120,7 @@ class SearchAtomComponentTable extends Table
         })
 
         this.slider.addEventListener('input', (event) => {
-            that.searchAtomView.scroll(parseInt(event.target.value))
+            that.searchAtomView.controlScroll(parseInt(event.target.value))
         })
 
         this.table.addEventListener("wheel", function(e){
@@ -129,7 +129,7 @@ class SearchAtomComponentTable extends Table
             }else{
                 that.slider.value = parseInt(that.slider.value) + 1
             }
-            that.searchAtomView.scroll(parseInt(that.slider.value))
+            that.searchAtomView.controlScroll(parseInt(that.slider.value))
             e.preventDefault()
             e.stopPropagation()
         })

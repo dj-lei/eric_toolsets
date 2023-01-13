@@ -13,13 +13,13 @@ class List extends Component
 
     subscribePlaceholder(namespace){
         var li = this.createElementLi()
-        li.setAttribute("name", namespace)
+        li.id = namespace
         this.ul.append(li)
     }
 
-    getPlaceholder(namespace){
-        return this.locateChildElement(this.ul, 'li', namespace)
-    }
+    // getPlaceholder(namespace){
+    //     return this.locateChildElement(this.ul, 'li', namespace)
+    // }
 }
 
 class SearchFunctionComponentList extends List
