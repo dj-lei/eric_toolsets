@@ -337,17 +337,17 @@ class StatisticAtomComponentDialog extends Dialog
         this.subContainer.appendChild(codeContainer)
 
         //******************** graph *******************/
-        var graphContainer = this.createElementDiv()
-        var graphSelect = this.createElementSelect()
-        this.graph = new SequentialChart(this.container)
+        // var graphContainer = this.createElementDiv()
+        // var graphSelect = this.createElementSelect()
+        // this.graph = new SequentialChart(this.container)
 
-        for (x in graphAlias) {
-            graphSelect.options[graphSelect.options.length] = new Option(x, x)
-        }
-        graphSelect.onchange = function() {
-            that.statisticAtomView.getCompareGraph(graphAlias[this.value])
-        }
-        graphContainer.appendChild(graphSelect)
+        // for (x in graphAlias) {
+        //     graphSelect.options[graphSelect.options.length] = new Option(x, x)
+        // }
+        // graphSelect.onchange = function() {
+        //     that.statisticAtomView.getCompareGraph(graphAlias[this.value])
+        // }
+        // graphContainer.appendChild(graphSelect)
 
         this.select.onchange = function() {
             if (types[this.value] == 'code') {
@@ -367,7 +367,7 @@ class StatisticAtomComponentDialog extends Dialog
             desc: this.desc.value,
             exp: this.exp.value,
         }
-        this.statisticAtomView.statistic(model)
+        this.statisticAtomView.controlStatistic(model)
     }
 
     update(model){

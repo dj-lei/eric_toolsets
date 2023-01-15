@@ -77,7 +77,7 @@ class TextFileFunctionComponentTab extends Tab
         this.searchTitle.innerHTML = 'Search'
         this.searchTitle.addEventListener('click', function()
         {
-            that.textFileFunctionView.onSelectFunction('search')
+            that.textFileFunctionView.controlSelectFunction('search')
         })
 
         this.subscribePlaceholder('Chart')
@@ -89,7 +89,7 @@ class TextFileFunctionComponentTab extends Tab
         this.chartTitle.innerHTML = 'Chart'
         this.chartTitle.addEventListener('click', function()
         {
-            that.textFileFunctionView.onSelectFunction('chart')
+            that.textFileFunctionView.controlSelectFunction('chart')
         })
 
         this.subscribePlaceholder('Statistic')
@@ -100,7 +100,7 @@ class TextFileFunctionComponentTab extends Tab
         this.statisticTitle.innerHTML = 'Statistic'
         this.statisticTitle.addEventListener('click', function()
         {
-            that.textFileFunctionView.onSelectFunction('statistic')
+            that.textFileFunctionView.controlSelectFunction('statistic')
         })
 
         this.subscribePlaceholder('Hidden')
@@ -113,7 +113,7 @@ class TextFileFunctionComponentTab extends Tab
         hidden.fontSize = '30px'
         hidden.innerHTML = '-'
         hidden.addEventListener("click", function() {
-            that.textFileFunctionView.hidden()
+            that.textFileFunctionView.controlHidden()
         })
     }
 

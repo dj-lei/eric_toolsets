@@ -42,9 +42,9 @@ class TextAnalysisView extends View
         }else if (args.className == 'SearchAtomView') {
             new SearchAtomView(args.namespace, args.model)
         }else if (args.className == 'ChartAtomView') {
-            new ChartAtomView(args.namespace)
+            new ChartAtomView(args.namespace, args.model)
         }else if (args.className == 'StatisticAtomView') {
-            new StatisticAtomView(args.namespace)
+            new StatisticAtomView(args.namespace, args.model)
         }
     }
 
@@ -285,10 +285,6 @@ class ChartFunctionView extends View
 
     onNewChart(model){
         this.chartFunctionComponentList.subscribePlaceholder(model.namespace)
-        var tmpChartAtomView = new ChartAtomView(model, this.chartFunctionComponentList.getPlaceholder(model.namespace))
-        if (!model.selectLines) {
-            tmpChartAtomView.apply(model)
-        }
     }
 }
 
@@ -301,10 +297,6 @@ class StatisticFunctionView extends View
 
     onNewStatistic(model){
         this.statisticFunctionComponentList.subscribePlaceholder(model.namespace)
-        var tmpStatisticAtomView = new StatisticAtomView(model, this.statisticFunctionComponentList.getPlaceholder(model.namespace))
-        if (model.exp != '') {
-            tmpStatisticAtomView.statistic(model)
-        }
     }
 }
 
@@ -356,22 +348,28 @@ class SearchAtomView extends View
 
 class ChartAtomView extends View
 {
-    constructor(namespace){
+    constructor(namespace, model){
         super(namespace, document.getElementById(namespace))
         this.model = model
+
         this.chartAtomComponentSvgDialog = new ChartAtomComponentSvgDialog(this)
         this.chartAtomComponentSvg = new ChartAtomComponentSvg(this, this.chartAtomComponentSvgDialog.subContainer)
         this.chartAtomComponentSequentialChart = new ChartAtomComponentSequentialChart(this)
 
-        this.onDisplayDialog()
+        this.chartAtomComponentSvg.draw(this.model.keyValueTree)
+        if(!model.selectLines){
+            this.controlDraw(model)
+        }else{
+            this.onDisplayDialog()
+        }
     }
 
-    apply(model){
+    controlDraw(model){
         this.chartAtomComponentSvgDialog.hidden()
         this.socket.emit("draw", model)
     }
 
-    onRefresh(model){
+    onRefreshChart(model){
         this.model = model
         this.onUpdateDialog()
         this.chartAtomComponentSequentialChart.refresh(this.model.selectLines)
@@ -393,25 +391,29 @@ class ChartAtomView extends View
 
 class StatisticAtomView extends View
 {
-    constructor(namespace){
+    constructor(namespace, model){
         super(namespace, document.getElementById(namespace))
-        this.model = model
+
         this.statisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
         this.statisticAtomComponentCustom = new StatisticAtomComponentCustom(this)
 
-        this.onDisplayDialog()
+        if(model.exp != ''){
+            this.controlSearch(model)
+        }else{
+            this.onDisplayDialog()
+        }
     }
 
-    statistic(model){
+    controlStatistic(model){
         this.statisticAtomComponentDialog.hidden()
         this.socket.emit("statistic", model)
     }
 
-    getCompareGraph(alias){
+    controlGetCompareGraph(alias){
         this.socket.emit("get_compare_graph", alias)
     }
 
-    onRefresh(model){
+    onRefreshTable(model){
         this.model = model
         this.statisticAtomComponentCustom.refresh(this.model)
     }

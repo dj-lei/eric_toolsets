@@ -256,7 +256,7 @@ class ChartAtomComponentSvg extends svg
             alias: "sss",
             key_value_tree: this.chartAtomView.model.keyValueTree,
         }
-        this.chartAtomView.apply(model)
+        this.chartAtomView.controlDraw(model)
     }
 
 }
