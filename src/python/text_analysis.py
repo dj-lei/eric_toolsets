@@ -760,17 +760,29 @@ class StatisticAtomModel(Model):
 class InsightAtomModel(Model):
     def __init__(self, namespace):
         super().__init__(namespace)
-
         self.alias = ''
-        self.exp = ''
-        self.exp_optimized = ''
-        self.result = ''
-        self.type = 'code'
+        self.exp_search = ''
+        self.exp_extract = ''
+        self.exp_mark = ''
+        self.is_case_sensitive = True
 
-        self.first_graph = []
-        self.second_graph = []
+        self.forward_rows = 0
+        self.backward_rows = 0
 
-        self.search_function_model = self.subscribe_namespace(self.get_search_function_model_namespace())
+        self.forward_range = 60
+        self.backward_range = 2
+        self.number = 0
+
+        self.count = 0
+        self.res_search_units = []
+        self.res_key_value = {}
+        self.res_lines = []
+        self.res_mark = {}
+        self.res_residue_marks = []
+
+        self.compare_graphs = []
+        self.text_file_model = self.subscribe_namespace(self.get_text_file_model_namespace())
+        self.outlier = []
 
     def model(self):
         return {'namespace': self.namespace, 'alias': self.alias, 'exp': self.exp, 'result':self.result, 'compareGraph': self.second_graph}
@@ -778,7 +790,7 @@ class InsightAtomModel(Model):
     async def listener(self, subscribe_namespace):
         pass
 
-    async def on_Insight(Model):
+    async def on_insight(self, sid, model):
         #1. 选择Mark之前的时间范围
         #2. 萃取Key value
         #3. 移除Key value后为Mark
@@ -791,4 +803,160 @@ class InsightAtomModel(Model):
         #5. 将mark与历史mark对比, 特殊打印
         #6. 将异常KV,MARK按时间先后绘图, 预测异常kv, mark. root cause
         #7. 可基于条件编辑类型.
-        pass
+        
+        self.__dict__.update(model)
+        self.insight()
+        await self.send_message(sid, self.get_insight_function_model_namespace(), 'register_new_insight', self)
+
+    def insight(self):
+        self.search()
+
+        timestamp = ''
+        forward_time = ''
+        backward_time = ''
+        for mark in self.res_mark.keys():
+            timestamp = dp(self.res_mark[mark]['timestamp'][self.number])
+            forward_time = timestamp - timedelta(seconds=self.forward_range)
+            backward_time = timestamp + timedelta(seconds=self.backward_range)
+
+        res_residue_marks = pd.DataFrame(self.res_residue_marks)
+        indices = get_points_in_time_range(str(forward_time), str(backward_time), list(res_residue_marks.timestamp.values))
+        self.outlier.extend(self.judge_mark_outlier(res_residue_marks, indices))
+
+        for key in self.res_key_value.keys():
+            if (len(self.res_key_value[key]['global_index']) > 0):
+                indices = get_points_in_time_range(str(forward_time), str(backward_time), self.res_key_value[key]['timestamp'])
+                if (self.res_key_value[key]['type'] == 'str'):
+                    outlier = self.judge_discrete_key_value_outlier(pd.DataFrame(self.res_key_value[key]), indices)
+                else:
+                    outlier = []
+                    # outlier = self.judge_consecutive_key_value_outlier(pd.DataFrame(res_key_value[key]), indices)
+                self.outlier.extend(outlier)
+
+        self.res_key_value = json_to_object(self.res_key_value)
+
+    def search(self):
+        self.res_search_units = []
+
+        for index, line in enumerate(self.text_file_model.lines):
+            if self.is_case_sensitive:
+                if len(re.findall(self.exp_search, line)) > 0:
+                    self.res_search_units.append([index+self.backward_rows, index+self.forward_rows])
+            else:
+                pass
+
+        self.fuzzy_extract()
+        for unit in self.res_search_units:
+            self.res_lines.extend(unit)
+        self.count = len(self.res_search_units)
+        self.res_lines = sorted(set(self.res_lines),key=self.res_lines.index)
+
+    def fuzzy_extract(self):
+        def self_clean_special_symbols(text, symbol):
+            for ch in ['::', '/','*','{','}','[',']','(',')','#','+','-','!',';',',','"','\'','>','<','@','`','$','^','&','|','\n']:
+                if ch in text:
+                    text = text.replace(ch,symbol)
+            return re.sub(symbol+"+", symbol, text)
+
+        def key_value_replace(word):
+            return ''
+
+        regex = '([A-Za-z0-9_.]+?)[ ]?[:=][ ]?(.*?) '
+        if len(self.exp_extract) == '':
+            return
+
+        for search_index, unit in enumerate(self.res_search_units):
+            string = '\n'.join(self.text_file_model.lines[unit[0]:unit[1]+1])
+            ts = ''
+            # handle key value
+            r = parse(self.exp_extract, string)
+            if r is not None:
+                ts = str(r.named['timestamp'])
+                msg = r.named['msg']
+                msg = self_clean_special_symbols(msg, ' ')
+                for key, value in re.findall(regex, msg):
+                    if is_float(value):
+                        value = float(value)
+                    elif is_int(value):
+                        value = int(value)
+
+                    if key not in self.res_key_value:
+                        self.res_key_value[key] = {'insight_alias': self.alias, 'name':key, 'type': type(value).__name__, 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                    self.res_key_value[key]['global_index'].append(unit[0]+self.backward_rows)
+                    self.res_key_value[key]['search_index'].append(search_index)
+                    self.res_key_value[key]['value'].append(value)
+                    self.res_key_value[key]['timestamp'].append(ts)
+                residue_mark = re.sub(regex, key_value_replace, msg)
+                self.res_residue_marks.append({'global_index':unit[0]+self.backward_rows, 'search_index':search_index, 'value':residue_mark, 'timestamp':ts})
+
+            # handle mark
+            if len(re.findall(self.exp_mark['exp'], string)) > 0:
+                if self.exp_mark['alias'] not in self.res_mark:
+                    self.res_mark[self.exp_mark['alias']] = {'insight_alias': self.alias, 'name':self.exp_mark['alias'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                self.res_mark[self.exp_mark['alias']]['global_index'].append(unit[0]+self.backward_rows)
+                self.res_mark[self.exp_mark['alias']]['search_index'].append(search_index)
+                self.res_mark[self.exp_mark['alias']]['value'].append(self.exp_mark['color'])
+                self.res_mark[self.exp_mark['alias']]['timestamp'].append(ts)
+
+    def judge_mark_outlier(self, key_value, indices):
+        history = key_value.loc[0: indices[0], :]
+        history = history.drop_duplicates(['value'])
+        history = history.sort_values('timestamp', ascending=True).reset_index(drop=True)
+
+        near = key_value.loc[indices[0]:indices[-1], :]
+        near = near.drop_duplicates(['value'])
+        near = near.sort_values('timestamp', ascending=True).reset_index(drop=True)
+
+        histories = history.value.values
+        res = []
+        for index, near_value in enumerate(near.value.values):
+            if near_value not in histories:
+                res.append({'type': 'mark', 'timestamp':near['timestamp'][index], 'value':near_value, 'desc':'Unique Print!'})
+         
+        return res
+
+    def judge_discrete_key_value_outlier(self, key_value, indices):
+        history = key_value.loc[0:indices[0], :]
+        history_change = []
+        cur_status = history['value'][0]
+        for stat in history.value.values:
+            if stat != cur_status:
+                history_change.append([cur_status, stat])
+
+        near = key_value.loc[indices[0]:indices[-1], :]
+        near_change = []
+        near_change_indices = []
+        cur_status = history['value'][-1]
+        for index, stat in enumerate(near.value.values):
+            if stat != cur_status:
+                near_change.append([cur_status, stat])
+                near_change_indices.append(index)
+
+        res = []
+        for index, change in near_change:
+            if change not in history_change:
+                res.append({'type': 'str', 'timestamp':near['timestamp'][index], 'value':near['value'][index], 'desc':change[0] + ' --> ' + change[1]})
+        
+        return res
+
+    def judge_consecutive_key_value_outlier(self, key_value, indices):
+        near = key_value.loc[indices[0]:indices[-1], :]
+
+        # judege is Periodic 
+        # if true return
+
+        res = []
+        for graph in self.compare_graphs:
+            path, score = lcss_path(list(near.value.values), graph['value'])
+            if score > graph['similarity']:
+                res.append({'type': key_value['type'], 'timestamp':near['timestamp'][path[graph['inflection_point']]], 'value':near['value'][path[graph['inflection_point']]], 'desc':near['value'][path[graph['inflection_point']]] + ' --> ' + near['value'][path[graph['outlier']]]})
+
+        return res
+
+    def outlier_sort(self):
+        res = pd.DataFrame(self.outlier)
+        res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
+        return res.to_json(orient='records')
+
+
+

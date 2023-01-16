@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 # from tslearn.metrics import lcss_path
 from parse import parse
+from datetime import timedelta
 from dateutil.parser import parse as dp
 from types import SimpleNamespace
 
@@ -71,3 +72,24 @@ def analysis_express(cmd):
     
 def cal_time_difference(start, end):
     return datetime.datetime.strptime(end, "%H:%M:%S") - datetime.datetime.strptime(start, "%H:%M:%S")
+
+def get_points_in_time_range(forward_time, backward_time, data):
+        res = []
+        for index, timestamp in enumerate(data):
+            if (forward_time < timestamp) & (timestamp < backward_time):
+                res.append(index)
+        return res
+
+def is_float(string):
+    try:
+        float(string)
+        return True
+    except ValueError:
+        return False
+
+def is_int(string):
+    try:
+        int(string)
+        return True
+    except ValueError:
+        return False

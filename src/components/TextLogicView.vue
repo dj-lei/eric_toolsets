@@ -21,9 +21,6 @@ export default {
 </script>
 
 <style>
-@import '../assets/dialog.css';
-@import '../assets/table.css';
-
 * {
   box-sizing: border-box;
 }
