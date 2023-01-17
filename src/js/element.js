@@ -168,6 +168,17 @@ class Component extends Element
         return table
     }
 
+    createElementTextarea(){
+        var textarea = document.createElement('textarea')
+        textarea.style.display = 'inline-block'
+        textarea.style.width = '100%'
+        // table.style.overflowX = 'scroll'
+        // table.style.overflowY= 'hidden'
+        // table.style.whiteSpace = 'nowrap'
+        textarea.style.border = 'none'
+        return textarea
+    }
+
     createElementSelect(){
         var select = document.createElement('select')
         return select

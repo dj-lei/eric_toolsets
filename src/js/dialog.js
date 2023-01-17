@@ -273,6 +273,94 @@ class SearchAtomComponentDialog extends Dialog
     }
 }
 
+class InsightAtomComponentDialog extends Dialog
+{
+    constructor(insightAtomView){
+        super(insightAtomView.container)
+        this.insightAtomView = insightAtomView
+
+        this.alias = ''
+        this.desc = ''
+        this.expSearch = ''
+        this.expExtract = ''
+        this.expMark = ''
+        this.expMarkColor = ''
+
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // alias
+        this.alias = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        this.subContainer.appendChild(this.alias)
+
+        // search description
+        this.desc = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Search Description'))
+        this.subContainer.appendChild(this.desc)
+
+        // search regex express 
+        this.expSearch = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Search Express'))
+        this.subContainer.appendChild(this.expSearch)
+
+        // extract key value regex express
+        this.expExtract = this.createElementTextInput()
+        this.expExtract.style.width = '85%'
+        this.subContainer.appendChild(this.createElementH4('Extract Key Value Regex Express'))
+        this.subContainer.appendChild(this.expExtract)
+
+        // mark key location express
+        this.expMarkAlias = this.createElementTextInput()
+        this.expMarkAlias.style.width = '10%'
+        this.expMark = this.createElementTextInput()
+        this.expMark.style.width = '65%'
+        this.expMarkColor = this.createElementColorInput()
+        this.subContainer.appendChild(this.createElementH4('Mark Key Location Express'))
+        this.subContainer.appendChild(this.expMarkAlias)
+        this.subContainer.appendChild(this.expMark)
+        this.subContainer.appendChild(this.expMarkColor)
+
+        // search and cancel button
+        var apply = this.createElementButton('INSIGHT')
+        apply.style.width = '50%'
+        apply.onclick = function(){that.insight()}
+        var cancel = this.createElementButton('CANCEL')
+        cancel.style.backgroundColor = 'red'
+        cancel.style.width = '50%'
+        cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(apply)
+        this.subContainer.appendChild(cancel)
+    }
+
+    insight(){
+        let model = {
+            namespace: this.insightAtomView.namespace,
+            alias: this.alias.value,
+            desc: this.desc.value,
+            exp_search: this.expSearch.value,
+            exp_extract: this.expExtract.value,
+            exp_mark: {'alias':this.expMarkAlias.value, 'exp':this.expMark.value, 'color': this.expMarkColor.value},
+        }
+        this.insightAtomView.controlInsight(model)
+    }
+
+    update(model){
+        this.alias.value = model.alias
+        this.desc.value = model.desc
+        this.expSearch.value = model.expSearch
+        this.expExtract.value = model.expExtract
+
+        this.expMarkAlias.value = model.expMark.alias
+        this.expMark.value = model.expMark.exp
+        this.expMarkColor.value = model.expMark.color
+
+    }
+}
+
 class ChartAtomComponentSvgDialog extends Dialog
 {
     constructor(chartAtomView){
@@ -382,4 +470,4 @@ class StatisticAtomComponentDialog extends Dialog
     }
 }
 
-export {TextFileComponentRegisterCompareGraphDialog, SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog}
+export {SearchAtomComponentDialog, InsightAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog}

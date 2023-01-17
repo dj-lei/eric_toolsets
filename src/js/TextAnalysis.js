@@ -3,13 +3,13 @@ import ns from '@/config/namespace.json'
 
 import { ipcRenderer } from 'electron'
 import { View } from './element'
-import { TextFileComponentRegisterCompareGraphDialog, SearchAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog } from './dialog'
+import { SearchAtomComponentDialog, InsightAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
-import { TextFileOriginalComponentTable, SearchAtomComponentTable } from './table'
-import { SearchFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
+import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable } from './table'
+import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
 import { ChartAtomComponentSvg } from './svg'
 import { ChartAtomComponentSequentialChart } from './chart'
-import { StatisticAtomComponentCustom } from './custom'
+import { StatisticAtomComponentTextarea } from './textarea'
 // import { TextLogicFlow } from './flow'
 
 import common from '@/plugins/common'
@@ -35,12 +35,16 @@ class TextAnalysisView extends View
             new TextFileFunctionView(args.namespace)
         }else if (args.className == 'SearchFunctionView') {
             new SearchFunctionView(args.namespace)
+        }else if (args.className == 'InsightFunctionView') {
+            new InsightFunctionView(args.namespace)
         }else if (args.className == 'ChartFunctionView') {
             new ChartFunctionView(args.namespace)
         }else if (args.className == 'StatisticFunctionView') {
             new StatisticFunctionView(args.namespace)
         }else if (args.className == 'SearchAtomView') {
             new SearchAtomView(args.namespace, args.model)
+        }else if (args.className == 'InsightAtomView') {
+            new InsightAtomView(args.namespace, args.model)
         }else if (args.className == 'ChartAtomView') {
             new ChartAtomView(args.namespace, args.model)
         }else if (args.className == 'StatisticAtomView') {
@@ -102,8 +106,13 @@ class FileContainerView extends View
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.FILECONTAINER}`, textAnalysisView.container)
         this.fileContainerComponentTab = new FileContainerComponentTab(this)
+
+        this.tmpSearchAtomComponentDialog = new SearchAtomComponentDialog(this)
+        this.tmpInsightAtomComponentDialog = new InsightAtomComponentDialog(this)
+        this.tmpChartAtomComponentSvgDialog = new ChartAtomComponentSvgDialog(this)
+        this.tmpStatisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
+
         let that = this
-        
         ipcRenderer.on('open-file', async function () {
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
@@ -126,13 +135,16 @@ class FileContainerView extends View
             that.controlLoadConfig(config)
         })
         ipcRenderer.on('new-search', () => {
-            that.controlNewSearch()
+            that.tmpSearchAtomComponentDialog.display()
+        })
+        ipcRenderer.on('new-insight', () => {
+            that.tmpInsightAtomComponentDialog.display()
         })
         ipcRenderer.on('new-chart', () => {
-            that.controlNewChart()
+            that.tmpChartAtomComponentSvgDialog.display()
         })
         ipcRenderer.on('new-statistic', () => {
-            that.controlNewStatistic()
+            that.tmpStatisticAtomComponentDialog.display()
         })
         ipcRenderer.on('open-func-area', () => {
             that.printHtml()
@@ -162,16 +174,24 @@ class FileContainerView extends View
         this.socket.emit("load_config", config)
     }
 
-    controlNewSearch(){
-        this.socket.emit("new_search")
+    controlSearch(model){
+        this.socket.emit("new_search", model)
+        this.tmpSearchAtomComponentDialog.hidden()
     }
 
-    controlNewChart(){
-        this.socket.emit("new_chart")
+    controlInsight(model){
+        this.socket.emit("new_insight", model)
+        this.tmpInsightAtomComponentDialog.hidden()
     }
 
-    controlNewStatistic(){
-        this.socket.emit("new_statistic")
+    controlChart(model){
+        this.socket.emit("new_chart", model)
+        this.tmpChartAtomComponentSvgDialog.hidden()
+    }
+
+    controlStatistic(model){
+        this.socket.emit("new_statistic", model)
+        this.tmpStatisticAtomComponentDialog.hidden()
     }
 
     controlDisplayTextFileFunction(){
@@ -185,10 +205,6 @@ class FileContainerView extends View
 
     onDisplayFile(textFileModel){
         this.fileContainerComponentTab.displayFile(textFileModel)
-    }
-
-    onDisplayCompareGraphDialog(chartAtomModel){
-        this.fileContainerComponentRegisterCompareGraphDialog.update(chartAtomModel)
     }
 }
 
@@ -276,6 +292,18 @@ class SearchFunctionView extends View
     }
 }
 
+class InsightFunctionView extends View
+{
+    constructor(namespace){
+        super(namespace, common.getParentContainer(namespace))
+        this.insightFunctionComponentList = new InsightFunctionComponentList(this)
+    }
+
+    onNewInsight(model){
+        this.insightFunctionComponentList.subscribePlaceholder(model.namespace)
+    }
+}
+
 class ChartFunctionView extends View
 {
     constructor(namespace){
@@ -310,8 +338,6 @@ class SearchAtomView extends View
 
         if(model.expSearch != ''){
             this.controlSearch(model)
-        }else{
-            this.onDisplayDialog()
         }
     }
 
@@ -346,6 +372,50 @@ class SearchAtomView extends View
     }
 }
 
+class InsightAtomView extends View
+{
+    constructor(namespace, model){
+        super(namespace, document.getElementById(namespace))
+
+        this.insightAtomComponentDialog = new InsightAtomComponentDialog(this)
+        this.insightAtomComponentTable = new InsightAtomComponentTable(this)
+
+        if(model.expSearch != ''){
+            this.controlInsight(model)
+        }
+    }
+
+    controlInsight(model){
+        this.socket.emit("insight", model)
+        this.insightAtomComponentDialog.hidden()
+    }
+
+    controlScroll(point){
+        this.socket.emit("scroll", point)
+    }
+
+    onRefreshTable(model){
+        this.model = model
+        if (!this.insightAtomComponentDialog.alias.value){
+            this.onUpdateDialog(model)
+        }
+        this.insightAtomComponentTable.refresh(this.model)
+    }
+
+    onDisplayDialog(){
+        this.insightAtomComponentDialog.display()
+    }
+
+    onUpdateDialog(model){
+        this.insightAtomComponentDialog.update(model)
+    }
+
+    onDelete(){
+        super.delete()
+        this.socket.emit("delete")
+    }
+}
+
 class ChartAtomView extends View
 {
     constructor(namespace, model){
@@ -359,8 +429,6 @@ class ChartAtomView extends View
         this.chartAtomComponentSvg.draw(this.model.keyValueTree)
         if(!model.selectLines){
             this.controlDraw(model)
-        }else{
-            this.onDisplayDialog()
         }
     }
 
@@ -395,12 +463,10 @@ class StatisticAtomView extends View
         super(namespace, document.getElementById(namespace))
 
         this.statisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
-        this.statisticAtomComponentCustom = new StatisticAtomComponentCustom(this)
+        this.statisticAtomComponentTextarea = new StatisticAtomComponentTextarea(this)
 
         if(model.exp != ''){
-            this.controlSearch(model)
-        }else{
-            this.onDisplayDialog()
+            this.controlStatistic(model)
         }
     }
 
@@ -413,9 +479,10 @@ class StatisticAtomView extends View
         this.socket.emit("get_compare_graph", alias)
     }
 
-    onRefreshTable(model){
+    onRefreshTextarea(model){
         this.model = model
-        this.statisticAtomComponentCustom.refresh(this.model)
+        console.log(model)
+        this.statisticAtomComponentTextarea.refresh(this.model)
     }
 
     onDisplayDialog(){

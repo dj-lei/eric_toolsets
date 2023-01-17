@@ -167,4 +167,75 @@ class SearchAtomComponentTable extends Table
     }
 }
 
-export {TextFileOriginalComponentTable, SearchAtomComponentTable}
+class InsightAtomComponentTable extends Table
+{
+    constructor(insightAtomView){
+        super(insightAtomView.container)
+        this.insightAtomView = insightAtomView
+        this.collapsible = ''
+
+        let that = this
+        this.slider.style.height = `${18 * 15}px`
+        var del = this.createElementButton('X')
+        del.style.backgroundColor = 'red'
+        del.style.width = '2%'
+        del.addEventListener("click", function() {
+            that.insightAtomView.onDelete()
+        })
+
+        var search = this.createElementButton('O')
+        search.style.backgroundColor = 'green'
+        search.style.width = '2%'
+        search.addEventListener("click", function() {
+            that.insightAtomView.insightAtomComponentDialog.display()
+        })
+
+        this.collapsible = this.createElementButton('')
+        this.collapsible.style.backgroundColor = '#777'
+        this.collapsible.style.width = '94%'
+        this.collapsible.style.textAlign = 'left'
+        this.collapsible.addEventListener("click", function() {
+            if (that.table.style.display === "inline-block") {
+                that.table.style.display = "none"
+                that.slider.style.display = "none"
+            } else {
+                that.table.style.display = "inline-block"
+                that.slider.style.display = "inline-block"
+            }
+        })
+
+        this.slider.addEventListener('input', (event) => {
+            that.insightAtomView.controlScroll(parseInt(event.target.value))
+        })
+
+        this.table.addEventListener("wheel", function(e){
+            if (e.deltaY < 0){
+                that.slider.value = parseInt(that.slider.value) - 1
+            }else{
+                that.slider.value = parseInt(that.slider.value) + 1
+            }
+            that.insightAtomView.controlScroll(parseInt(that.slider.value))
+            e.preventDefault()
+            e.stopPropagation()
+        })
+
+        this.container.append(del)
+        this.container.append(search)
+        this.container.append(this.collapsible)
+        this.container.append(this.table)
+        this.container.append(this.slider)
+    }
+
+    refresh(model){
+        this.deleteTableAllChilds()
+        this.slider.max = model.count
+        this.collapsible.innerHTML = '+ ' + model.desc
+        model.displayLines.forEach((line) => {
+            var tr = document.createElement('tr')
+            tr.insertAdjacentHTML('beforeend', line)
+            this.table.appendChild(tr)
+        })
+    }
+}
+
+export {TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable}

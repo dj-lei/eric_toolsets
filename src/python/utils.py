@@ -9,7 +9,8 @@ import zipfile
 import datetime
 import numpy as np
 import pandas as pd
-# from tslearn.metrics import lcss_path
+from tslearn.metrics import lcss_path
+from sklearn.preprocessing import minmax_scale
 from parse import parse
 from datetime import timedelta
 from dateutil.parser import parse as dp

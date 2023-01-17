@@ -29,6 +29,14 @@ class SearchFunctionComponentList extends List
     }
 }
 
+class InsightFunctionComponentList extends List
+{
+    constructor(insightFunctionView){
+        super(insightFunctionView.container)
+    }
+}
+
+
 class ChartFunctionComponentList extends List
 {
     constructor(chartFunctionView){
@@ -44,4 +52,4 @@ class StatisticFunctionComponentList extends List
 }
 
 
-export {SearchFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList}
+export {SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList}

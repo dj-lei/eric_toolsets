@@ -4,7 +4,6 @@
 </template>
 
 <script>
-// import {TextLogicView} from '../js/TextLogic.js'
 import {TextAnalysisView} from '../js/TextAnalysis.js'
 
 export default {
@@ -13,8 +12,6 @@ export default {
     }
   },
   mounted () {
-    // const test = new TextLogicView(document.getElementById('screen'))
-    // test.init()
     const test = new TextAnalysisView(document.getElementById('screen'))
   }
 }

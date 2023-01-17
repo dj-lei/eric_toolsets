@@ -71,7 +71,7 @@ class TextFileFunctionComponentTab extends Tab
         let that = this
         this.subscribePlaceholder('Search')
         var tablink = this.getPlaceholder('Search')
-        tablink.style.width = '33%'
+        tablink.style.width = '25%'
         this.searchTitle = this.tabs['Search'].title
         this.searchTitle.style.width = '100%'
         this.searchTitle.innerHTML = 'Search'
@@ -80,9 +80,20 @@ class TextFileFunctionComponentTab extends Tab
             that.textFileFunctionView.controlSelectFunction('search')
         })
 
+        this.subscribePlaceholder('Insight')
+        tablink = this.getPlaceholder('Insight')
+        tablink.style.width = '25%'
+        this.insightTitle = this.tabs['Insight'].title
+        this.insightTitle.style.width = '100%'
+        this.insightTitle.innerHTML = 'Insight'
+        this.insightTitle.addEventListener('click', function()
+        {
+            that.textFileFunctionView.controlSelectFunction('insight')
+        })
+
         this.subscribePlaceholder('Chart')
         tablink = this.getPlaceholder('Chart')
-        tablink.style.width = '33%'
+        tablink.style.width = '24%'
 
         this.chartTitle = this.tabs['Chart'].title
         this.chartTitle.style.width = '100%'
@@ -94,7 +105,7 @@ class TextFileFunctionComponentTab extends Tab
 
         this.subscribePlaceholder('Statistic')
         tablink = this.getPlaceholder('Statistic')
-        tablink.style.width = '32%'
+        tablink.style.width = '24%'
         this.statisticTitle = this.tabs['Statistic'].title
         this.statisticTitle.style.width = '100%'
         this.statisticTitle.innerHTML = 'Statistic'
@@ -121,14 +132,22 @@ class TextFileFunctionComponentTab extends Tab
     {
         if(func == 'search'){
             this.searchTitle.style.backgroundColor = '#333'
+            this.insightTitle.style.backgroundColor = '#555'
+            this.chartTitle.style.backgroundColor = '#555'
+            this.statisticTitle.style.backgroundColor = '#555'
+        }else if(func == 'insight'){
+            this.searchTitle.style.backgroundColor = '#555'
+            this.insightTitle.style.backgroundColor = '#333'
             this.chartTitle.style.backgroundColor = '#555'
             this.statisticTitle.style.backgroundColor = '#555'
         }else if(func == 'chart'){
             this.searchTitle.style.backgroundColor = '#555'
+            this.insightTitle.style.backgroundColor = '#555'
             this.chartTitle.style.backgroundColor = '#333'
             this.statisticTitle.style.backgroundColor = '#555'
         }else if(func == 'statistic'){
             this.searchTitle.style.backgroundColor = '#555'
+            this.insightTitle.style.backgroundColor = '#555'
             this.chartTitle.style.backgroundColor = '#555'
             this.statisticTitle.style.backgroundColor = '#333'
         }
