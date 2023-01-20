@@ -1,16 +1,16 @@
 import re
 import os
 import io
+import sys
 import time
 import json
 import uuid
-import gzip
-import zipfile
 import datetime
 import numpy as np
 import pandas as pd
 from tslearn.metrics import lcss_path
 from sklearn.preprocessing import minmax_scale
+from sklearn.cluster import KMeans
 from parse import parse
 from datetime import timedelta
 from dateutil.parser import parse as dp

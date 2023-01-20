@@ -1,4 +1,5 @@
 import { Component } from './element'
+import { Dialog } from './dialog'
 
 class Table extends Component
 {
@@ -78,6 +79,8 @@ class SearchAtomComponentTable extends Table
         this.collapsible = ''
 
         let that = this
+        this.table.style.display = "none"
+        this.slider.style.display = "none"
         this.slider.style.height = `${18 * 15}px`
         var del = this.createElementButton('X')
         del.style.backgroundColor = 'red'
@@ -97,17 +100,9 @@ class SearchAtomComponentTable extends Table
         this.collapsible.style.backgroundColor = '#777'
         this.collapsible.style.width = '94%'
         this.collapsible.style.textAlign = 'left'
+        console.log(this.searchAtomView.model)
+        this.collapsible.innerHTML = '+ ' + this.searchAtomView.model.desc + ` (unknow hits)`
         this.collapsible.addEventListener("click", function() {
-            // that.parent.shutAllSearch()
-            // if (that.resTable.style.display === "block") {
-            //     that.resTable.style.display = "none"
-            //     that.parent.llt.uid = 'O/'+that.parent.uid+'/'
-            //     that.parent.llt.refresh(that.parent.llt.point)
-            // } else {
-            //     that.resTable.style.display = "block"
-            //     that.parent.llt.uid = 'O/'+that.parent.uid+'/'+that.uid
-            //     that.parent.llt.refresh(that.parent.llt.point)
-            // }
             if (that.table.style.display === "inline-block") {
                 that.table.style.display = "none"
                 that.slider.style.display = "none"
@@ -175,6 +170,7 @@ class InsightAtomComponentTable extends Table
         this.collapsible = ''
 
         let that = this
+        this.table.style.display = "none"
         this.slider.style.height = `${18 * 15}px`
         var del = this.createElementButton('X')
         del.style.backgroundColor = 'red'
@@ -238,4 +234,105 @@ class InsightAtomComponentTable extends Table
     }
 }
 
-export {TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable}
+class BatchInsightComponentTableDialog extends Dialog
+{
+    constructor(batchInsightView){
+        super(batchInsightView.container)
+        this.container.style.zIndex = 2
+        this.subContainer.style.width = '90%' 
+        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+
+        this.batchInsightComponentTable = new BatchInsightComponentTable(this.subContainer)
+    }
+}
+
+class BatchInsightComponentTable extends Table
+{
+    constructor(container){
+        super(container)
+
+        this.container.append(this.table)
+    }
+
+    refreshUniversal(displayLines){
+        this.deleteTableAllChilds()
+        displayLines.forEach((line) => {
+            var tr = document.createElement('tr')
+            var td = document.createElement('td')
+            td.innerHTML = line
+            tr.appendChild(td)
+            this.table.appendChild(tr)
+        })
+    }
+
+    refreshSingleInsight(model){
+        this.deleteTableAllChilds()
+        Object.keys(model).forEach((insightAtom) => {
+            model[insightAtom].forEach((outlier) => {
+                var tr = document.createElement('tr')
+                var insightAtomAlias = document.createElement('td')
+                insightAtomAlias.innerHTML = insightAtom
+                tr.appendChild(insightAtomAlias)
+
+                var timestamp = document.createElement('td')
+                timestamp.innerHTML = outlier.timestamp
+                var type = document.createElement('td')
+                type.innerHTML = outlier.type
+                var desc = document.createElement('td')
+                desc.innerHTML = outlier.desc
+
+                tr.appendChild(timestamp)
+                tr.appendChild(type)
+                tr.appendChild(desc)
+                this.table.appendChild(tr)
+            })
+        })
+    }
+}
+
+class BatchStatisticComponentTableDialog extends Dialog
+{
+    constructor(batchStatisticView){
+        super(batchStatisticView.container)
+        this.subContainer.style.width = '90%' 
+        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+
+        this.batchStatisticComponentTable = new BatchStatisticComponentTable(this.subContainer)
+    }
+}
+
+class BatchStatisticComponentTable extends Table
+{
+    constructor(container){
+        super(container)
+
+        this.container.append(this.table)
+    }
+
+    refresh(model){
+        this.deleteTableAllChilds()
+        Object.keys(model.result).forEach((file) => {
+            var tr = document.createElement('tr')
+            var fileName = document.createElement('td')
+            fileName.innerHTML = file
+            tr.appendChild(fileName)
+
+            model.result[file].forEach((statisticAtom) => {
+                var alias = document.createElement('td')
+                alias.innerHTML = statisticAtom.alias
+                var resultType = document.createElement('td')
+                resultType.innerHTML = statisticAtom.resultType
+                var result = document.createElement('td')
+                result.innerHTML = statisticAtom.result
+
+                tr.appendChild(alias)
+                tr.appendChild(resultType)
+                tr.appendChild(result)
+            })
+
+            this.table.appendChild(tr)
+        })
+    }
+}
+
+export {TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable, BatchInsightComponentTableDialog, BatchStatisticComponentTableDialog}

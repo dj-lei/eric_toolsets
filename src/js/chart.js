@@ -1,5 +1,6 @@
 import * as echarts from 'echarts'
 import { Component } from './element'
+import { Dialog } from './dialog'
 
 class Chart extends Component
 {
@@ -536,4 +537,41 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 	// }
 }
 
-export {FileContainerComponentCompareGraphSequentialChart, ChartAtomComponentSequentialChart}
+class GlobalChartComponentSequentialChartDialog extends Dialog
+{
+    constructor(globalChartView){
+        super(globalChartView.container)
+        this.subContainer.style.width = '90%' 
+        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+
+        this.globalChartComponentSequentialChart = new GlobalChartComponentSequentialChart(this)
+    }
+}
+
+class GlobalChartComponentSequentialChart extends SequentialChart
+{
+    constructor(dialog){
+        super(dialog.subContainer)
+    }
+
+	refresh(lines){
+		super.refresh(lines)
+		this.chart.setOption(this.option)
+		this.bindChartClickEvent()
+	}
+
+	bindChartClickEvent(){
+		let that = this
+
+		// bind click event and paint
+		this.chart.on('click', function(params) { 
+			console.log(params)
+		});
+	}
+
+	jump(params){
+
+	}
+}
+
+export {GlobalChartComponentSequentialChartDialog, ChartAtomComponentSequentialChart}

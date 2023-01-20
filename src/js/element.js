@@ -7,9 +7,49 @@ class Element
 {
     constructor(position){
         this.container = document.createElement('div')
+        this.container.style.position = 'relative'
         this.container.style.display = 'block'
         this.container.style.width = '100%'
+
+        this.loader = document.createElement('div')
+        this.loader.style.display = 'none'
+        this.loader.style.position = 'absolute'
+        this.loader.style.backgroundColor = '#000'
+        this.loader.style.opacity = 0.5
+        this.loader.style.width = "100%"
+        this.loader.style.height = "100%"
+        this.loader.style.left = 0
+        this.loader.style.top = 0
+        this.loader.style.zIndex = 1
+
+        this.spin = document.createElement('div')
+        this.spin.style.position = 'absolute'
+        this.spin.style.left = 0
+        this.spin.style.top = 0
+        this.spin.style.right = 0
+        this.spin.style.bottom = 0
+        this.spin.style.margin = 'auto'
+        this.spin.style.zIndex = 2
+        this.spin.style.width = '8px'
+        this.spin.style.height = '8px'
+        this.spin.style.border = '10px solid #FFF'
+        this.spin.style.borderRadius = '50%'
+        this.spin.style.borderTop = '10px solid #000'
+        this.spin.style.animation = 'spin 2s linear infinite'
+        this.spin.style.borderRadius = '50%'
+        this.loader.append(this.spin)
+
+        var cssAnimation = document.createElement('style');
+        cssAnimation.type = 'text/css'
+        var rules = document.createTextNode('@keyframes spin {'+
+        '0% { transform: rotate(0deg); }'+
+        '100% { transform: rotate(360deg); }'+
+        '}')
+        cssAnimation.appendChild(rules)
+        document.getElementsByTagName("head")[0].appendChild(cssAnimation)
+
         position.append(this.container)
+        this.container.append(this.loader)
     }
 
     hidden(){
@@ -23,6 +63,14 @@ class Element
     delete(){
         this.deleteAllChilds()
         this.container.parentNode.removeChild(this.container)
+    }
+
+    startLoader(){
+        this.loader.style.display = 'block'
+    }
+
+    stopLoader(){
+        this.loader.style.display = 'none'
     }
 
     deleteAllChilds(){

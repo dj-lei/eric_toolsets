@@ -1,6 +1,7 @@
 import * as d3 from "d3"
 import common from '@/plugins/common'
 import { Component } from './element'
+import { Dialog } from './dialog'
 
 class svg extends Component
 {
@@ -41,34 +42,32 @@ class svg extends Component
     }
 }
 
-class ChartAtomComponentSvg extends svg
+class Tree extends svg
 {
-    constructor(chartAtomView, container){
+    constructor(container){
         super(container)
-        this.chartAtomView = chartAtomView
-        
-        let that = this
-        var cancelBtn = this.createElementButton('CANCEL')
-        cancelBtn.style.backgroundColor = 'red'
-        cancelBtn.style.float = 'right'
-        cancelBtn.onclick = function(){that.hidden()}
-        var clearBtn = this.createElementButton('CLEAR')
-        clearBtn.style.backgroundColor = 'blue'
-        clearBtn.style.float = 'right'
-        clearBtn.onclick = function(){that.clear()}
-        var applyBtn = this.createElementButton('APPLY')
-        applyBtn.style.backgroundColor = 'green'
-        applyBtn.style.float = 'right'
-        applyBtn.onclick = function(){that.apply()}
-        this.bottomBtnSets.appendChild(cancelBtn)
-        this.bottomBtnSets.appendChild(cancelBtn)
-        this.bottomBtnSets.appendChild(clearBtn)
-        this.bottomBtnSets.appendChild(applyBtn)
+        this.data = {}
     }
 
     update(){
         this.clear()
-        this.draw(this.chartAtomView.model.keyValueTree)
+        this.draw(this.data)
+    }
+
+    clear(){
+        this.iterationClear([this.data])
+        this.svg.selectAll("*").remove()
+        this.draw(this.data)
+    }
+
+    iterationClear(data){
+        data.forEach((item) => {
+            if ('children' in item){
+                this.iterationClear(item['children'])
+            }else{
+                item.check = false
+            }
+        })
     }
 
     draw(data){
@@ -133,23 +132,7 @@ class ChartAtomComponentSvg extends svg
               .attr("fill-opacity", 0)
               .attr("stroke-opacity", 0)
               .on("click", (event, d) => {
-                d.children = d.children ? null : d._children;
-
-                if (d._children) {
-                    return
-                }else{
-                  if (d.data.check == true){
-                    d.data.check = false
-                    d3.select(event.target.parentNode).select('circle').attr("fill", "#999")
-                    d3.select(event.target.parentNode).select('text').attr("fill", "#FFF")
-                    d3.select(event.target.parentNode).select('text').attr("stroke", "#FFF")
-                  }else{
-                    d.data.check = true
-                    d3.select(event.target.parentNode).select('circle').attr("fill", "#33CC00")
-                    d3.select(event.target.parentNode).select('text').attr("fill", "#33CC00")
-                    d3.select(event.target.parentNode).select('text').attr("stroke", "#33CC00")
-                  }
-                }
+                that.clickEvent(event, d)
                 // update(d);
                 // console.log(select)
               });
@@ -233,21 +216,56 @@ class ChartAtomComponentSvg extends svg
         }
         update(root);
     }
+}
 
-    clear(){
-        this.iterationClear([this.chartAtomView.model.keyValueTree])
-        this.svg.selectAll("*").remove()
-        this.draw(this.chartAtomView.model.keyValueTree)
+class BatchInsightComponentSvgDialog extends Dialog
+{
+    constructor(batchInsightView){
+        super(batchInsightView.container)
+        this.batchInsightView = batchInsightView
+        this.subContainer.style.width = '90%' 
+        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+
+        this.batchInsightComponentSvg = new BatchInsightComponentSvg(this)
+    }
+}
+
+class BatchInsightComponentSvg extends Tree
+{
+    constructor(batchInsightComponentSvgDialog){
+        super(batchInsightComponentSvgDialog.subContainer)
+        this.batchInsightComponentSvgDialog = batchInsightComponentSvgDialog
+        
+        var cancelBtn = this.createElementButton('CANCEL')
+        cancelBtn.style.backgroundColor = 'red'
+        cancelBtn.style.float = 'right'
+        cancelBtn.onclick = function(){dialog.hidden()}
+        this.bottomBtnSets.appendChild(cancelBtn)
     }
 
-    iterationClear(data){
-        data.forEach((item) => {
-            if ('children' in item){
-                this.iterationClear(item['children'])
-            }else{
-                item.check = false
-            }
-        })
+    refresh(data){
+        this.data = data
+        this.draw(this.data)
+    }
+
+    clickEvent(event, d){
+        if (d.depth == 1) {
+            this.batchInsightComponentSvgDialog.batchInsightView.controlGetUniversal(parseInt(d.data.name[d.data.name.length - 1]) )
+        }else if(d.depth == 2){
+            this.batchInsightComponentSvgDialog.batchInsightView.controlGetSingleInsight(d.data.namespace)
+        }
+    }
+
+}
+
+class ChartAtomComponentSvgDialog extends Dialog
+{
+    constructor(chartAtomView){
+        super(chartAtomView.container)
+        this.subContainer.style.width = '90%' 
+        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+
+        this.chartAtomComponentSvg = new ChartAtomComponentSvg(this)
     }
 
     apply(){
@@ -256,9 +274,126 @@ class ChartAtomComponentSvg extends svg
             alias: "sss",
             key_value_tree: this.chartAtomView.model.keyValueTree,
         }
-        this.chartAtomView.controlDraw(model)
+        this.chartAtomView.controlChart(model)
     }
-
 }
 
-export {ChartAtomComponentSvg}
+class ChartAtomComponentSvg extends Tree
+{
+    constructor(dialog){
+        super(dialog.subContainer)
+
+        let that = this
+        var cancelBtn = this.createElementButton('CANCEL')
+        cancelBtn.style.backgroundColor = 'red'
+        cancelBtn.style.float = 'right'
+        cancelBtn.onclick = function(){dialog.hidden()}
+        var clearBtn = this.createElementButton('CLEAR')
+        clearBtn.style.backgroundColor = 'blue'
+        clearBtn.style.float = 'right'
+        clearBtn.onclick = function(){that.clear()}
+        var applyBtn = this.createElementButton('APPLY')
+        applyBtn.style.backgroundColor = 'green'
+        applyBtn.style.float = 'right'
+        applyBtn.onclick = function(){dialog.apply()}
+        this.bottomBtnSets.appendChild(cancelBtn)
+        this.bottomBtnSets.appendChild(clearBtn)
+        this.bottomBtnSets.appendChild(applyBtn)
+    }
+
+    clickEvent(event, d){
+        d.children = d.children ? null : d._children;
+
+        if (d._children) {
+            return
+        }else{
+            if (d.data.check == true){
+                d.data.check = false
+                d3.select(event.target.parentNode).select('circle').attr("fill", "#999")
+                d3.select(event.target.parentNode).select('text').attr("fill", "#FFF")
+                d3.select(event.target.parentNode).select('text').attr("stroke", "#FFF")
+            }else{
+                d.data.check = true
+                d3.select(event.target.parentNode).select('circle').attr("fill", "#33CC00")
+                d3.select(event.target.parentNode).select('text').attr("fill", "#33CC00")
+                d3.select(event.target.parentNode).select('text').attr("stroke", "#33CC00")
+            }
+        }
+    }
+
+    refresh(data){
+        this.data = data
+        this.draw(this.data)
+    }
+}
+
+class GlobalChartComponentSvgDialog extends Dialog
+{
+    constructor(globalChartView){
+        super(globalChartView.container)
+        this.subContainer.style.width = '90%' 
+        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+
+        this.globalChartComponentSvg = new GlobalChartComponentSvg(this)
+    }
+
+    apply(){
+        let model = {
+            namespace: this.globalChartView.namespace,
+            alias: "sss",
+            key_value_tree: this.globalChartView.model.keyValueTree,
+        }
+        this.globalChartView.controlChart(model)
+    }
+}
+
+class GlobalChartComponentSvg extends Tree
+{
+    constructor(dialog){
+        super(dialog.subContainer)
+
+        let that = this
+        var cancelBtn = this.createElementButton('CANCEL')
+        cancelBtn.style.backgroundColor = 'red'
+        cancelBtn.style.float = 'right'
+        cancelBtn.onclick = function(){dialog.hidden()}
+        var clearBtn = this.createElementButton('CLEAR')
+        clearBtn.style.backgroundColor = 'blue'
+        clearBtn.style.float = 'right'
+        clearBtn.onclick = function(){that.clear()}
+        var applyBtn = this.createElementButton('APPLY')
+        applyBtn.style.backgroundColor = 'green'
+        applyBtn.style.float = 'right'
+        applyBtn.onclick = function(){dialog.apply()}
+        this.bottomBtnSets.appendChild(cancelBtn)
+        this.bottomBtnSets.appendChild(clearBtn)
+        this.bottomBtnSets.appendChild(applyBtn)
+    }
+
+    clickEvent(event, d){
+        d.children = d.children ? null : d._children;
+
+        if (d._children) {
+            return
+        }else{
+            if (d.data.check == true){
+                d.data.check = false
+                d3.select(event.target.parentNode).select('circle').attr("fill", "#999")
+                d3.select(event.target.parentNode).select('text').attr("fill", "#FFF")
+                d3.select(event.target.parentNode).select('text').attr("stroke", "#FFF")
+            }else{
+                d.data.check = true
+                d3.select(event.target.parentNode).select('circle').attr("fill", "#33CC00")
+                d3.select(event.target.parentNode).select('text').attr("fill", "#33CC00")
+                d3.select(event.target.parentNode).select('text').attr("stroke", "#33CC00")
+            }
+        }
+    }
+
+    refresh(data){
+        this.data = data
+        this.draw(this.data)
+    }
+}
+
+export {BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog}

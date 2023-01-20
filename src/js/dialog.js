@@ -1,8 +1,8 @@
 import common from '@/plugins/common'
+import http from '@/plugins/http'
 import { ipcRenderer } from 'electron'
 
 import { Component } from './element'
-import { FileContainerComponentCompareGraphSequentialChart } from './chart'
 
 class Dialog extends Component
 {
@@ -361,15 +361,6 @@ class InsightAtomComponentDialog extends Dialog
     }
 }
 
-class ChartAtomComponentSvgDialog extends Dialog
-{
-    constructor(chartAtomView){
-        super(chartAtomView.container)
-        this.subContainer.style.width = '90%' 
-        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
-    }
-}
-
 class StatisticAtomComponentDialog extends Dialog
 {
     constructor(statisticAtomView){
@@ -470,4 +461,279 @@ class StatisticAtomComponentDialog extends Dialog
     }
 }
 
-export {SearchAtomComponentDialog, InsightAtomComponentDialog, ChartAtomComponentSvgDialog, StatisticAtomComponentDialog}
+class BatchInsightComponentDialog extends Dialog
+{
+    constructor(fileContainerView){
+        super(fileContainerView.container)
+        this.fileContainerView = fileContainerView
+        this.dir = ''
+        this.configPath = ''
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // Files Directory
+        this.dir = this.createElementTextInput()
+        this.dir.style.width = '85%'
+        var browseDir = this.createElementButton('BROWSE')
+        browseDir.style.width = '15%'
+        browseDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.dir.value = path
+            })
+        }
+        this.subContainer.appendChild(this.createElementH4('Files Directory'))
+        this.subContainer.appendChild(this.dir)
+        this.subContainer.appendChild(browseDir)
+
+        // Config path
+        this.configPath = this.createElementTextInput()
+        this.configPath.style.width = '85%'
+        var browseConfig = this.createElementButton('BROWSE')
+        browseConfig.style.width = '15%'
+        browseConfig.onclick = function(){that.browseConfig()}
+        this.subContainer.appendChild(this.createElementH4('Config Path'))
+        this.subContainer.appendChild(this.configPath)
+        this.subContainer.appendChild(browseConfig)
+
+        // search and cancel button
+        var apply = this.createElementButton('RUN')
+        apply.style.width = '50%'
+        apply.onclick = function(){that.apply()}
+        var cancel = this.createElementButton('CANCEL')
+        cancel.style.backgroundColor = 'red'
+        cancel.style.width = '50%'
+        cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(apply)
+        this.subContainer.appendChild(cancel)
+    }
+
+    async browseConfig(){
+        let content = await ipcRenderer.invoke('import-config')
+        this.configPath.value = content[0]
+    }
+
+    apply(){
+        this.fileContainerView.controlBatchInsight(this.dir.value, this.configPath.value)
+    }
+}
+
+class BatchStatisticComponentDialog extends Dialog
+{
+    constructor(fileContainerView){
+        super(fileContainerView.container)
+        this.fileContainerView = fileContainerView
+        this.dir = ''
+        this.configPath = ''
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // Files Directory
+        this.dir = this.createElementTextInput()
+        this.dir.style.width = '85%'
+        var browseDir = this.createElementButton('BROWSE')
+        browseDir.style.width = '15%'
+        browseDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.dir.value = path
+            })
+        }
+        this.subContainer.appendChild(this.createElementH4('Files Directory'))
+        this.subContainer.appendChild(this.dir)
+        this.subContainer.appendChild(browseDir)
+
+        // Config path
+        this.configPath = this.createElementTextInput()
+        this.configPath.style.width = '85%'
+        var browseConfig = this.createElementButton('BROWSE')
+        browseConfig.style.width = '15%'
+        browseConfig.onclick = function(){that.browseConfig()}
+        this.subContainer.appendChild(this.createElementH4('Config Path'))
+        this.subContainer.appendChild(this.configPath)
+        this.subContainer.appendChild(browseConfig)
+
+        // search and cancel button
+        var apply = this.createElementButton('RUN')
+        apply.style.width = '50%'
+        apply.onclick = function(){that.apply()}
+        var cancel = this.createElementButton('CANCEL')
+        cancel.style.backgroundColor = 'red'
+        cancel.style.width = '50%'
+        cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(apply)
+        this.subContainer.appendChild(cancel)
+    }
+
+    async browseConfig(){
+        let content = await ipcRenderer.invoke('import-config')
+        this.configPath.value = content[0]
+    }
+
+    apply(){
+        this.fileContainerView.controlBatchStatistic(this.dir.value, this.configPath.value)
+    }
+}
+
+class DCGMAnalysisDialog extends Dialog
+{
+    constructor(fileContainerView){
+        super(fileContainerView.container)
+        this.fileContainerView = fileContainerView
+
+        this.dcgmDir = ''
+        this.saveDir = ''
+        this.telogFilter = ''
+        this.elogFilter = ''
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // DCGM Directory
+        this.dcgmDir = this.createElementTextInput()
+        this.dcgmDir.style.width = '85%'
+        var browseDcgmDir = this.createElementButton('BROWSE')
+        browseDcgmDir.style.width = '15%'
+        browseDcgmDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.dcgmDir.value = path
+            })
+        }
+        this.subContainer.appendChild(this.createElementH4('DCGM Directory'))
+        this.subContainer.appendChild(this.dcgmDir)
+        this.subContainer.appendChild(browseDcgmDir)
+
+        // Save Directory
+        this.saveDir = this.createElementTextInput()
+        this.saveDir.style.width = '85%'
+        var browseSaveDir = this.createElementButton('BROWSE')
+        browseSaveDir.style.width = '15%'
+        browseSaveDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.saveDir.value = path
+            })
+        }
+        this.subContainer.appendChild(this.createElementH4('Save Directory'))
+        this.subContainer.appendChild(this.saveDir)
+        this.subContainer.appendChild(browseSaveDir)
+
+        // Filter condition
+        this.telogFilter = this.createElementTextInput()
+        this.telogFilter.style.width = '100%'
+        this.subContainer.appendChild(this.createElementH4('Optional: Telog Filter Condition(Case sensitive, Comma delimited)'))
+        this.subContainer.appendChild(this.telogFilter)
+
+        this.elogFilter = this.createElementTextInput()
+        this.elogFilter.style.width = '100%'
+        this.subContainer.appendChild(this.createElementH4('Optional: Elog Filter Condition(Case sensitive, Comma delimited)'))
+        this.subContainer.appendChild(this.elogFilter)
+
+        // search and cancel button
+        var apply = document.createElement('button')
+        apply.innerHTML = 'RUN'
+        apply.onclick = function(){that.apply()}
+        var cancel = document.createElement('button')
+        cancel.style.backgroundColor = 'red'
+        cancel.innerHTML = 'CANCEL'
+        cancel.onclick = function(){that.hidden()}
+
+        this.subContainer.appendChild(apply)
+        this.subContainer.appendChild(cancel)
+    }
+
+    apply(){
+        let params = {
+            dcgm_dir: this.dcgmDir.value,
+            save_dir: this.saveDir.value,
+            telog_filter: this.telogFilter.value,
+            elog_filter: this.elogFilter.value
+        }
+
+        this.fileContainerView.controlDCGMAnalysis(params)
+    }
+}
+
+class ShareDownloadDialog extends Dialog
+{
+    constructor(fileContainerView){
+        super(fileContainerView.container)
+        this.fileContainerView = fileContainerView
+
+        this.configs = []
+        this.init()
+    }
+
+    async init(){
+        let that = this
+
+        await http.get(urls.query_themes, {
+            params: {
+            },
+            })
+          .then(response => {
+            this.configs = response.data.configs
+            this.configs.forEach((config) => {
+                var div = document.createElement("div")
+                div.style.width = '100%'
+                div.style.display = 'block'
+                div.style.position = 'relative'
+                var input = document.createElement("input")
+                input.style.float = 'left'
+                input.style.cursor = 'pointer'
+                input.type = 'radio'
+                input.value = config
+                input.name = 'share-download'
+                var label = document.createElement("h4")
+                label.style.color = '#FFF'
+                label.innerHTML = config
+                div.appendChild(input)
+                div.appendChild(label)
+                this.container.appendChild(div)
+            })
+
+            var download = document.createElement('button')
+            download.style.width = "33%"
+            download.innerHTML = 'DOWNLOAD'
+            download.onclick = function(){that.download()}
+            var refresh = document.createElement('button')
+            refresh.style.width = "33%"
+            refresh.innerHTML = 'REFRESH'
+            refresh.onclick = function(){that.refresh()}
+            var cancel = document.createElement('button')
+            cancel.style.width = "33%"
+            cancel.style.backgroundColor = 'red'
+            cancel.innerHTML = 'CANCEL'
+            cancel.onclick = function(){that.close()}
+
+            this.container.appendChild(download)
+            this.container.appendChild(refresh)
+            this.container.appendChild(cancel)
+            this.modal.appendChild(this.container)
+            })
+            .catch(function (error) {
+                alert('Can not link to sharing service!')
+                that.hidden()
+            })
+    }
+
+    async download(){
+        if (process.env.NODE_ENV == 'development'){
+            await ipcRenderer.invoke('downloadURL', {url:`http://localhost:8001/download_theme/${this.container.querySelector('input[name="share-download"]:checked').value}`})
+        }else{
+            await ipcRenderer.invoke('downloadURL', {url:`http://10.166.152.87/share/download_theme/${this.container.querySelector('input[name="share-download"]:checked').value}`})
+        }
+    }
+
+    refresh(){
+        this.deleteAllChilds()
+        this.init()
+    }
+}
+
+export {Dialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, ShareDownloadDialog}

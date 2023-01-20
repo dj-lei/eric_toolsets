@@ -6,5 +6,8 @@
   "SEARCHFUNCTION": "/SearchFunction",
   "INSIGHTFUNCTION": "/InsightFunction",
   "CHARTFUNCTION": "/ChartFunction",
-  "STATISTICFUNCTION": "/StatisticFunction"
+  "STATISTICFUNCTION": "/StatisticFunction",
+  "BATCHINSIGHT": "/BatchInsight",
+  "BATCHSTATISTIC": "/BatchStatistic",
+  "GLOBALCHART": "/GlobalChart"
 }

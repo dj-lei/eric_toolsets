@@ -191,6 +191,36 @@ async function createWindow() {
         ]
       },
       {
+        label: 'Batch',
+        submenu: [
+          {
+            label: 'New Batch Insight',
+            click: () => {
+              win.webContents.send('new-batch-insight')
+            }
+          },
+          {
+            label: 'New Batch Statistic',
+            click: () => {
+              win.webContents.send('new-batch-statistic')
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Open Batch Insight View',
+            click: () => {
+              win.webContents.send('open-batch-insight-view')
+            }
+          },
+          {
+            label: 'Open Batch Statistic View',
+            click: () => {
+              win.webContents.send('open-batch-statistic-view')
+            }
+          },
+        ]
+      },
+      {
         label: 'Share',
         submenu: [
           {
@@ -215,48 +245,7 @@ async function createWindow() {
             click: () => {
               win.webContents.send('dcgm-analysis')
             }
-          },
-          {
-            label: 'Work Flow',
-            click: () => {
-              win.webContents.send('work-flow')
-            }
           }
-        ]
-      },
-      {
-        label: 'Course',
-        submenu: [
-          {
-            label: '1.Install',
-            click: () => {
-              win.webContents.send('video', 'install.mp4')
-            }
-          },
-          {
-            label: '2.Get Start',
-            click: () => {
-              win.webContents.send('video', 'getStart.mp4')
-            }
-          },
-          {
-            label: '3.Regex(pending)',
-            click: () => {
-              // win.webContents.send('video', 'regex.mp4')
-            }
-          },
-          {
-            label: '4.Work Flow',
-            click: () => {
-              win.webContents.send('video', 'workFlow.mp4')
-            }
-          },
-          {
-            label: '5.Software Updates',
-            click: () => {
-              win.webContents.send('video', 'softwareUpdates.mp4')
-            }
-          },
         ]
       },
       {
