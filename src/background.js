@@ -238,7 +238,7 @@ async function createWindow() {
         ]
       },
       {
-        label: 'EricssonPlug',
+        label: 'Ericsson',
         submenu: [
           {
             label: 'DCGM Analysis',

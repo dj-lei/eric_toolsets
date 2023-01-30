@@ -1,5 +1,6 @@
 import common from '@/plugins/common'
 import http from '@/plugins/http'
+import urls from '@/plugins/urls'
 import { ipcRenderer } from 'electron'
 
 import { Component } from './element'
@@ -666,7 +667,7 @@ class ShareDownloadDialog extends Dialog
         this.fileContainerView = fileContainerView
 
         this.configs = []
-        this.init()
+        // this.init()
     }
 
     async init(){

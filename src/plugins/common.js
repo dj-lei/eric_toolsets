@@ -29,13 +29,6 @@ export default {
       }
     },
 
-    removeAllChildDom(id){
-      var divGraphs = document.getElementById(id)
-      while (divGraphs.firstChild) {
-        divGraphs.removeChild(divGraphs.lastChild)
-      }
-    },
-
     arrayRemoveElm(list, elm){
       const index = list.indexOf(elm);
       if (index > -1) { // only splice array when item is found

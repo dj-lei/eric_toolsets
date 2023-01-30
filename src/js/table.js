@@ -100,7 +100,7 @@ class SearchAtomComponentTable extends Table
         this.collapsible.style.backgroundColor = '#777'
         this.collapsible.style.width = '94%'
         this.collapsible.style.textAlign = 'left'
-        console.log(this.searchAtomView.model)
+
         this.collapsible.innerHTML = '+ ' + this.searchAtomView.model.desc + ` (unknow hits)`
         this.collapsible.addEventListener("click", function() {
             if (that.table.style.display === "inline-block") {

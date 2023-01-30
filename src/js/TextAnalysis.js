@@ -41,13 +41,13 @@ class TextAnalysisView extends View
         }else if (args.className == 'StatisticFunctionView') {
             new StatisticFunctionView(args.namespace)
         }else if (args.className == 'SearchAtomView') {
-            new SearchAtomView(args.namespace, args.model)
+            new SearchAtomView(args.model)
         }else if (args.className == 'InsightAtomView') {
-            new InsightAtomView(args.namespace, args.model)
+            new InsightAtomView(args.model)
         }else if (args.className == 'ChartAtomView') {
-            new ChartAtomView(args.namespace, args.model)
+            new ChartAtomView(args.model)
         }else if (args.className == 'StatisticAtomView') {
-            new StatisticAtomView(args.namespace, args.model)
+            new StatisticAtomView(args.model)
         }else if (args.className == 'BatchInsightView') {
             new BatchInsightView(args.namespace)
         }else if (args.className == 'BatchStatisticView') {
@@ -78,19 +78,14 @@ class FileContainerView extends View
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.FILECONTAINER}`, textAnalysisView.container)
         this.fileContainerComponentTab = new FileContainerComponentTab(this)
-        this.batchInsightComponentDialog = new BatchInsightComponentDialog(this)
-        this.batchStatisticComponentDialog = new BatchStatisticComponentDialog(this)
-        this.dcgmAnalysisDialog = new DCGMAnalysisDialog(this)
-        this.shareDownloadDialog = new ShareDownloadDialog(this)
+        // this.batchInsightComponentDialog = new BatchInsightComponentDialog(this)
+        // this.batchStatisticComponentDialog = new BatchStatisticComponentDialog(this)
+        // this.dcgmAnalysisDialog = new DCGMAnalysisDialog(this)
+        // this.shareDownloadDialog = new ShareDownloadDialog(this)
 
-        this.tmpSearchAtomComponentDialog = new SearchAtomComponentDialog(this)
-        this.tmpInsightAtomComponentDialog = new InsightAtomComponentDialog(this)
-        this.tmpChartAtomComponentSvgDialog = new ChartAtomComponentSvgDialog(this)
-        this.tmpStatisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
-
-        new BatchInsightView(this)
-        new BatchStatisticView(this)
-        new GlobalChartView(this)
+        // new BatchInsightView(this)
+        // new BatchStatisticView(this)
+        // new GlobalChartView(this)
 
         let that = this
         ipcRenderer.on('open-file', async function () {
@@ -99,12 +94,12 @@ class FileContainerView extends View
                 that.socket.emit("new_file", file.filePaths)
             }
         })
-        // ipcRenderer.on('save-theme', async function () {
+        // ipcRenderer.on('save-config', async function () {
         //     if (that.textFileViews[that.activeTextFileView].configPath == ''){
-        //         let file = await ipcRenderer.invoke('export-theme', JSON.stringify(that.textFileViews[that.activeTextFileView].getConfig()))
+        //         let file = await ipcRenderer.invoke('export-config', JSON.stringify(that.textFileViews[that.activeTextFileView].getConfig()))
         //         that.textFileViews[that.activeTextFileView].configPath = file.filePath.toString()
         //     }else{
-        //         await ipcRenderer.invoke('save-theme', that.textFileViews[that.fileContainerView.activeTextFileView].configPath, JSON.stringify(that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].getConfig()))
+        //         await ipcRenderer.invoke('save-config', that.textFileViews[that.fileContainerView.activeTextFileView].configPath, JSON.stringify(that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].getConfig()))
         //     }
         // })
         ipcRenderer.on('export-config', async () => {
@@ -112,7 +107,9 @@ class FileContainerView extends View
         })
         ipcRenderer.on('import-config', async () => {
             let config = await ipcRenderer.invoke('import-config')
-            that.controlLoadConfig(config)
+            if (config[0] != '') {
+                that.controlLoadConfig(config)
+            }
         })
         ipcRenderer.on('new-search', () => {
             that.tmpSearchAtomComponentDialog.display()
@@ -172,6 +169,25 @@ class FileContainerView extends View
 
     controlDisplayFile(namespace){
         this.socket.emit("display_file", namespace)
+    }
+
+    controlDeleteFile(namespace){
+        this.socket.emit("delete_file", namespace)
+
+        var namespaces = Object.keys(this.fileContainerComponentTab.tabs)
+        var index = namespaces.indexOf(namespace)
+        if((index == 0)&(namespaces.length == 1)){
+            null
+        }else if (index == 0){
+            index = index + 1
+            this.controlDisplayFile(namespaces[index])
+        }else{
+            index = index - 1
+            this.controlDisplayFile(namespaces[index])
+        }
+        common.removeAll(this.fileContainerComponentTab.tabs[namespace].ins)
+        delete this.fileContainerComponentTab.tabs[namespace]
+        
     }
 
     controlGetConfig(){
@@ -239,8 +255,8 @@ class FileContainerView extends View
         this.fileContainerComponentTab.updatePlaceholder(textFileModel)
     }
 
-    onDisplayFile(textFileModel){
-        this.fileContainerComponentTab.displayFile(textFileModel)
+    onDisplayFile(params){
+        this.fileContainerComponentTab.displayFile(params)
     }
 }
 
@@ -250,12 +266,21 @@ class TextFileView extends View
         super(namespace, common.getParentContainer(namespace))
         
         // this.textFileComponentRegisterCompareGraphDialog = new TextFileComponentRegisterCompareGraphDialog(this)
-        this.socket.emit("publish")
+        this.tmpSearchAtomComponentDialog = new SearchAtomComponentDialog(this)
+        this.tmpInsightAtomComponentDialog = new InsightAtomComponentDialog(this)
+        this.tmpChartAtomComponentSvgDialog = new ChartAtomComponentSvgDialog(this)
+        this.tmpStatisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
+
+        this.socket.emit("display")
     }
 
-    // registerCompareGraph(compareGraph){
-    //     this.socket.emit("register_compare_graph", compareGraph)
-    // }
+    onRefreshTmpChartAtomSvgDialog(model){
+        this.tmpChartAtomComponentSvgDialog.chartAtomComponentSvg.refresh(model.keyValueTree)
+    }
+
+    onDisplayTmpChartAtomSvgDialog(){
+        this.tmpChartAtomComponentSvgDialog.display()
+    }
 
     onDelete(){
         super.delete()
@@ -269,7 +294,7 @@ class TextFileOriginalView extends View
         this.textFileOriginalComponentTable = new TextFileOriginalComponentTable(this)
         
         this.container.style.border = '1px solid #ddd'
-        // this.controlScroll(0)
+        this.controlScroll(0)
     }
 
     controlScroll(point){
@@ -366,8 +391,8 @@ class StatisticFunctionView extends View
 
 class SearchAtomView extends View
 {
-    constructor(namespace, model){
-        super(namespace, document.getElementById(namespace))
+    constructor(model){
+        super(model.namespace, document.getElementById(model.namespace))
         this.model = model
         this.searchAtomComponentDialog = new SearchAtomComponentDialog(this)
         this.searchAtomComponentTable = new SearchAtomComponentTable(this)
@@ -390,6 +415,7 @@ class SearchAtomView extends View
     onRefreshTable(model){
         this.stopLoader()
         this.model = model
+        // console.log(model)
         if (!this.searchAtomComponentDialog.alias.value){
             this.onUpdateDialog(model)
         }
@@ -412,8 +438,8 @@ class SearchAtomView extends View
 
 class InsightAtomView extends View
 {
-    constructor(namespace, model){
-        super(namespace, document.getElementById(namespace))
+    constructor(model){
+        super(model.namespace, document.getElementById(model.namespace))
 
         this.insightAtomComponentDialog = new InsightAtomComponentDialog(this)
         this.insightAtomComponentTable = new InsightAtomComponentTable(this)
@@ -456,8 +482,8 @@ class InsightAtomView extends View
 
 class ChartAtomView extends View
 {
-    constructor(namespace, model){
-        super(namespace, document.getElementById(namespace))
+    constructor(model){
+        super(model.namespace, document.getElementById(model.namespace))
         this.model = model
 
         this.chartAtomComponentSvgDialog = new ChartAtomComponentSvgDialog(this)
@@ -492,8 +518,8 @@ class ChartAtomView extends View
 
 class StatisticAtomView extends View
 {
-    constructor(namespace, model){
-        super(namespace, document.getElementById(namespace))
+    constructor(model){
+        super(model.namespace, document.getElementById(model.namespace))
 
         this.statisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
         this.statisticAtomComponentTextarea = new StatisticAtomComponentTextarea(this)

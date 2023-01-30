@@ -11,9 +11,11 @@ class Tab extends Component
     subscribePlaceholder(namespace){
         var tablink = this.createElementDiv()
         tablink.setAttribute("name", namespace)
+        tablink.style.position = 'relative'
         tablink.style.display = 'inline-block'
 
         var title = this.createElementButton('')
+        title.style.width = '100%'
         tablink.append(title)
         this.container.append(tablink)
         this.tabs[namespace] = {'ins':tablink, 'title':title}
@@ -34,7 +36,7 @@ class FileContainerComponentTab extends Tab
     updatePlaceholder(model){
         let that = this
         var tablink = this.tabs[model.namespace].ins
-        tablink.style.width = `${model.fileName.length * 10}px`
+        tablink.style.width = `${model.fileName.length * 8}px`
         var title = this.tabs[model.namespace].title
         title.innerHTML = model.fileName
         title.addEventListener('click', function()
@@ -43,22 +45,41 @@ class FileContainerComponentTab extends Tab
         })
 
         var close = this.createElementButton('X')
+        close.style.position = 'absolute'
+        close.style.right = 0
         close.style.backgroundColor = 'red'
+        close.style.border = 0
+        close.style.outline = 0
         close.addEventListener("click", function() {
-            that.deleteTablink(model)
+            that.fileContainerView.controlDeleteFile(model.namespace)
         })
         tablink.append(close)
         this.tabs[model.namespace]['close'] = close
+
+        this.resetWidth()
     }
 
-    displayFile(model)
+    resetWidth(){
+        var totalLength = 0
+        Object.keys(this.tabs).forEach(namespace => {
+            totalLength += parseInt(this.tabs[namespace].ins.style.width.replace('px', ''))
+        })
+
+        var width = 0
+        if (totalLength > this.container.clientWidth) {
+            width = Math.round( this.container.clientWidth / Object.keys(this.tabs).length )
+            Object.keys(this.tabs).forEach(namespace => {
+                this.tabs[namespace].ins.style.width = `${width - 2}px`
+            })
+        }
+    }
+
+    displayFile(params)
     {
-        this.tabs[model.activeTextFileModel].title.style.backgroundColor = "#555"
-        this.tabs[model.namespace].title.style.backgroundColor = "#333"
-    }
-
-    deleteFile(model){
-
+        if((params.earlierActiveTextFileModel != '') & (params.earlierActiveTextFileModel in this.tabs)){
+            this.tabs[params.earlierActiveTextFileModel].title.style.backgroundColor = "#555"
+        }
+        this.tabs[params.activeTextFileModel].title.style.backgroundColor = "#333"
     }
 }
 

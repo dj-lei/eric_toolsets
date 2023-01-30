@@ -190,7 +190,7 @@ class Component extends Element
         button.style.cursor = 'pointer'
         button.style.padding = '5px 8px'
         button.style.fontSize = '12px'
-        button.style.display = 'inline-block'
+        // button.style.display = 'inline-block'
         button.innerHTML = name
         return button
     }
