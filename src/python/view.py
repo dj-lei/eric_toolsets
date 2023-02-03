@@ -4,7 +4,7 @@ from aiohttp import web
 from text_analysis import TextAnalysisModel
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import freeze_support, current_process, cpu_count, Manager, Process
-
+from text_analysis import BatchStatisticModel
 
 
 class Parallel(object):
@@ -15,41 +15,42 @@ class Parallel(object):
         # self.smm = SharedMemoryManager()
         # self.smm.start()
 
-        # self.exe = ProcessPoolExecutor(self._cpu_count)
-        # fs = [self.exe.submit(self.work_init, cpu_num) for cpu_num in range(self._cpu_count)]
+        self.exe = ProcessPoolExecutor(self._cpu_count)
+        fs = [self.exe.submit(Parallel.work_init, cpu_num) for cpu_num in range(self._cpu_count)]
         self.container = {}
 
-    def work_init(self, cpu_num):
+    @staticmethod
+    def work_init(cpu_num):
         print(f'Init Cpu Num:{cpu_num} {current_process()=}')
 
     def shutdown(self):
         self.container = {}
 
-    def copy_to_shm(self, uid, data):
-        self.container[uid] = Manager().list(data)
-        return self.container[uid]
+    def copy_to_shm(self, namespace, data):
+        self.container[namespace] = Manager().list(data)
+        return self.container[namespace]
 
-    def delete_shm(self, uid):
-        self.container[uid] = ''
-        del self.container[uid]
+    def delete_shm(self, namespace):
+        self.container[namespace] = ''
+        del self.container[namespace]
 
     def parallel(self, models):
-        processes = []
+        # processes = []
 
-        for namespace in models.keys():
-            p = Process(target=models[namespace].search, args=())
-            processes.append(p)
+        # for namespace in models.keys():
+        #     p = Process(target=models[namespace].search, args=())
+        #     processes.append(p)
 
-        [x.start() for x in processes]
-        # fs = []
-        # ns = list(models.keys())
-        # print(ns)
-        # # for namespace in ns:
-        # #     fs.append(self.exe.submit(models[namespace].search, namespace))
+        # [x.start() for x in processes]
+        fs = []
+        ns = list(models.keys())
+        print(ns)
+        # for namespace in ns:
+        #     fs.append(self.exe.submit(models[namespace].search, namespace))
 
-        # _ = [self.exe.submit(models[namespace].search) for namespace in models.keys()]
-        # for _ in as_completed(fs):
-        #     print('ffinnnnnnnnnnnnnnnnnnnnnn')
+        fs = [self.exe.submit(BatchStatisticModel.test, 'TEST', 'TEST') for namespace in models.keys()]
+        for data in as_completed(fs):
+            print(data.result())
 
 
 if __name__ == '__main__':

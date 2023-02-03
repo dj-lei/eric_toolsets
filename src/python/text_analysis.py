@@ -198,8 +198,7 @@ class Fellow(Model):
                 self.text_analysis_model.parallel.parallel(self.models)
                 # for namespace in self.models.keys():
                 #     if self.mode == 'normal':
-                        
-                #         # await self.models[namespace].on_refresh('')
+                #         await self.models[namespace].on_refresh('')
                 #     else:
                 #         func = getattr(self.models[namespace], self.__class__.__name__.split('Function')[0].lower())
                 #         func()
@@ -343,6 +342,7 @@ class TextFileModel(Model):
 
         with open(self.path, 'r') as f:
             self.lines = f.readlines()
+            # self.lines = self.parent.parent.parallel.copy_to_shm(self.namespace, f.readlines())
 
         await self.new_view_object()
         self.text_file_original_model = await TextFileOriginalModel(self, mode)
@@ -661,8 +661,8 @@ class SearchAtomModel(Model):
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
             self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file_model.lines[line]+'</td>')
 
+
     def search(self):
-        print('dddddddddddddddddddd')
         self.res_search_units = []
 
         for index, line in enumerate(self.text_file_model.lines):
@@ -1355,6 +1355,13 @@ class BatchStatisticModel(Model):
                 await self.on_refresh('', sample)
             await tmp_file.on_delete('')
             print('Finish :', tmp_file.file_name)
+
+    @staticmethod
+    async def test(new_file_namespace, path):
+        tmp_file = await TextFileModel('', new_file_namespace, path, 'batch')
+        return tmp_file.file_name
+        # await tmp_file.on_load_config('', [self.dir_path+'\\'+path, self.config], ['search', 'statistic'])
+        # sample = self.statistic(tmp_file)
 
     def statistic(self, text_file_model):
         statistic_function_model = text_file_model.text_file_function_model.statistic_function_model

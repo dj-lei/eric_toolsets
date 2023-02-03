@@ -11,9 +11,9 @@ import pandas as pd
 import zipfile
 import gzip
 # from deepdiff import DeepDiff
-from tslearn.metrics import lcss_path
-from sklearn.preprocessing import minmax_scale
-from sklearn.cluster import KMeans
+# from tslearn.metrics import lcss_path
+# from sklearn.preprocessing import minmax_scale
+# from sklearn.cluster import KMeans
 from parse import parse
 from datetime import timedelta
 from dateutil.parser import parse as dp
