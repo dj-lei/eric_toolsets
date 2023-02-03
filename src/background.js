@@ -118,13 +118,13 @@ async function createWindow() {
               win.webContents.send('import-config')
             }
           },
-          {
-            label: 'Save Config',
-            accelerator: 'CommandOrControl+S',
-            click: () => {
-              win.webContents.send('save-config')
-            }
-          },
+          // {
+          //   label: 'Save Config',
+          //   accelerator: 'CommandOrControl+S',
+          //   click: () => {
+          //     win.webContents.send('save-config')
+          //   }
+          // },
           {
             label: 'Export Config',
             accelerator: 'CommandOrControl+E',
@@ -168,6 +168,7 @@ async function createWindow() {
               win.webContents.send('new-statistic')
             }
           },
+          { type: 'separator' },
           {
             label: 'Open Function Area',
             accelerator: 'CommandOrControl+O',
@@ -175,7 +176,6 @@ async function createWindow() {
               win.webContents.send('open-func-area')
             }
           },
-          { type: 'separator' },
           {
             label: 'Open Global KeyValue Tree',
             click: () => {
@@ -224,13 +224,13 @@ async function createWindow() {
         label: 'Share',
         submenu: [
           {
-            label: 'Upload Theme',
+            label: 'Upload Config',
             click: () => {
               win.webContents.send('share-upload')
             }
           },
           {
-            label: 'Download Theme',
+            label: 'Download Config',
             click: () => {
               win.webContents.send('share-download')
             }

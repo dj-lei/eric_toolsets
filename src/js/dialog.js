@@ -300,18 +300,18 @@ class InsightAtomComponentDialog extends Dialog
 
         // search description
         this.desc = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Search Description'))
+        this.subContainer.appendChild(this.createElementH4('Insight Description'))
         this.subContainer.appendChild(this.desc)
 
         // search regex express 
         this.expSearch = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Search Express'))
+        this.subContainer.appendChild(this.createElementH4('Search Express, narrow the scope of insight'))
         this.subContainer.appendChild(this.expSearch)
 
         // extract key value regex express
         this.expExtract = this.createElementTextInput()
         this.expExtract.style.width = '85%'
-        this.subContainer.appendChild(this.createElementH4('Extract Key Value Regex Express'))
+        this.subContainer.appendChild(this.createElementH4('Extract Timestamp Regex Express'))
         this.subContainer.appendChild(this.expExtract)
 
         // mark key location express
@@ -320,7 +320,7 @@ class InsightAtomComponentDialog extends Dialog
         this.expMark = this.createElementTextInput()
         this.expMark.style.width = '65%'
         this.expMarkColor = this.createElementColorInput()
-        this.subContainer.appendChild(this.createElementH4('Mark Key Location Express'))
+        this.subContainer.appendChild(this.createElementH4('Mark Location Express'))
         this.subContainer.appendChild(this.expMarkAlias)
         this.subContainer.appendChild(this.expMark)
         this.subContainer.appendChild(this.expMarkColor)
@@ -370,7 +370,7 @@ class StatisticAtomComponentDialog extends Dialog
 
         this.alias = ''
         this.desc = ''
-        this.exp = ''
+        this.code = ''
         this.type = 'code'
 
         this.init()
@@ -396,23 +396,33 @@ class StatisticAtomComponentDialog extends Dialog
 
         // search description
         this.desc = this.createElementTextInput()
-        codeContainer.appendChild(this.createElementH4('Express Description'))
+        codeContainer.appendChild(this.createElementH4('Code Description'))
         codeContainer.appendChild(this.desc)
 
-        // search regex express 
-        this.exp = this.createElementTextInput()
-        codeContainer.appendChild(this.createElementH4('Python Express'))
-        codeContainer.appendChild(this.exp)
+        //  python code 
+        this.code = this.createElementTextarea()
+        codeContainer.appendChild(this.createElementH4('Python Code'))
+        codeContainer.appendChild(this.code)
+
+        //  code test result 
+        this.result = this.createElementTextarea()
+        codeContainer.appendChild(this.createElementH4('Code Test Result'))
+        codeContainer.appendChild(this.result)
 
         // search and cancel button
         var apply = this.createElementButton('STATISTIC')
-        apply.style.width = '50%'
+        apply.style.width = '33%'
         apply.onclick = function(){that.statistic()}
+        var test = this.createElementButton('TEST')
+        test.style.backgroundColor = 'blue'
+        test.style.width = '33%'
+        test.onclick = function(){that.statisticTest()}
         var cancel = this.createElementButton('CANCEL')
         cancel.style.backgroundColor = 'red'
-        cancel.style.width = '50%'
+        cancel.style.width = '33%'
         cancel.onclick = function(){that.hidden()}
         codeContainer.appendChild(apply)
+        codeContainer.appendChild(test)
         codeContainer.appendChild(cancel)
         this.subContainer.appendChild(codeContainer)
 
@@ -445,20 +455,34 @@ class StatisticAtomComponentDialog extends Dialog
             namespace: this.statisticAtomView.namespace,
             alias: this.alias.value,
             desc: this.desc.value,
-            exp: this.exp.value,
+            code: this.code.value,
         }
         this.statisticAtomView.controlStatistic(model)
+    }
+
+    statisticTest(){
+        let model = {
+            namespace: this.statisticAtomView.namespace,
+            alias: this.alias.value,
+            desc: this.desc.value,
+            code: this.code.value,
+        }
+        this.statisticAtomView.controlStatisticTest(model)
     }
 
     update(model){
         if (this.type == 'code') {
             this.alias.value = model.alias
             this.desc.value = model.desc
-            this.exp.value = model.exp
+            this.code.value = model.code
         }else if (this.type == 'graph') {
             this.graph.draw(model.compareGraph)
         }
 
+    }
+
+    refreshTest(model){
+        this.result.value = model.result
     }
 }
 

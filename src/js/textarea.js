@@ -14,43 +14,32 @@ class StatisticAtomComponentTextarea extends Textarea
     constructor(statisticAtomView){
         super(statisticAtomView.container)
         this.statisticAtomView = statisticAtomView
-        this.collapsible = ''
 
         let that = this
-        var del = this.createElementButton('X')
-        del.style.backgroundColor = 'red'
-        del.style.width = '2%'
-        del.addEventListener("click", function() {
-            that.insightAtomView.onDelete()
+        this.container.style.display = 'none'
+
+        this.statisticAtomView.del.addEventListener("click", function() {
+            that.statisticAtomView.onDelete()
         })
 
-        var search = this.createElementButton('O')
-        search.style.backgroundColor = 'green'
-        search.style.width = '2%'
-        search.addEventListener("click", function() {
-            that.statisticAtomView.statisticAtomComponentDialog.display()
+        this.statisticAtomView.edit.addEventListener("click", function() {
+            that.statisticAtomView.onDisplayDialog()
         })
 
-        this.collapsible = this.createElementButton('')
-        this.collapsible.style.backgroundColor = '#777'
-        this.collapsible.style.width = '94%'
-        this.collapsible.style.textAlign = 'left'
-        this.collapsible.addEventListener("click", function() {
-            if (that.textarea.style.display === "inline-block") {
-                that.textarea.style.display = "none"
+        this.statisticAtomView.collapsible.innerHTML = '+ ' + this.statisticAtomView.model.desc
+        this.statisticAtomView.collapsible.addEventListener("click", function() {
+            if (that.container.style.display === "inline-block") {
+                that.container.style.display = "none"
             } else {
-                that.textarea.style.display = "inline-block"
+                that.container.style.display = "inline-block"
             }
         })
 
-        this.container.append(del)
-        this.container.append(search)
-        this.container.append(this.collapsible)
         this.container.append(this.textarea)
     }
 
     refresh(model){
-        this.collapsible.innerHTML = '+ ' + model.desc
+        this.statisticAtomView.collapsible.innerHTML = '+ ' + model.desc
         this.textarea.value = model.result
     }
 }

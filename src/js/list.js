@@ -14,6 +14,7 @@ class List extends Component
     subscribePlaceholder(namespace){
         var li = this.createElementLi()
         li.id = namespace
+        
         this.ul.append(li)
     }
 

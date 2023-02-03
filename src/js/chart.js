@@ -170,7 +170,7 @@ class SequentialChart extends Chart
 		this.option['series'] = []
 
 		this.yAxisIndex = 0
-		this.offsetUnit = 30
+		this.offsetUnit = 5
 		this.selectedLines = {}
 		this.legend = []
 	}
@@ -298,18 +298,18 @@ class SequentialChart extends Chart
 		// config yaxis
 		this.option['yAxis'].push({
 			axisLabel: {
-					textStyle:{
+				textStyle:{
 					fontSize: "8"
-					},
+				},
 			},
 			type: line[0].type == 'STRING' ? 'category' : 'value',
 			name: legend,
 			nameTextStyle: {
 					fontSize:'8',
-					padding:[0, 0, -7 * this.offsetUnit, 0],
+					padding:[0, 0, -1 * this.offsetUnit * parseInt(this.yAxisIndex / 2), 0],
 			},
 			position: this.yAxisIndex % 2 == 0 ? 'left' : 'right', // left or right
-			offset: 30 * this.offsetUnit,
+			offset: 6 * this.offsetUnit * parseInt(this.yAxisIndex / 2),
 			data: line[0].type == 'STRING' ? categories : null
 		})
 
@@ -331,9 +331,9 @@ class SequentialChart extends Chart
 		this.legend.push(legend)
 	}
 
-	setMarkLine(name, legend, line){
+	setMarkLine(legend, line){
 		var markLine = {
-			silent: true, // mouse move no event
+			// silent: true, // mouse move no event
 			symbol: 'none',
 			label:{
 				// color:'#FFFFFF',
@@ -346,12 +346,12 @@ class SequentialChart extends Chart
 			data:[]
 		}
 		line.forEach((dot) => {
-			markLine['data'].push({'xAxis': parseInt(dot.graph_index), 'label': {'color': dot.value, 'formatter':dot.name, 'fontSize':10}})
+			markLine['data'].push({'xAxis': dot.graph_index, 'globalIndex': dot.global_index, 'searchIndex': dot.search_index, 'label': {'color': dot.value, 'formatter':dot.name, 'fontSize':10}})
 		})
 
 		this.option['series'].push(
 			{
-				name: name,
+				name: legend,
 				type: 'line',
 				showSymbol: false,
 				// data: makeLineAxis,
@@ -381,7 +381,7 @@ class SequentialChart extends Chart
 		Object.keys(this.selectedLines).forEach((line) => {
 			if (this.selectedLines[line].length > 0){
 				if (this.selectedLines[line][0].type == 'mark'){
-					this.setMarkLine(this.selectedLines[line][0].name, `${this.selectedLines[line][0].search_alias}.${this.selectedLines[line][0].name}`,this.selectedLines[line])
+					this.setMarkLine(`${this.selectedLines[line][0].search_alias}.${this.selectedLines[line][0].name}`,this.selectedLines[line])
 				}else{
 					this.setLine(`${this.selectedLines[line][0].search_alias}.${this.selectedLines[line][0].name}`, this.selectedLines[line])
 				}
@@ -463,6 +463,26 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 	constructor(chartAtomView){
 		super(chartAtomView.container)
 		this.chartAtomView = chartAtomView
+		this.container.style.display = 'none'
+	
+		let that = this
+		this.chartAtomView.del.addEventListener("click", function() {
+			that.chartAtomView.onDelete()
+		})
+
+		this.chartAtomView.edit.addEventListener("click", function() {
+			that.chartAtomView.onDisplayDialog()
+		})
+
+		this.chartAtomView.collapsible.innerHTML = '+ ' + this.chartAtomView.model.desc
+		this.chartAtomView.collapsible.addEventListener("click", function() {
+			if (that.container.style.display === "block") {
+				that.container.style.display = "none"
+			} else {
+				that.container.style.display = "block"
+			}
+		})
+    
 	}
 
 	refresh(lines){
@@ -470,14 +490,16 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 		this.setToolBox()
 		this.chart.setOption(this.option)
 		this.bindChartClickEvent()
+
+		this.chartAtomView.collapsible.innerHTML = '+ ' + this.chartAtomView.model.desc
 	}
 
 	bindChartClickEvent(){
 		let that = this
 
 		// bind click event and paint
-		this.chart.on('click', function(params) { 
-			console.log(params)
+		this.chart.on('click', function(params) {
+			that.chartAtomView.controlClickEvent({'type': params.componentType, 'data': params.data})
 		});
 	}
 
@@ -485,29 +507,29 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 		let that = this
 		this.option['toolbox']['right'] = "3%"
 		this.option['toolbox']['feature'] = {
-			myTool5:{
-				show:true,
-				title: 'Register',
-				icon: 'path://M499.2 281.6l243.2 243.2L413.866667 853.333333H170.666667v-243.2l328.533333-328.533333z m0 123.733333L256 648.533333V768h119.466667l243.2-243.2-119.466667-119.466667zM614.4 170.666667L853.333333 413.866667l-72.533333 72.533333-243.2-243.2L614.4 170.666667z',
-				onclick: (e) =>{
-					that.chartAtomView.onDisplayCompareGraphDialog(that.chartAtomView.model)
-				}
-			},
+			// myTool4:{
+			// 	show:true,
+			// 	title: 'Register',
+			// 	icon: 'path://M499.2 281.6l243.2 243.2L413.866667 853.333333H170.666667v-243.2l328.533333-328.533333z m0 123.733333L256 648.533333V768h119.466667l243.2-243.2-119.466667-119.466667zM614.4 170.666667L853.333333 413.866667l-72.533333 72.533333-243.2-243.2L614.4 170.666667z',
+			// 	onclick: (e) =>{
+			// 		that.chartAtomView.onDisplayCompareGraphDialog(that.chartAtomView.model)
+			// 	}
+			// },
 			saveAsImage: {
 				show: true,
 				excludeComponents: ['toolbox'],
 				pixelRatio: 2
 			},
-			myTool3:{
-				show:true,
-				title: 'Edit',
-				icon: 'path://M499.2 281.6l243.2 243.2L413.866667 853.333333H170.666667v-243.2l328.533333-328.533333z m0 123.733333L256 648.533333V768h119.466667l243.2-243.2-119.466667-119.466667zM614.4 170.666667L853.333333 413.866667l-72.533333 72.533333-243.2-243.2L614.4 170.666667z',
-				onclick: (e) =>{
-					that.config.desc.value = that.option['title']['text']
-					that.config.open()
-				}
-			},
-			myTool2:{
+			// myTool2:{
+			// 	show:true,
+			// 	title: 'Edit',
+			// 	icon: 'path://M499.2 281.6l243.2 243.2L413.866667 853.333333H170.666667v-243.2l328.533333-328.533333z m0 123.733333L256 648.533333V768h119.466667l243.2-243.2-119.466667-119.466667zM614.4 170.666667L853.333333 413.866667l-72.533333 72.533333-243.2-243.2L614.4 170.666667z',
+			// 	onclick: (e) =>{
+			// 		that.config.desc.value = that.option['title']['text']
+			// 		that.config.open()
+			// 	}
+			// },
+			myTool1:{
 				show:true,
 				title: 'Export',
 				icon: 'path://M712.533333 371.2l-128 128-59.733333-59.733333 128-128L597.333333 256l-42.666666-42.666667h256v256l-42.666667-42.666666-55.466667-55.466667zM657.066667 256H768v110.933333V256h-110.933333zM298.666667 298.666667v426.666666h426.666666v-256l85.333334 85.333334v256H213.333333V213.333333h256l85.333334 85.333334H298.666667z',
@@ -515,26 +537,8 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 					that.exportExcel()
 				}
 			},
-			myTool1:{
-				show:true,
-				title: 'Delete',
-				icon: 'path://M202.666667 256h-42.666667a32 32 0 0 1 0-64h704a32 32 0 0 1 0 64H266.666667v565.333333a53.333333 53.333333 0 0 0 53.333333 53.333334h384a53.333333 53.333333 0 0 0 53.333333-53.333334V352a32 32 0 0 1 64 0v469.333333c0 64.8-52.533333 117.333333-117.333333 117.333334H320c-64.8 0-117.333333-52.533333-117.333333-117.333334V256z m224-106.666667a32 32 0 0 1 0-64h170.666666a32 32 0 0 1 0 64H426.666667z m-32 288a32 32 0 0 1 64 0v256a32 32 0 0 1-64 0V437.333333z m170.666666 0a32 32 0 0 1 64 0v256a32 32 0 0 1-64 0V437.333333z',
-				onclick: (e) =>{
-					that.chartAtomView.onDelete()
-				}
-			},
 		}
 	}
-
-	jump(params){
-
-	}
-
-	// applyConfig(){
-	//   this.option['title']['text'] = this.config.desc.value
-	//   this.chart.setOption(this.option)
-	//   this.parent.applyChartConfig(this.uid, this.config.desc.value)
-	// }
 }
 
 class GlobalChartComponentSequentialChartDialog extends Dialog

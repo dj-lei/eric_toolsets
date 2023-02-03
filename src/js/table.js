@@ -33,11 +33,13 @@ class TextFileOriginalComponentTable extends Table
 
         this.table.addEventListener("wheel", function(e){
             if (e.deltaY < 0){
-                that.slider.value = parseInt(that.slider.value) - 1
+                that.slider.value = parseInt(that.slider.value) -1
+                that.textFileOriginalView.controlScroll(-1)
             }else{
                 that.slider.value = parseInt(that.slider.value) + 1
+                that.textFileOriginalView.controlScroll(1)
             }
-            that.textFileOriginalView.controlScroll(parseInt(that.slider.value))
+            
             e.preventDefault()
             e.stopPropagation()
         })
@@ -76,41 +78,31 @@ class SearchAtomComponentTable extends Table
     constructor(searchAtomView){
         super(searchAtomView.container)
         this.searchAtomView = searchAtomView
-        this.collapsible = ''
 
         let that = this
+        this.container.style.display = "none"
         this.table.style.display = "none"
         this.slider.style.display = "none"
         this.slider.style.height = `${18 * 15}px`
-        var del = this.createElementButton('X')
-        del.style.backgroundColor = 'red'
-        del.style.width = '2%'
-        del.addEventListener("click", function() {
+
+        this.searchAtomView.del.addEventListener("click", function() {
             that.searchAtomView.onDelete()
         })
 
-        var search = this.createElementButton('O')
-        search.style.backgroundColor = 'green'
-        search.style.width = '2%'
-        search.addEventListener("click", function() {
-            that.searchAtomView.searchAtomComponentDialog.display()
+        this.searchAtomView.edit.addEventListener("click", function() {
+            that.searchAtomView.onDisplayDialog()
         })
 
-        this.collapsible = this.createElementButton('')
-        this.collapsible.style.backgroundColor = '#777'
-        this.collapsible.style.width = '94%'
-        this.collapsible.style.textAlign = 'left'
-
-        this.collapsible.innerHTML = '+ ' + this.searchAtomView.model.desc + ` (unknow hits)`
-        this.collapsible.addEventListener("click", function() {
+        this.searchAtomView.collapsible.innerHTML = '+ ' + this.searchAtomView.model.desc + ` (unknow hits)`
+        this.searchAtomView.collapsible.addEventListener("click", function() {
             if (that.table.style.display === "inline-block") {
+                that.container.style.display = "none"
                 that.table.style.display = "none"
                 that.slider.style.display = "none"
-                // that.parent.llt.refresh(that.parent.llt.point)
             } else {
+                that.container.style.display = "block"
                 that.table.style.display = "inline-block"
                 that.slider.style.display = "inline-block"
-                // that.parent.llt.refresh(that.parent.llt.point)
             }
         })
 
@@ -129,9 +121,6 @@ class SearchAtomComponentTable extends Table
             e.stopPropagation()
         })
 
-        this.container.append(del)
-        this.container.append(search)
-        this.container.append(this.collapsible)
         this.container.append(this.table)
         this.container.append(this.slider)
     }
@@ -139,7 +128,7 @@ class SearchAtomComponentTable extends Table
     refresh(model){
         this.deleteTableAllChilds()
         this.slider.max = model.count
-        this.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
+        this.searchAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
         model.displayLines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
@@ -167,34 +156,29 @@ class InsightAtomComponentTable extends Table
     constructor(insightAtomView){
         super(insightAtomView.container)
         this.insightAtomView = insightAtomView
-        this.collapsible = ''
 
         let that = this
+        this.container.style.display = "none"
         this.table.style.display = "none"
+        this.slider.style.display = "none"
         this.slider.style.height = `${18 * 15}px`
-        var del = this.createElementButton('X')
-        del.style.backgroundColor = 'red'
-        del.style.width = '2%'
-        del.addEventListener("click", function() {
+
+        this.insightAtomView.del.addEventListener("click", function() {
             that.insightAtomView.onDelete()
         })
 
-        var search = this.createElementButton('O')
-        search.style.backgroundColor = 'green'
-        search.style.width = '2%'
-        search.addEventListener("click", function() {
-            that.insightAtomView.insightAtomComponentDialog.display()
+        this.insightAtomView.edit.addEventListener("click", function() {
+            that.insightAtomView.onDisplayDialog()
         })
 
-        this.collapsible = this.createElementButton('')
-        this.collapsible.style.backgroundColor = '#777'
-        this.collapsible.style.width = '94%'
-        this.collapsible.style.textAlign = 'left'
-        this.collapsible.addEventListener("click", function() {
+        this.insightAtomView.collapsible.innerHTML = '+ ' + this.insightAtomView.model.desc
+        this.insightAtomView.collapsible.addEventListener("click", function() {
             if (that.table.style.display === "inline-block") {
+                that.container.style.display = "none"
                 that.table.style.display = "none"
                 that.slider.style.display = "none"
             } else {
+                that.container.style.display = "block"
                 that.table.style.display = "inline-block"
                 that.slider.style.display = "inline-block"
             }
@@ -215,9 +199,6 @@ class InsightAtomComponentTable extends Table
             e.stopPropagation()
         })
 
-        this.container.append(del)
-        this.container.append(search)
-        this.container.append(this.collapsible)
         this.container.append(this.table)
         this.container.append(this.slider)
     }
@@ -225,7 +206,7 @@ class InsightAtomComponentTable extends Table
     refresh(model){
         this.deleteTableAllChilds()
         this.slider.max = model.count
-        this.collapsible.innerHTML = '+ ' + model.desc
+        this.insightAtomView.collapsible.innerHTML = '+ ' + model.desc
         model.displayLines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
@@ -288,6 +269,16 @@ class BatchInsightComponentTable extends Table
             })
         })
     }
+
+    refresh(sample){
+        var tr = document.createElement('tr')
+        Object.keys(sample).forEach((key) => {
+            var column = document.createElement('td')
+            column.innerHTML = sample[key]
+            tr.appendChild(column)
+        })
+        this.table.appendChild(tr)
+    }
 }
 
 class BatchStatisticComponentTableDialog extends Dialog
@@ -309,29 +300,27 @@ class BatchStatisticComponentTable extends Table
         this.container.append(this.table)
     }
 
-    refresh(model){
-        this.deleteTableAllChilds()
-        Object.keys(model.result).forEach((file) => {
-            var tr = document.createElement('tr')
-            var fileName = document.createElement('td')
-            fileName.innerHTML = file
-            tr.appendChild(fileName)
+    refresh(sample){
+        var tr = document.createElement('tr')
+        Object.keys(sample).forEach((key) => {
+            var column = document.createElement('td')
+            column.innerHTML = sample[key]
+            tr.appendChild(column)
 
-            model.result[file].forEach((statisticAtom) => {
-                var alias = document.createElement('td')
-                alias.innerHTML = statisticAtom.alias
-                var resultType = document.createElement('td')
-                resultType.innerHTML = statisticAtom.resultType
-                var result = document.createElement('td')
-                result.innerHTML = statisticAtom.result
+            // model.result[file].forEach((statisticAtom) => {
+            //     var alias = document.createElement('td')
+            //     alias.innerHTML = statisticAtom.alias
+            //     var resultType = document.createElement('td')
+            //     resultType.innerHTML = statisticAtom.resultType
+            //     var result = document.createElement('td')
+            //     result.innerHTML = statisticAtom.result
 
-                tr.appendChild(alias)
-                tr.appendChild(resultType)
-                tr.appendChild(result)
-            })
-
-            this.table.appendChild(tr)
+            //     tr.appendChild(alias)
+            //     tr.appendChild(resultType)
+            //     tr.appendChild(result)
+            // })
         })
+        this.table.appendChild(tr)
     }
 }
 

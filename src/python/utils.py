@@ -8,6 +8,9 @@ import uuid
 import datetime
 import numpy as np
 import pandas as pd
+import zipfile
+import gzip
+# from deepdiff import DeepDiff
 from tslearn.metrics import lcss_path
 from sklearn.preprocessing import minmax_scale
 from sklearn.cluster import KMeans

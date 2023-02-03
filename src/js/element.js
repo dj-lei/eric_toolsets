@@ -109,6 +109,64 @@ class View extends Element
     onHidden(){
         this.hidden()
     }
+
+    onStartLoader(){
+        this.startLoader()
+    }
+
+    onStopLoader(){
+        this.stopLoader()
+    }
+}
+
+class ListView extends View
+{
+    constructor(namespace, position){
+        super(namespace, position)
+
+        this.del = this.createElementButton('X')
+        this.del.style.backgroundColor = 'red'
+        this.del.style.width = '2%'
+
+        this.edit = this.createElementButton('O')
+        this.edit.style.backgroundColor = 'green'
+        this.edit.style.width = '2%'
+
+        this.collapsible = this.createElementButton('+')
+        this.collapsible.style.backgroundColor = '#777'
+        this.collapsible.style.width = '94%'
+        this.collapsible.style.textAlign = 'left'
+
+        this.onHidden()
+        this.container.append(this.del)
+        this.container.append(this.edit)
+        this.container.append(this.collapsible)
+    }
+
+    onDisplay(){
+        super.onDisplay()
+        this.del.style.display = 'inline-block'
+        this.edit.style.display = 'inline-block'
+        this.collapsible.style.display = 'inline-block'
+    }
+
+    onHidden(){
+        this.del.style.display = 'none'
+        this.edit.style.display = 'none'
+        this.collapsible.style.display = 'none'
+    }
+
+    createElementButton(name){
+        var button = document.createElement('button')
+        button.style.color = 'white'
+        button.style.backgroundColor = '#555'
+        button.style.border = '1px solid #333'
+        button.style.cursor = 'pointer'
+        button.style.padding = '5px 8px'
+        button.style.fontSize = '12px'
+        button.innerHTML = name
+        return button
+    }
 }
 
 class Component extends Element
@@ -190,7 +248,6 @@ class Component extends Element
         button.style.cursor = 'pointer'
         button.style.padding = '5px 8px'
         button.style.fontSize = '12px'
-        // button.style.display = 'inline-block'
         button.innerHTML = name
         return button
     }
@@ -220,6 +277,9 @@ class Component extends Element
         var textarea = document.createElement('textarea')
         textarea.style.display = 'inline-block'
         textarea.style.width = '100%'
+        textarea.style.overflow = 'auto'
+        textarea.style.resize = 'vertical'
+        textarea.spellcheck = false
         // table.style.overflowX = 'scroll'
         // table.style.overflowY= 'hidden'
         // table.style.whiteSpace = 'nowrap'
@@ -233,4 +293,4 @@ class Component extends Element
     }
 }
 
-export {Element, View, Component}
+export {Element, View, ListView, Component}

@@ -3,32 +3,32 @@ from utils import *
 def analysis_telog(lines, filters):
     data = {}
     flag = False
-    satisfies = [False for _ in filters]
+    satisfies = False
     device = ''
     for line in lines:
         try:
             line = line.decode("utf-8")
             if ('te log read' in line) & ('lhsh' in line):
                 if device != '':
-                    if False in satisfies:
+                    if not satisfies:
                         data[device] = []
                         del data[device]
 
                 flag = True
                 device = re.findall('lhsh (.*?)te log read', line)[0].strip()
                 data[device] = []
-                satisfies = [False for _ in filters]
+                satisfies = False
                     
             if flag:
-                for index, f in enumerate(filters):
-                    if f in line:
-                        satisfies[index] = True
+                if not satisfies:
+                    if len(re.findall(filters, line)) > 0:
+                        satisfies = True
                 data[device].append(line)
         except Exception as e:
             print(e)
 
     if device != '':
-        if False in satisfies:
+        if not satisfies:
             data[device] = []
             del data[device]
     return data
@@ -36,31 +36,31 @@ def analysis_telog(lines, filters):
 def analysis_elog(lines, filters):
     data = {}
     flag = False
-    satisfies = [False for _ in filters]
+    satisfies = False
     device = ''
     for line in lines:
         try:
             line = line.decode("utf-8")
             if ('dcg run' in line) & ('lhsh' in line):
                 if device != '':
-                    if False in satisfies:
+                    if not satisfies:
                         data[device] = []
                         del data[device]
                         
                 flag = True
                 device = re.findall('lhsh (.*?)dcg run', line)[0].strip()
                 data[device] = []
-                satisfies = [False for _ in filters]
+                satisfies = False
                     
             if flag:
-                for index, f in enumerate(filters):
-                    if f in line:
-                        satisfies[index] = True
+                if not satisfies:
+                    if len(re.findall(filters, line)) > 0:
+                        satisfies = True
                 data[device].append(line)
         except Exception as e:
             print(e)
     if device != '':
-        if False in satisfies:
+        if not satisfies:
             data[device] = []
             del data[device]
     return data
@@ -133,7 +133,7 @@ def take_apart_dcgm(dcgm_dir_path, save_path, telog_filters, elog_filters):
                         lines = gzip.open(zfile, 'r')
                         mlog_data = analysis_mlog(lines)
                     
-            if (telog_filters == []) & (elog_filters == []):
+            if (telog_filters == '') & (elog_filters == ''):
                 for dev in telog_data.keys():
                     dev_name = clean_special_symbols(dev,'_')
                     if dev in mlog_data:

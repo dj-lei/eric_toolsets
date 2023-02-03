@@ -49,28 +49,30 @@ class Tree extends svg
         this.data = {}
     }
 
-    update(){
-        this.clear()
-        this.draw(this.data)
-    }
+    update(data){
+        this.data = data
 
-    clear(){
-        this.iterationClear([this.data])
         this.svg.selectAll("*").remove()
-        this.draw(this.data)
+        this.draw()
     }
 
-    iterationClear(data){
-        data.forEach((item) => {
-            if ('children' in item){
-                this.iterationClear(item['children'])
-            }else{
-                item.check = false
-            }
-        })
-    }
+    // clear(){
+    //     this.iterationClear([this.data])
+    //     this.svg.selectAll("*").remove()
+    //     this.draw(this.data)
+    // }
 
-    draw(data){
+    // iterationClear(data){
+    //     data.forEach((item) => {
+    //         if ('children' in item){
+    //             this.iterationClear(item['children'])
+    //         }else{
+    //             item.check = false
+    //         }
+    //     })
+    // }
+
+    draw(){
         let that = this
         const width = 1600
         const dx = 10
@@ -78,7 +80,7 @@ class Tree extends svg
         const margin = ({top: 10, right: 120, bottom: 10, left: 40})
   
         const diagonal = d3.linkHorizontal().x(d => d.y).y(d => d.x)
-        const root = d3.hierarchy(data);
+        const root = d3.hierarchy(this.data);
         const tree = d3.tree().nodeSize([dx, dy])
         
         root.x0 = dy / 2;
@@ -134,7 +136,7 @@ class Tree extends svg
               .on("click", (event, d) => {
                 that.clickEvent(event, d)
                 // update(d);
-                // console.log(select)
+                // console.log(that.data)
               });
       
           nodeEnter.append("circle")
@@ -262,8 +264,21 @@ class ChartAtomComponentSvgDialog extends Dialog
 {
     constructor(chartAtomView){
         super(chartAtomView.container)
+        this.chartAtomView = chartAtomView
         this.subContainer.style.width = '90%' 
         this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+
+        this.alias = ''
+        this.desc = ''
+        // alias
+        this.alias = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        this.subContainer.appendChild(this.alias)
+
+        // search description
+        this.desc = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementH4('Graph Description'))
+        this.subContainer.appendChild(this.desc)
 
         this.chartAtomComponentSvg = new ChartAtomComponentSvg(this)
     }
@@ -271,10 +286,21 @@ class ChartAtomComponentSvgDialog extends Dialog
     apply(){
         let model = {
             namespace: this.chartAtomView.namespace,
-            alias: "sss",
-            key_value_tree: this.chartAtomView.model.keyValueTree,
+            alias: this.alias.value,
+            desc: this.desc.value,
+            key_value_tree: this.chartAtomComponentSvg.data,
         }
         this.chartAtomView.controlChart(model)
+    }
+
+    update(model){
+        this.alias.value = model.alias
+        this.desc.value = model.desc
+        this.chartAtomComponentSvg.update(model.keyValueTree)
+    }
+
+    clear(){
+        this.chartAtomView.controlClearKeyValueTree()
     }
 }
 
@@ -291,7 +317,7 @@ class ChartAtomComponentSvg extends Tree
         var clearBtn = this.createElementButton('CLEAR')
         clearBtn.style.backgroundColor = 'blue'
         clearBtn.style.float = 'right'
-        clearBtn.onclick = function(){that.clear()}
+        clearBtn.onclick = function(){dialog.clear()}
         var applyBtn = this.createElementButton('APPLY')
         applyBtn.style.backgroundColor = 'green'
         applyBtn.style.float = 'right'
@@ -303,7 +329,6 @@ class ChartAtomComponentSvg extends Tree
 
     clickEvent(event, d){
         d.children = d.children ? null : d._children;
-
         if (d._children) {
             return
         }else{
@@ -319,11 +344,6 @@ class ChartAtomComponentSvg extends Tree
                 d3.select(event.target.parentNode).select('text').attr("stroke", "#33CC00")
             }
         }
-    }
-
-    refresh(data){
-        this.data = data
-        this.draw(this.data)
     }
 }
 

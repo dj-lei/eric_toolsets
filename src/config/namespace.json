@@ -7,6 +7,10 @@
   "INSIGHTFUNCTION": "/InsightFunction",
   "CHARTFUNCTION": "/ChartFunction",
   "STATISTICFUNCTION": "/StatisticFunction",
+  "TMPSEARCHATOMMODEL": "/TmpSearchAtomModel",
+  "TMPINSIGHATOMMODEL": "/TmpInsightAtomModel",
+  "TMPCHARTATOMMODEL": "/TmpChartAtomModel",
+  "TMPSTATISTICATOMMODEL": "/TmpStatisticAtomModel",
   "BATCHINSIGHT": "/BatchInsight",
   "BATCHSTATISTIC": "/BatchStatistic",
   "GLOBALCHART": "/GlobalChart"
