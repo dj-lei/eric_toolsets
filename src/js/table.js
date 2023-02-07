@@ -206,7 +206,7 @@ class InsightAtomComponentTable extends Table
     refresh(model){
         this.deleteTableAllChilds()
         this.slider.max = model.count
-        this.insightAtomView.collapsible.innerHTML = '+ ' + model.desc
+        this.insightAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
         model.displayLines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)

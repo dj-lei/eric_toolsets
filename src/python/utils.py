@@ -11,13 +11,19 @@ import pandas as pd
 import zipfile
 import gzip
 # from deepdiff import DeepDiff
-# from tslearn.metrics import lcss_path
-# from sklearn.preprocessing import minmax_scale
-# from sklearn.cluster import KMeans
+from tslearn.metrics import lcss_path
+from sklearn.preprocessing import minmax_scale
+from sklearn.cluster import KMeans
 from parse import parse
 from datetime import timedelta
 from dateutil.parser import parse as dp
 from types import SimpleNamespace
+
+import spacy
+nlp = spacy.load("en_core_web_sm")
+
+import en_core_web_sm
+nlp = en_core_web_sm.load()
 
 def createUuid4():
     return str(uuid.uuid4()).replace('-','')
@@ -80,9 +86,22 @@ def cal_time_difference(start, end):
 def get_points_in_time_range(forward_time, backward_time, data):
         res = []
         for index, timestamp in enumerate(data):
-            if (forward_time < timestamp) & (timestamp < backward_time):
+            if (forward_time <= timestamp) & (timestamp <= backward_time):
                 res.append(index)
         return res
+
+def camel_case_split(s):
+    idx = list(map(str.isupper, s))
+    # mark change of case
+    l = [0]
+    for (i, (x, y)) in enumerate(zip(idx, idx[1:])):
+        if x and not y:  # "Ul"
+            l.append(i)
+        elif not x and y:  # "lU"
+            l.append(i+1)
+    l.append(len(s))
+    # for "lUl", index of "U" will pop twice, have to filter that
+    return [s[x:y].lower() for x, y in zip(l, l[1:]) if x < y]
 
 def is_float(string):
     try:

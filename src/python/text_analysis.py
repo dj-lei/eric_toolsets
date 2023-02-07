@@ -67,9 +67,15 @@ class Model(socketio.AsyncNamespace, AsyncObject):
         self.mode = mode
         self.sid = ''
         self.subscribes = []
+
+    async def emit(self, event, *args, namespace):
+        if self.mode == 'normal':
+           await super().emit(event=event, data=args, namespace=namespace)
+        else:
+            pass
             
     async def action(self, sid, namespace, origin_namespace, func_name, *args):
-        print(namespace.split('/')[-1], origin_namespace.split('/')[-1], func_name)
+        # print(namespace.split('/')[-1], origin_namespace.split('/')[-1], func_name)
         func = getattr(self, func_name)
         await func(sid, *args)
 
@@ -156,12 +162,9 @@ class Fellow(Model):
             if self.mode == 'normal':
                 await self.emit('new', model, namespace=self.namespace)
                 self.models[model['namespace']] = await self.class_name(self, model)
-                # func = getattr(self.models[model['namespace']], 'on_'+self.__class__.__name__.split('Function')[0].lower())
-                # await func(sid, model)
             else:
                 self.models[model['namespace']] = await self.class_name(self, model, self.mode)
-                # func = getattr(self.models[model['namespace']], self.__class__.__name__.split('Function')[0].lower())
-                # func()
+                await self.isBatchAble(model['namespace'])
             await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_register_alias_data', self.models[model['namespace']])
 
     async def on_new(self, sid, model):
@@ -194,14 +197,13 @@ class Fellow(Model):
         if self.is_load_config:
             self.connected_count = self.connected_count + 1
             if self.connected_count >= self.config_count:
-                print('----------')
-                self.text_analysis_model.parallel.parallel(self.models)
-                # for namespace in self.models.keys():
-                #     if self.mode == 'normal':
-                #         await self.models[namespace].on_refresh('')
-                #     else:
-                #         func = getattr(self.models[namespace], self.__class__.__name__.split('Function')[0].lower())
-                #         func()
+                # self.text_analysis_model.parallel.parallel(self.models)
+                for namespace in self.models.keys():
+                    if self.mode == 'normal':
+                        await self.models[namespace].on_refresh('')
+                    else:
+                        func = getattr(self.models[namespace], self.__class__.__name__.split('Function')[0].lower())
+                        func()
                 self.is_load_config = False
                 self.connected_count = 0
 
@@ -242,7 +244,7 @@ class FileContainerModel(Model):
         for path in file_paths:
             new_file_namespace = self.namespace+'/'+path.split('\\')[-1]
             
-            self.text_file_models[new_file_namespace] = await TextFileModel(self, new_file_namespace, path)
+            self.text_file_models[new_file_namespace] = await TextFileModel(self, new_file_namespace, path, self.mode)
             await self.emit('newFile', self.text_file_models[new_file_namespace].model(), namespace=self.namespace)
             await self.on_display_file(sid, new_file_namespace)
 
@@ -408,7 +410,6 @@ class TextFileModel(Model):
         return Response(status.SUCCESS, msg.NONE, self.config).__dict__
 
     async def on_load_config(self, sid, config, load=['search', 'insight', 'chart', 'statistic']):
-        print(config[0])
         self.path = config[0]
         self.config = json.loads(config[1])
         if 'search' in load:
@@ -661,7 +662,6 @@ class SearchAtomModel(Model):
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
             self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file_model.lines[line]+'</td>')
 
-
     def search(self):
         self.res_search_units = []
 
@@ -724,6 +724,7 @@ class InsightAtomModel(Model):
         self.exp_extract = ''
         self.exp_mark = ''
         self.is_case_sensitive = True
+        self.is_has_mark = False
 
         self.forward_rows = 0
         self.backward_rows = 0
@@ -769,8 +770,13 @@ class InsightAtomModel(Model):
         await self.parent.isBatchAble(self.namespace)
 
     async def on_refresh(self, sid):
+        await self.emit('display', namespace=self.namespace)
+        await self.emit('startLoader', namespace=self.namespace)
+        self.insight()
+        
         await self.parent.isPublishAble(self.namespace)
         await self.on_scroll(sid, 0)
+        await self.emit('stopLoader', namespace=self.namespace)
 
     async def on_delete(self, sid):
         await self.send_message(sid, self.get_insight_function_model_namespace(), 'on_delete', self.namespace)
@@ -794,7 +800,6 @@ class InsightAtomModel(Model):
         
         self.__dict__.update(model)
         if mode == 'new':
-            self.insight()
             await self.on_refresh(sid)
         else:
             await self.send_message(sid, self.get_file_container_model_namespace(), 'on_new_insight', model)
@@ -825,7 +830,7 @@ class InsightAtomModel(Model):
                 backward_time = timestamp + timedelta(seconds=self.backward_range)
                 select_mark = {'name': 'mark', 'type': 'manual', 'abnormal_type': 'ManualSelect', 'global_index':self.res_mark[mark]['global_index'][self.number], 
                     'search_index':self.res_mark[mark]['search_index'][self.number], 'timestamp':self.res_mark[mark]['timestamp'][self.number], 
-                    'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name']}
+                    'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name'], 'origin': self.text_file_model.lines[self.res_mark[mark]['global_index'][self.number]]}
 
             res_residue_marks = pd.DataFrame(self.res_residue_marks)
             indices = get_points_in_time_range(str(forward_time), str(backward_time), list(res_residue_marks.timestamp.values))
@@ -854,14 +859,18 @@ class InsightAtomModel(Model):
             if self.is_case_sensitive:
                 if len(re.findall(self.exp_search, line)) > 0:
                     self.res_search_units.append([index+self.backward_rows, index+self.forward_rows])
+                    if not self.is_has_mark:
+                        if len(re.findall(self.exp_mark['exp'], line)) > 0:
+                            self.is_has_mark = True
             else:
                 pass
 
-        self.fuzzy_extract()
-        for unit in self.res_search_units:
-            self.res_lines.extend(unit)
-        self.count = len(self.res_search_units)
-        self.res_lines = sorted(set(self.res_lines),key=self.res_lines.index)
+        if self.is_has_mark:
+            self.fuzzy_extract()
+            for unit in self.res_search_units:
+                self.res_lines.extend(unit)
+            self.count = len(self.res_search_units)
+            self.res_lines = sorted(set(self.res_lines),key=self.res_lines.index)
 
     def fuzzy_extract(self):
         def self_clean_special_symbols(text, symbol):
@@ -913,6 +922,14 @@ class InsightAtomModel(Model):
                 self.res_mark[self.exp_mark['alias']]['timestamp'].append(ts)
 
     def judge_mark_outlier(self, key_value, indices):
+        def self_clean_special_symbols(text, symbol):
+            for ch in ['.', '_','-']:
+                if ch in text:
+                    text = text.replace(ch,symbol)
+            text = re.sub(r'\d+', '', text)
+            return re.sub(symbol+"+", symbol, text)
+
+        special_words = set(['timeout', 'fault', 'error', 'abn', 'shutdown', 'deactivate' , 'activate'])
         res = []
         if len(indices) > 0:
             history = key_value.loc[0: indices[0], :]
@@ -927,9 +944,18 @@ class InsightAtomModel(Model):
 
             for index, near_value in enumerate(near.value.values):
                 if near_value not in histories:
-                    res.append({'name': 'mark', 'type': 'mark', 'abnormal_type': 'UniquePrint', 'global_index':near['global_index'][index], 
-                    'search_index':near['search_index'][index], 'timestamp':near['timestamp'][index], 
-                    'value':near_value, 'desc':near_value})
+                    t = self_clean_special_symbols(near_value, ' ')
+                    tmpwords = t.split(' ')
+                    words = []
+                    [words.extend(camel_case_split(word)) for word in tmpwords]
+                    doc = nlp(' '.join(words))
+                    pos = [w.pos_ for w in doc]
+                    flag = True if len(set(pos).intersection(set(['VERB', 'AUX']))) > 0 else False
+                    flag = True if len(set(words).intersection(special_words)) > 0 else flag
+                    if flag == True:
+                        res.append({'name': 'mark', 'type': 'mark', 'abnormal_type': 'UniquePrint', 'global_index':near['global_index'][index], 
+                        'search_index':near['search_index'][index], 'timestamp':near['timestamp'][index], 
+                        'value':near_value, 'desc':near_value, 'origin': self.text_file_model.lines[near['global_index'][index]]})
          
         return res
 
@@ -944,6 +970,7 @@ class InsightAtomModel(Model):
             for stat in history.value.values:
                 if stat != cur_status:
                     history_change.append([cur_status, stat])
+                    cur_status = stat
 
             near = key_value.loc[indices, :].reset_index(drop=True)
             near_change_indices = []
@@ -956,15 +983,18 @@ class InsightAtomModel(Model):
 
             for index, change in enumerate(near_change):
                 if change not in history_change:
-                    # print(index, change)
+                    # same name key classification
                     res.append({'name':near['name'][0], 'type': 'str', 'abnormal_type': 'Mutation', 'global_index':near['global_index'][near_change_indices[index]], 
                     'search_index':near['search_index'][near_change_indices[index]], 'timestamp':near['timestamp'][near_change_indices[index]], 
-                    'value':near['value'][near_change_indices[index]], 'desc': near['name'][0] + ':  ' + change[0] + ' --> ' + change[1]})
+                    'value':near['value'][near_change_indices[index]], 'desc': near['name'][0] + ':  ' + change[0] + ' --> ' + change[1], 'origin': self.text_file_model.lines[near['global_index'][near_change_indices[index]]],
+                    'origin': self.text_file_model.lines[near['global_index'][near_change_indices[index]]]})
         
         return res
 
     def judge_consecutive_key_value_outlier(self, key_value, indices):
         res = []
+
+        # filter special word , for example Id
 
         if len(indices) > 0:
             near = key_value.loc[indices, :].reset_index(drop=True)
@@ -976,16 +1006,28 @@ class InsightAtomModel(Model):
                 b = minmax_scale(graph['value'], feature_range=(0, self.scale_max))
                 path, score = lcss_path(a, b)
                 if (score >= graph['similarity']) & (len(near.value.values) > len(graph['value'])):
-                    # print(graph['abnormal_type'], path, score)
+                    # Determine the optimal value of K in K-Means Clustering
+                    # cost =[]
+                    # for i in range(1, 11):
+                    #     KM = KMeans(n_clusters = i, max_iter = 500)
+                    #     KM.fit(X)
+                        
+                    #     # calculates squared error
+                    #     # for the clustered points
+                    #     cost.append(KM.inertia_)
+                    # 
+
                     # print(near)
                     if 'Pulse' in graph['abnormal_type']:
                         res.append({'name':near['name'][0], 'type': key_value['type'][0], 'abnormal_type': graph['abnormal_type'], 'global_index':near['global_index'][path[graph['outlier']][0]], 
                         'search_index':near['search_index'][path[graph['outlier']][0]], 'timestamp':near['timestamp'][path[graph['outlier']][0]], 
-                        'value':near['value'][path[graph['outlier']][0]], 'desc':near['name'][0] + ':  ' + str(near['value'][path[graph['inflection_point']][0]]) + ' --> ' + str(near['value'][path[graph['outlier']][0]]) + ' --> ' + str(near['value'][path[graph['return_point']][0]])})
+                        'value':near['value'][path[graph['outlier']][0]], 'desc':near['name'][0] + ':  ' + str(near['value'][path[graph['inflection_point']][0]]) + ' --> ' + str(near['value'][path[graph['outlier']][0]]) + ' --> ' + str(near['value'][path[graph['return_point']][0]]),
+                        'origin': self.text_file_model.lines[near['global_index'][path[graph['outlier']][0]]]})
                     else:
                         res.append({'name':near['name'][0], 'type': key_value['type'][0], 'abnormal_type': graph['abnormal_type'], 'global_index':near['global_index'][path[graph['outlier']][0]], 
                         'search_index':near['search_index'][path[graph['outlier']][0]], 'timestamp':near['timestamp'][path[graph['outlier']][0]], 
-                        'value':near['value'][path[graph['outlier']][0]], 'desc':near['name'][0] + ':  ' + str(near['value'][path[graph['inflection_point']][0]]) + ' --> ' + str(near['value'][path[graph['outlier']][0]])})
+                        'value':near['value'][path[graph['outlier']][0]], 'desc':near['name'][0] + ':  ' + str(near['value'][path[graph['inflection_point']][0]]) + ' --> ' + str(near['value'][path[graph['outlier']][0]]),
+                        'origin': self.text_file_model.lines[near['global_index'][path[graph['outlier']][0]]]})
                 break
         return res
 
@@ -1023,8 +1065,12 @@ class ChartAtomModel(Model):
         await self.parent.isBatchAble(self.namespace)
 
     async def on_refresh(self, sid):
+        await self.emit('display', namespace=self.namespace)
+        await self.emit('startLoader', namespace=self.namespace)
+        self.chart()
         await self.parent.isPublishAble(self.namespace)
         await self.emit('refreshChart', self.model(), namespace=self.namespace)
+        await self.emit('stopLoader', namespace=self.namespace)
 
     async def on_delete(self, sid):
         await self.send_message(sid, self.get_chart_function_model_namespace(), 'on_delete', self.namespace)
@@ -1033,7 +1079,6 @@ class ChartAtomModel(Model):
         self.__dict__.update(model)
 
         if mode == 'new':
-            self.chart()
             await self.on_refresh(sid)
         else:
             await self.send_message(sid, self.get_file_container_model_namespace(), 'on_new_chart', model)
@@ -1146,8 +1191,12 @@ class StatisticAtomModel(Model):
         await self.parent.isBatchAble(self.namespace)
 
     async def on_refresh(self, sid):
+        await self.emit('display', namespace=self.namespace)
+        await self.emit('startLoader', namespace=self.namespace)
+        self.statistic()
         await self.parent.isPublishAble(self.namespace)
         await self.emit('refreshTextarea', self.model(), namespace=self.namespace)
+        await self.emit('stopLoader', namespace=self.namespace)
 
     async def on_delete(self, sid):
         await self.send_message(sid, self.get_statistic_function_model_namespace(), 'on_delete', self.namespace)
@@ -1156,7 +1205,6 @@ class StatisticAtomModel(Model):
         self.__dict__.update(model)
 
         if mode == 'new':
-            self.statistic()
             await self.on_refresh(sid)
         else:
             await self.send_message(sid, self.get_file_container_model_namespace(), 'on_new_statistic', model)
@@ -1356,12 +1404,16 @@ class BatchStatisticModel(Model):
             await tmp_file.on_delete('')
             print('Finish :', tmp_file.file_name)
 
-    @staticmethod
-    async def test(new_file_namespace, path):
-        tmp_file = await TextFileModel('', new_file_namespace, path, 'batch')
-        return tmp_file.file_name
-        # await tmp_file.on_load_config('', [self.dir_path+'\\'+path, self.config], ['search', 'statistic'])
-        # sample = self.statistic(tmp_file)
+    # @staticmethod
+    # async def test(new_file_namespace, path):
+    #     print(new_file_namespace, path)
+    #     tmp_file = await TextFileModel(self.parent, new_file_namespace, self.dir_path+'\\'+path, 'batch')
+    #     await tmp_file.on_load_config('', [self.dir_path+'\\'+path, self.config], ['search', 'statistic'])
+    #     sample = self.statistic(tmp_file)
+    #     if self.mode == 'normal':
+    #         await self.on_refresh('', sample)
+    #     await tmp_file.on_delete('')
+    #     print('Finish :', tmp_file.file_name)
 
     def statistic(self, text_file_model):
         statistic_function_model = text_file_model.text_file_function_model.statistic_function_model

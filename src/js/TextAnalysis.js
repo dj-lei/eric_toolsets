@@ -435,18 +435,12 @@ class InsightAtomView extends ListView
 
         this.insightAtomComponentDialog = new InsightAtomComponentDialog(this)
         this.insightAtomComponentTable = new InsightAtomComponentTable(this)
-
-        if(model.alias != ''){
-            this.controlInsight(model)
-        }
     }
 
     controlInsight(model){
         if(this.namespace.includes(ns.TMPINSIGHATOMMODEL)){
             this.socket.emit("insight", model, 'tmp')
         }else{
-            this.startLoader()
-            this.display()
             this.socket.emit("insight", model)
         }
         this.insightAtomComponentDialog.hidden()
@@ -457,7 +451,6 @@ class InsightAtomView extends ListView
     }
 
     onRefreshTable(model){
-        this.stopLoader()
         this.model = model
         if (!this.insightAtomComponentDialog.alias.value){
             this.onUpdateDialog(model)
@@ -488,18 +481,12 @@ class ChartAtomView extends ListView
 
         this.chartAtomComponentSvgDialog = new ChartAtomComponentSvgDialog(this)
         this.chartAtomComponentSequentialChart = new ChartAtomComponentSequentialChart(this)
-
-        if(model.alias != ''){
-            this.controlChart(model)
-        }
     }
 
     controlChart(model){
         if(this.namespace.includes(ns.TMPCHARTATOMMODEL)){
             this.socket.emit("chart", model, 'tmp')
         }else{
-            this.startLoader()
-            this.display()
             this.socket.emit("chart", model)
         }
         this.chartAtomComponentSvgDialog.hidden()
@@ -544,18 +531,12 @@ class StatisticAtomView extends ListView
 
         this.statisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
         this.statisticAtomComponentTextarea = new StatisticAtomComponentTextarea(this)
-
-        if(model.alias != ''){
-            this.controlStatistic(model)
-        }
     }
 
     controlStatistic(model){
         if(this.namespace.includes(ns.TMPSTATISTICATOMMODEL)){
             this.socket.emit("statistic", model, 'tmp')
         }else{
-            this.startLoader()
-            this.display()
             this.socket.emit("statistic", model)
         }
         this.statisticAtomComponentDialog.hidden()
