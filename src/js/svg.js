@@ -238,16 +238,12 @@ class BatchInsightComponentSvg extends Tree
         super(batchInsightComponentSvgDialog.subContainer)
         this.batchInsightComponentSvgDialog = batchInsightComponentSvgDialog
         
+        let that = this
         var cancelBtn = this.createElementButton('CANCEL')
         cancelBtn.style.backgroundColor = 'red'
         cancelBtn.style.float = 'right'
-        cancelBtn.onclick = function(){dialog.hidden()}
+        cancelBtn.onclick = function(){that.batchInsightComponentSvgDialog.hidden()}
         this.bottomBtnSets.appendChild(cancelBtn)
-    }
-
-    refresh(data){
-        this.data = data
-        this.draw(this.data)
     }
 
     clickEvent(event, d){
@@ -272,12 +268,12 @@ class ChartAtomComponentSvgDialog extends Dialog
         this.desc = ''
         // alias
         this.alias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        this.subContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
         this.subContainer.appendChild(this.alias)
 
         // search description
         this.desc = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Graph Description'))
+        this.subContainer.appendChild(this.createElementHeader('Graph Description'))
         this.subContainer.appendChild(this.desc)
 
         this.chartAtomComponentSvg = new ChartAtomComponentSvg(this)
@@ -290,13 +286,13 @@ class ChartAtomComponentSvgDialog extends Dialog
             desc: this.desc.value,
             key_value_tree: this.chartAtomComponentSvg.data,
         }
-        this.chartAtomView.controlChart(model)
+        this.chartAtomView.controlExec(model)
     }
 
     update(model){
         this.alias.value = model.alias
         this.desc.value = model.desc
-        this.chartAtomComponentSvg.update(model.keyValueTree)
+        this.chartAtomComponentSvg.update(model.key_value_tree)
     }
 
     clear(){
@@ -310,21 +306,21 @@ class ChartAtomComponentSvg extends Tree
         super(dialog.subContainer)
 
         let that = this
-        var cancelBtn = this.createElementButton('CANCEL')
-        cancelBtn.style.backgroundColor = 'red'
-        cancelBtn.style.float = 'right'
-        cancelBtn.onclick = function(){dialog.hidden()}
-        var clearBtn = this.createElementButton('CLEAR')
-        clearBtn.style.backgroundColor = 'blue'
-        clearBtn.style.float = 'right'
-        clearBtn.onclick = function(){dialog.clear()}
-        var applyBtn = this.createElementButton('APPLY')
-        applyBtn.style.backgroundColor = 'green'
-        applyBtn.style.float = 'right'
-        applyBtn.onclick = function(){dialog.apply()}
-        this.bottomBtnSets.appendChild(cancelBtn)
-        this.bottomBtnSets.appendChild(clearBtn)
-        this.bottomBtnSets.appendChild(applyBtn)
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.float = 'right'
+        this.cancel.onclick = function(){dialog.hidden()}
+        this.clear = this.createElementButton('CLEAR')
+        this.clear.style.backgroundColor = 'blue'
+        this.clear.style.float = 'right'
+        this.clear.onclick = function(){dialog.clear()}
+        this.apply = this.createElementButton('APPLY')
+        this.apply.style.backgroundColor = 'green'
+        this.apply.style.float = 'right'
+        this.apply.onclick = function(){dialog.apply()}
+        this.bottomBtnSets.appendChild(this.cancel)
+        this.bottomBtnSets.appendChild(this.clear)
+        this.bottomBtnSets.appendChild(this.apply)
     }
 
     clickEvent(event, d){

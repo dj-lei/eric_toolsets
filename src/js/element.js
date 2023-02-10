@@ -86,6 +86,10 @@ class View extends Element
         super(position)
         this.namespace = namespace
         this.container.id = this.namespace
+        this.initOn()
+    }
+
+    initOn(){
         this.socket = io(`${server}${this.namespace}`)
 
         var funcs = common.arrayExtend(Object.getOwnPropertyNames(Object.getPrototypeOf(this)), Object.getOwnPropertyNames(Object.getPrototypeOf(this.__proto__)))
@@ -100,6 +104,16 @@ class View extends Element
         })
 
         this.socket.emit("connected", this.namespace)
+    }
+
+    onReconnect(namespace){
+        var dom = document.getElementById(this.namespace)
+        if (dom) {
+            dom.id = namespace
+        }
+        this.namespace = namespace
+        this.socket.disconnect()
+        this.initOn()
     }
 
     onDisplay(){
@@ -143,6 +157,24 @@ class ListView extends View
         this.container.append(this.collapsible)
     }
 
+    controlExec(model){
+        if(this.namespace.includes('/Tmp')){
+            this.socket.emit("exec", model, 'tmp')
+        }else{
+            this.socket.emit("exec", model)
+            if (model.alias != this.model.alias) {
+                this.onReconnect(this.namespace.split('/').slice(0, this.namespace.split('/').length - 1).join('/')+'/'+model.alias)
+            }
+        }
+        this.dialog.hidden()
+    }
+
+    onRefresh(model){
+        this.model = model
+        this.onUpdateDialog(model)
+        this.view.refresh(this.model)
+    }
+
     onDisplay(){
         super.onDisplay()
         this.del.style.display = 'inline-block'
@@ -154,6 +186,31 @@ class ListView extends View
         this.del.style.display = 'none'
         this.edit.style.display = 'none'
         this.collapsible.style.display = 'none'
+    }
+
+    onStartLoader(){
+        super.onStartLoader()
+    }
+
+    onStopLoader(){
+        super.onStopLoader()
+    }
+
+    onDisplayDialog(){
+        this.dialog.display()
+    }
+
+    onHiddenDialog(){
+        this.dialog.hidden()
+    }
+
+    onUpdateDialog(model){
+        this.dialog.update(model)
+    }
+
+    onDelete(){
+        this.delete()
+        this.socket.emit("delete")
     }
 
     createElementButton(name){
@@ -184,17 +241,45 @@ class Component extends Element
         return div
     }
 
-    createElementH4(name){
-        var h4 = document.createElement('h4')
-        h4.innerHTML = name
+    createElementHr(){
+        var hr = document.createElement('hr')
+        hr.style.borderTop = '1px solid #bbb'
+        return hr
+    }
 
-        return h4
+    createElementHeader(name){
+        var hc = document.createElement('div')
+        hc.style.width = '100%'
+
+        var header = document.createElement('a')
+        header.style.fontSize = '16px'
+        header.style.fontWeight = 'bold'
+        header.innerHTML = name
+        hc.append(header)
+        return hc
+    }
+
+    createElementA(name){
+        var a = document.createElement('a')
+        a.style.fontSize = '12px'
+        a.style.fontWeight = 'bold'
+        a.innerHTML = name
+        return a
+    }
+
+    createElementAHref(name, href){
+        var a = document.createElement('a')
+        a.style.fontSize = '10px'
+        a.style.fontWeight = 'bold'
+        a.innerHTML = name
+        a.href = href
+        return a
     }
 
     createElementTextInput(){
         var textInput = document.createElement('input')
         textInput.style.width = '100%'
-        textInput.style.padding = '12px 20px'
+        textInput.style.padding = '6px 10px'
         textInput.style.margin = '8px 0'
         textInput.style.display = 'inline-block'
         textInput.style.border = '1px solid #ccc'
@@ -205,11 +290,19 @@ class Component extends Element
         return textInput
     }
 
+    createElementCheckboxInput(){
+        var checkboxInput = document.createElement('input')
+        checkboxInput.style.width = '20px'
+        checkboxInput.style.height = '20px'
+        checkboxInput.type = 'checkbox'
+        return checkboxInput
+    }
+
     createElementColorInput(){
         var colorInput = document.createElement('input')
         colorInput.style.width = '10%'
-        colorInput.style.padding = '12px 0px'
-        colorInput.style.height = '43px'
+        colorInput.style.padding = '6px 10px'
+        colorInput.style.height = '30px'
         colorInput.style.display = 'inline-block'
         colorInput.style.boxSizing = 'border-box'
         colorInput.type = 'color'
@@ -246,7 +339,7 @@ class Component extends Element
         button.style.backgroundColor = '#555'
         button.style.border = '1px solid #333'
         button.style.cursor = 'pointer'
-        button.style.padding = '5px 8px'
+        button.style.padding = '8px 10px'
         button.style.fontSize = '12px'
         button.innerHTML = name
         return button

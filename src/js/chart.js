@@ -163,16 +163,7 @@ class SequentialChart extends Chart
 {
 	constructor(position){
 		super(position)
-		this.option = this.getSequentialChartConfig()
-		this.option['title']['text'] = 'SequentialChart'
-		this.option['xAxis']['type'] = 'value'
-		this.option['yAxis'] = []
-		this.option['series'] = []
-
-		this.yAxisIndex = 0
-		this.offsetUnit = 5
-		this.selectedLines = {}
-		this.legend = []
+		this.clear()
 	}
 
 	getSequentialChartConfig(){
@@ -390,11 +381,27 @@ class SequentialChart extends Chart
 	}
 
 	refresh(lines){
+		this.clear()
 		this.selectedLines = lines
 		this.drawLines()
 		this.setTooltip()
 		this.option['legend']['data'] = this.legend
-		this.chart.setOption(this.option)
+	}
+
+	clear(){
+		if (this.chart) {
+			this.chart.clear()
+		}
+		this.option = this.getSequentialChartConfig()
+		this.option['title']['text'] = 'SequentialChart'
+		this.option['xAxis']['type'] = 'value'
+		this.option['yAxis'] = []
+		this.option['series'] = []
+
+		this.yAxisIndex = 0
+		this.offsetUnit = 5
+		this.selectedLines = {}
+		this.legend = []
 	}
 }
 
@@ -485,11 +492,11 @@ class ChartAtomComponentSequentialChart extends SequentialChart
     
 	}
 
-	refresh(lines){
-		super.refresh(lines)
+	refresh(model){
+		super.refresh(model.select_lines)
 		this.setToolBox()
-		this.chart.setOption(this.option)
 		this.bindChartClickEvent()
+		this.chart.setOption(this.option, true)
 
 		this.chartAtomView.collapsible.innerHTML = '+ ' + this.chartAtomView.model.desc
 	}

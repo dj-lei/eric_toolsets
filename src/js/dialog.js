@@ -51,19 +51,19 @@ class TextFileComponentRegisterCompareGraphDialog extends Dialog
 
     init(){
         this.desc = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Description'))
+        this.subContainer.appendChild(this.createElementHeader('Description'))
         this.subContainer.appendChild(this.desc)
 
         this.markAlias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Mark Alias'))
+        this.subContainer.appendChild(this.createElementHeader('Mark Alias'))
         this.subContainer.appendChild(this.markAlias)
 
         this.markTimestampForwardSecond = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Mark Timestamp Forward Second'))
+        this.subContainer.appendChild(this.createElementHeader('Mark Timestamp Forward Second'))
         this.subContainer.appendChild(this.markTimestampForwardSecond)
 
         this.markTimestampBackwardSecond = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Mark Timestamp Backward Second'))
+        this.subContainer.appendChild(this.createElementHeader('Mark Timestamp Backward Second'))
         this.subContainer.appendChild(this.markTimestampBackwardSecond)
 
         // this.textFileComponentCompareGraphSequentialChart = new FileContainerComponentCompareGraphSequentialChart(this, this.subContainer)
@@ -114,33 +114,71 @@ class SearchAtomComponentDialog extends Dialog
 
     init(){
         let that = this
-
+        this.subContainer.appendChild(this.createElementHr())
         // alias
         this.alias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        this.subContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
         this.subContainer.appendChild(this.alias)
+        this.subContainer.appendChild(this.createElementHr())
 
         // search description
         this.desc = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Search Description'))
+        this.subContainer.appendChild(this.createElementHeader('Search Description'))
         this.subContainer.appendChild(this.desc)
+        this.subContainer.appendChild(this.createElementHr())
 
-        // search regex express 
+        // search regular express 
         this.expSearch = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Search Express'))
+        var header = this.createElementHeader('Search Express(Python Regular)')
+        header.appendChild(this.createElementAHref(' Document', 'https://docs.python.org/3/library/re.html'))
+        // header.appendChild(this.createElementAHref('OnlineTest', 'https://www.programiz.com/python-programming/online-compiler/'))
+        this.subContainer.appendChild(header)
         this.subContainer.appendChild(this.expSearch)
 
-        // extract key value regex express
+        var isCaseSensitiveContainer = this.createElementDiv()
+        isCaseSensitiveContainer.style.width = '100%'
+        this.isCaseSensitive = this.createElementCheckboxInput()
+        isCaseSensitiveContainer.append(this.isCaseSensitive)
+        isCaseSensitiveContainer.append(this.createElementA(' Is Case Sensitive'))
+
+        var isForwardRowsContainer = this.createElementDiv()
+        isForwardRowsContainer.style.width = '100%'
+        this.forwardRows = this.createElementTextInput()
+        this.forwardRows.style.padding = '3px 5px'
+        this.forwardRows.style.width = '5%'
+        this.forwardRows.value = '0'
+        isForwardRowsContainer.append(this.forwardRows)
+        isForwardRowsContainer.append(this.createElementA(' Forward Rows'))
+
+        var isBackwardRowsContainer = this.createElementDiv()
+        isBackwardRowsContainer.style.width = '100%'
+        this.backwardRows = this.createElementTextInput()
+        this.backwardRows.style.padding = '3px 5px'
+        this.backwardRows.style.width = '5%'
+        this.backwardRows.value = '0'
+        isBackwardRowsContainer.append(this.backwardRows)
+        isBackwardRowsContainer.append(this.createElementA(' Backward Rows'))
+
+        this.subContainer.appendChild(isCaseSensitiveContainer)
+        this.subContainer.appendChild(isForwardRowsContainer)
+        this.subContainer.appendChild(isBackwardRowsContainer)
+        this.subContainer.appendChild(this.createElementHr())
+
+        // extract key value regular express
         this.expExtract = this.createElementTextInput()
         this.expExtract.style.width = '85%'
         var addExpExtract = this.createElementButton('ADD')
         addExpExtract.style.width = '15%'
         addExpExtract.onclick = function(){that.addExpExtractItem()}
         this.expExtractUl = this.createElementUl()
-        this.subContainer.appendChild(this.createElementH4('Extract Key Value Regex Express'))
+        
+        header = this.createElementHeader('Extract Key Value Express(Python Parse)')
+        header.appendChild(this.createElementAHref(' Document', 'https://docs.python.org/3/library/re.html'))
+        this.subContainer.appendChild(header)
         this.subContainer.appendChild(this.expExtract)
         this.subContainer.appendChild(addExpExtract)
         this.subContainer.appendChild(this.expExtractUl)
+        this.subContainer.appendChild(this.createElementHr())
 
         // mark key location express
         this.expMarkAlias = this.createElementTextInput()
@@ -152,7 +190,7 @@ class SearchAtomComponentDialog extends Dialog
         addExpMark.style.width = '15%'
         addExpMark.onclick = function(){that.addExpMarkItem()}
         this.expMarkUl = this.createElementUl()
-        this.subContainer.appendChild(this.createElementH4('Mark Key Location Express'))
+        this.subContainer.appendChild(this.createElementHeader('Mark Location Express(Python Regular)'))
         this.subContainer.appendChild(this.expMarkAlias)
         this.subContainer.appendChild(this.expMark)
         this.subContainer.appendChild(this.expMarkColor)
@@ -160,15 +198,15 @@ class SearchAtomComponentDialog extends Dialog
         this.subContainer.appendChild(this.expMarkUl)
 
         // search and cancel button
-        var apply = this.createElementButton('SEARCH')
-        apply.style.width = '50%'
-        apply.onclick = function(){that.search()}
-        var cancel = this.createElementButton('CANCEL')
-        cancel.style.backgroundColor = 'red'
-        cancel.style.width = '50%'
-        cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(apply)
-        this.subContainer.appendChild(cancel)
+        this.apply = this.createElementButton('SEARCH')
+        this.apply.style.width = '50%'
+        this.apply.onclick = function(){that.search()}
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '50%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
     }
 
     search(){
@@ -177,21 +215,29 @@ class SearchAtomComponentDialog extends Dialog
             alias: this.alias.value,
             desc: this.desc.value,
             exp_search: this.expSearch.value,
+            is_case_sensitive: this.isCaseSensitive.checked ? true : false,
+            forward_rows: parseInt(this.forwardRows.value),
+            backward_rows: parseInt(this.backwardRows.value),
             exp_extract: this.getExpExtractList(),
             exp_mark: this.getExpMarkList(),
         }
-        this.searchAtomView.controlSearch(model)
+        this.searchAtomView.controlExec(model)
     }
 
     update(model){
+        common.removeAllChild(this.expExtractUl)
+        common.removeAllChild(this.expMarkUl)
         this.alias.value = model.alias
         this.desc.value = model.desc
-        this.expSearch.value = model.expSearch
-        model.expExtract.forEach((exp) => {
+        this.expSearch.value = model.exp_search
+        this.isCaseSensitive.checked = model.is_case_sensitive
+        this.forwardRows.value = model.forward_rows
+        this.backwardRows.value = model.backward_rows
+        model.exp_extract.forEach((exp) => {
             this.expExtract.value = exp
             this.addExpExtractItem()
         })
-        model.expMark.forEach((mark) => {
+        model.exp_mark.forEach((mark) => {
             this.expMarkAlias.value = mark.alias
             this.expMark.value = mark.exp
             this.expMarkColor.value = mark.color
@@ -295,23 +341,23 @@ class InsightAtomComponentDialog extends Dialog
 
         // alias
         this.alias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        this.subContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
         this.subContainer.appendChild(this.alias)
 
         // search description
         this.desc = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Insight Description'))
+        this.subContainer.appendChild(this.createElementHeader('Insight Description'))
         this.subContainer.appendChild(this.desc)
 
         // search regex express 
         this.expSearch = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementH4('Search Express, narrow the scope of insight'))
+        this.subContainer.appendChild(this.createElementHeader('Search Express, narrow the scope of insight'))
         this.subContainer.appendChild(this.expSearch)
 
         // extract key value regex express
         this.expExtract = this.createElementTextInput()
         this.expExtract.style.width = '85%'
-        this.subContainer.appendChild(this.createElementH4('Extract Timestamp Regex Express'))
+        this.subContainer.appendChild(this.createElementHeader('Extract Timestamp Regex Express'))
         this.subContainer.appendChild(this.expExtract)
 
         // mark key location express
@@ -320,21 +366,21 @@ class InsightAtomComponentDialog extends Dialog
         this.expMark = this.createElementTextInput()
         this.expMark.style.width = '65%'
         this.expMarkColor = this.createElementColorInput()
-        this.subContainer.appendChild(this.createElementH4('Mark Location Express'))
+        this.subContainer.appendChild(this.createElementHeader('Mark Location Express'))
         this.subContainer.appendChild(this.expMarkAlias)
         this.subContainer.appendChild(this.expMark)
         this.subContainer.appendChild(this.expMarkColor)
 
         // search and cancel button
-        var apply = this.createElementButton('INSIGHT')
-        apply.style.width = '50%'
-        apply.onclick = function(){that.insight()}
-        var cancel = this.createElementButton('CANCEL')
-        cancel.style.backgroundColor = 'red'
-        cancel.style.width = '50%'
-        cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(apply)
-        this.subContainer.appendChild(cancel)
+        this.apply = this.createElementButton('INSIGHT')
+        this.apply.style.width = '50%'
+        this.apply.onclick = function(){that.insight()}
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '50%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
     }
 
     insight(){
@@ -346,18 +392,18 @@ class InsightAtomComponentDialog extends Dialog
             exp_extract: this.expExtract.value,
             exp_mark: {'alias':this.expMarkAlias.value, 'exp':this.expMark.value, 'color': this.expMarkColor.value},
         }
-        this.insightAtomView.controlInsight(model)
+        this.insightAtomView.controlExec(model)
     }
 
     update(model){
         this.alias.value = model.alias
         this.desc.value = model.desc
-        this.expSearch.value = model.expSearch
-        this.expExtract.value = model.expExtract
+        this.expSearch.value = model.exp_search
+        this.expExtract.value = model.exp_extract
 
-        this.expMarkAlias.value = model.expMark.alias
-        this.expMark.value = model.expMark.exp
-        this.expMarkColor.value = model.expMark.color
+        this.expMarkAlias.value = model.exp_mark.alias
+        this.expMark.value = model.exp_mark.exp
+        this.expMarkColor.value = model.exp_mark.color
 
     }
 }
@@ -391,39 +437,39 @@ class StatisticAtomComponentDialog extends Dialog
 
         // alias
         this.alias = this.createElementTextInput()
-        codeContainer.appendChild(this.createElementH4('Alias(Global Unique)'))
+        codeContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
         codeContainer.appendChild(this.alias)
 
         // search description
         this.desc = this.createElementTextInput()
-        codeContainer.appendChild(this.createElementH4('Code Description'))
+        codeContainer.appendChild(this.createElementHeader('Code Description'))
         codeContainer.appendChild(this.desc)
 
         //  python code 
         this.code = this.createElementTextarea()
-        codeContainer.appendChild(this.createElementH4('Python Code'))
+        codeContainer.appendChild(this.createElementHeader('Python Code'))
         codeContainer.appendChild(this.code)
 
         //  code test result 
         this.result = this.createElementTextarea()
-        codeContainer.appendChild(this.createElementH4('Code Test Result'))
+        codeContainer.appendChild(this.createElementHeader('Code Test Result'))
         codeContainer.appendChild(this.result)
 
         // search and cancel button
-        var apply = this.createElementButton('STATISTIC')
-        apply.style.width = '33%'
-        apply.onclick = function(){that.statistic()}
-        var test = this.createElementButton('TEST')
-        test.style.backgroundColor = 'blue'
-        test.style.width = '33%'
-        test.onclick = function(){that.statisticTest()}
-        var cancel = this.createElementButton('CANCEL')
-        cancel.style.backgroundColor = 'red'
-        cancel.style.width = '33%'
-        cancel.onclick = function(){that.hidden()}
-        codeContainer.appendChild(apply)
-        codeContainer.appendChild(test)
-        codeContainer.appendChild(cancel)
+        this.apply = this.createElementButton('STATISTIC')
+        this.apply.style.width = '33%'
+        this.apply.onclick = function(){that.statistic()}
+        this.test = this.createElementButton('TEST')
+        this.test.style.backgroundColor = 'blue'
+        this.test.style.width = '33%'
+        this.test.onclick = function(){that.statisticTest()}
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '33%'
+        this.cancel.onclick = function(){that.hidden()}
+        codeContainer.appendChild(this.apply)
+        codeContainer.appendChild(this.test)
+        codeContainer.appendChild(this.cancel)
         this.subContainer.appendChild(codeContainer)
 
         //******************** graph *******************/
@@ -457,7 +503,7 @@ class StatisticAtomComponentDialog extends Dialog
             desc: this.desc.value,
             code: this.code.value,
         }
-        this.statisticAtomView.controlStatistic(model)
+        this.statisticAtomView.controlExec(model)
     }
 
     statisticTest(){
@@ -486,6 +532,65 @@ class StatisticAtomComponentDialog extends Dialog
     }
 }
 
+class SystemTestComponentDialog extends Dialog
+{
+    constructor(systemTestView){
+        super(systemTestView.container)
+        this.systemTestView = systemTestView
+        this.dir = ''
+        this.configPath = ''
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // Files Directory
+        this.dir = this.createElementTextInput()
+        this.dir.style.width = '85%'
+        var browseDir = this.createElementButton('BROWSE')
+        browseDir.style.width = '15%'
+        browseDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.dir.value = path
+            })
+        }
+        this.subContainer.appendChild(this.createElementHeader('Files Directory'))
+        this.subContainer.appendChild(this.dir)
+        this.subContainer.appendChild(browseDir)
+
+        // Config path
+        this.configPath = this.createElementTextInput()
+        this.configPath.style.width = '85%'
+        var browseConfig = this.createElementButton('BROWSE')
+        browseConfig.style.width = '15%'
+        browseConfig.onclick = function(){that.browseConfig()}
+        this.subContainer.appendChild(this.createElementHeader('Config Path'))
+        this.subContainer.appendChild(this.configPath)
+        this.subContainer.appendChild(browseConfig)
+
+        // search and cancel button
+        this.apply = this.createElementButton('TEST')
+        this.apply.style.width = '50%'
+        this.apply.onclick = function(){that.test()}
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '50%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
+    }
+
+    async browseConfig(){
+        let content = await ipcRenderer.invoke('import-config')
+        this.configPath.value = content[0]
+    }
+
+    test(){
+        this.systemTestView.basicTest(this.dir.value, this.configPath.value)
+    }
+}
+
 class BatchInsightComponentDialog extends Dialog
 {
     constructor(fileContainerView){
@@ -509,7 +614,7 @@ class BatchInsightComponentDialog extends Dialog
                 that.dir.value = path
             })
         }
-        this.subContainer.appendChild(this.createElementH4('Files Directory'))
+        this.subContainer.appendChild(this.createElementHeader('Files Directory'))
         this.subContainer.appendChild(this.dir)
         this.subContainer.appendChild(browseDir)
 
@@ -519,20 +624,20 @@ class BatchInsightComponentDialog extends Dialog
         var browseConfig = this.createElementButton('BROWSE')
         browseConfig.style.width = '15%'
         browseConfig.onclick = function(){that.browseConfig()}
-        this.subContainer.appendChild(this.createElementH4('Config Path'))
+        this.subContainer.appendChild(this.createElementHeader('Config Path'))
         this.subContainer.appendChild(this.configPath)
         this.subContainer.appendChild(browseConfig)
 
         // search and cancel button
-        var apply = this.createElementButton('RUN')
-        apply.style.width = '50%'
-        apply.onclick = function(){that.apply()}
-        var cancel = this.createElementButton('CANCEL')
-        cancel.style.backgroundColor = 'red'
-        cancel.style.width = '50%'
-        cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(apply)
-        this.subContainer.appendChild(cancel)
+        this.apply = this.createElementButton('RUN')
+        this.apply.style.width = '50%'
+        this.apply.onclick = function(){that.run()}
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '50%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
     }
 
     async browseConfig(){
@@ -540,7 +645,7 @@ class BatchInsightComponentDialog extends Dialog
         this.configPath.value = content[0]
     }
 
-    apply(){
+    run(){
         this.fileContainerView.controlBatchInsight(this.dir.value, this.configPath.value)
     }
 }
@@ -568,7 +673,7 @@ class BatchStatisticComponentDialog extends Dialog
                 that.dir.value = path
             })
         }
-        this.subContainer.appendChild(this.createElementH4('Files Directory'))
+        this.subContainer.appendChild(this.createElementHeader('Files Directory'))
         this.subContainer.appendChild(this.dir)
         this.subContainer.appendChild(browseDir)
 
@@ -578,20 +683,20 @@ class BatchStatisticComponentDialog extends Dialog
         var browseConfig = this.createElementButton('BROWSE')
         browseConfig.style.width = '15%'
         browseConfig.onclick = function(){that.browseConfig()}
-        this.subContainer.appendChild(this.createElementH4('Config Path'))
+        this.subContainer.appendChild(this.createElementHeader('Config Path'))
         this.subContainer.appendChild(this.configPath)
         this.subContainer.appendChild(browseConfig)
 
         // search and cancel button
-        var apply = this.createElementButton('RUN')
-        apply.style.width = '50%'
-        apply.onclick = function(){that.apply()}
-        var cancel = this.createElementButton('CANCEL')
-        cancel.style.backgroundColor = 'red'
-        cancel.style.width = '50%'
-        cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(apply)
-        this.subContainer.appendChild(cancel)
+        this.apply = this.createElementButton('RUN')
+        this.apply.style.width = '50%'
+        this.apply.onclick = function(){that.run()}
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '50%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
     }
 
     async browseConfig(){
@@ -599,7 +704,7 @@ class BatchStatisticComponentDialog extends Dialog
         this.configPath.value = content[0]
     }
 
-    apply(){
+    run(){
         this.fileContainerView.controlBatchStatistic(this.dir.value, this.configPath.value)
     }
 }
@@ -630,7 +735,7 @@ class DCGMAnalysisDialog extends Dialog
                 that.dcgmDir.value = path
             })
         }
-        this.subContainer.appendChild(this.createElementH4('DCGM Directory'))
+        this.subContainer.appendChild(this.createElementHeader('DCGM Directory'))
         this.subContainer.appendChild(this.dcgmDir)
         this.subContainer.appendChild(browseDcgmDir)
 
@@ -644,35 +749,35 @@ class DCGMAnalysisDialog extends Dialog
                 that.saveDir.value = path
             })
         }
-        this.subContainer.appendChild(this.createElementH4('Save Directory'))
+        this.subContainer.appendChild(this.createElementHeader('Save Directory'))
         this.subContainer.appendChild(this.saveDir)
         this.subContainer.appendChild(browseSaveDir)
 
         // Filter condition
         this.telogFilter = this.createElementTextInput()
         this.telogFilter.style.width = '100%'
-        this.subContainer.appendChild(this.createElementH4('Optional: Telog Filter Condition(Case sensitive, Comma delimited)'))
+        this.subContainer.appendChild(this.createElementHeader('Optional: Telog Filter Condition(Case sensitive, Comma delimited)'))
         this.subContainer.appendChild(this.telogFilter)
 
         this.elogFilter = this.createElementTextInput()
         this.elogFilter.style.width = '100%'
-        this.subContainer.appendChild(this.createElementH4('Optional: Elog Filter Condition(Case sensitive, Comma delimited)'))
+        this.subContainer.appendChild(this.createElementHeader('Optional: Elog Filter Condition(Case sensitive, Comma delimited)'))
         this.subContainer.appendChild(this.elogFilter)
 
         // search and cancel button
-        var apply = document.createElement('button')
-        apply.innerHTML = 'RUN'
-        apply.onclick = function(){that.apply()}
-        var cancel = document.createElement('button')
-        cancel.style.backgroundColor = 'red'
-        cancel.innerHTML = 'CANCEL'
-        cancel.onclick = function(){that.hidden()}
+        this.apply = document.createElement('button')
+        this.apply.innerHTML = 'RUN'
+        this.apply.onclick = function(){that.run()}
+        this.cancel = document.createElement('button')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.innerHTML = 'CANCEL'
+        this.cancel.onclick = function(){that.hidden()}
 
-        this.subContainer.appendChild(apply)
-        this.subContainer.appendChild(cancel)
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
     }
 
-    apply(){
+    run(){
         let params = {
             dcgm_dir: this.dcgmDir.value,
             save_dir: this.saveDir.value,
@@ -761,4 +866,4 @@ class ShareDownloadDialog extends Dialog
     }
 }
 
-export {Dialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, ShareDownloadDialog}
+export {Dialog, SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, ShareDownloadDialog}

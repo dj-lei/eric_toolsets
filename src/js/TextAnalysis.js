@@ -3,7 +3,7 @@ import ns from '@/config/namespace.json'
 
 import { ipcRenderer } from 'electron'
 import { View, ListView} from './element'
-import { BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, ShareDownloadDialog } from './dialog'
+import { SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, ShareDownloadDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
 import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable, BatchInsightComponentTableDialog, BatchStatisticComponentTableDialog } from './table'
 import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
@@ -16,43 +16,274 @@ import common from '@/plugins/common'
 
 const fs = require('fs')
 
+class SystemTestView extends View
+{
+    constructor(textAnalysisView){
+        super(`${textAnalysisView.namespace}${ns.SYSTEMTEST}`, textAnalysisView.container)
+        this.textAnalysisView = textAnalysisView
+        this.fileContainerView = this.textAnalysisView.fileContainerView
+
+        this.systemTestComponentDialog = new SystemTestComponentDialog(this)
+
+        this.cmdNum = 0
+        let that = this
+        ipcRenderer.on('system-test', async function () {
+            // that.systemTestComponentDialog.display()
+            await that.basicTest('', '')
+        })
+    }
+
+    async basicTest(dirPath, configPath){
+        configPath = 'D:\\projects\\ericsson_flow\\new_files\\config3.txt'
+        let that = this
+        let file = await ipcRenderer.invoke('open-file')
+        if(!file.canceled){
+            that.fileContainerView.controlNewFile(file.filePaths)
+        }
+        setTimeout(function () {
+            that.chartTest(JSON.parse(fs.readFileSync(configPath, 'utf-8')))
+        }, 1000)
+    }
+
+    delayedExec(func, ...params){
+        let that = this
+        setTimeout(function () {
+            if (params.length == 0){
+                eval(`${func}()`)
+            }else if(params.length == 1){
+                eval(`${func}(params[0])`)
+            }else if(params.length == 2){
+                eval(`${func}(params[0], params[1])`)
+            }else if(params.length == 3){
+                eval(`${func}(params[0], params[1], params[2])`)
+            }
+        }, this.cmdNum * 100)
+        this.cmdNum = this.cmdNum + 1
+    }
+
+    forDelayedExec(func, model, ...params){
+        let that = this
+        setTimeout(function () {
+            if (params.length == 0){
+                eval(`${func}()`)
+            }else if(params.length == 1){
+                eval(`${func}(params[0])`)
+            }else if(params.length == 2){
+                eval(`${func}(params[0], params[1])`)
+            }else if(params.length == 3){
+                eval(`${func}(params[0], params[1], params[2])`)
+            }
+        }, this.cmdNum * 100)
+        this.cmdNum = this.cmdNum + 1
+    }
+
+    searchTest(config){
+        config['search'].forEach((model) => {
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onHiddenDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onUpdateDialog", model)
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.dialog.apply.click")
+        })
+
+        config['search'].forEach((model, index) => {
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            let wheelEvent = new WheelEvent('wheel', {
+                deltaY: 1,
+                deltaMode: 1
+            })
+            for(var i=0; i < 10; i++){
+                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].view.table.dispatchEvent", model, wheelEvent)
+            }
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].edit.click", model)
+            
+            var newModel = JSON.parse(JSON.stringify(config['search'][config['search'].length - 1 - index]))
+            newModel['alias'] = newModel['alias']+'_TEST'
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].onUpdateDialog", model, newModel)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].dialog.apply.click", model)
+
+            model = newModel
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            for(i=0; i < 10; i++){
+                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].view.table.dispatchEvent", model, wheelEvent)
+            }
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+
+            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].del.click", model)
+        })
+    }
+
+    insightTest(config){
+        config['insight'].forEach((model) => {
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpInsightAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpInsightAtomView.onHiddenDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpInsightAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpInsightAtomView.onUpdateDialog", model)
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpInsightAtomView.dialog.apply.click")
+        })
+
+        config['insight'].forEach((model, index) => {
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            let wheelEvent = new WheelEvent('wheel', {
+                deltaY: 1,
+                deltaMode: 1
+            })
+            for(var i=0; i < 10; i++){
+                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].view.table.dispatchEvent", model, wheelEvent)
+            }
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].edit.click", model)
+
+            var newModel = JSON.parse(JSON.stringify(config['insight'][config['insight'].length - 1 - index]))
+            newModel['alias'] = newModel['alias']+'_TEST'
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].onUpdateDialog", model, newModel)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].dialog.apply.click", model)
+            
+            model = newModel
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            for(i=0; i < 10; i++){
+                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].view.table.dispatchEvent", model, wheelEvent)
+            }
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].del.click", model)
+        })
+    }
+
+    chartTest(config){
+        config['search'].forEach((model) => {
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onHiddenDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onUpdateDialog", model)
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.dialog.apply.click")
+        })
+
+        config['chart'].forEach((model) => {
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpChartAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpChartAtomView.onHiddenDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpChartAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpChartAtomView.onUpdateDialog", model)
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpChartAtomView.dialog.chartAtomComponentSvg.apply.click")
+        })
+
+        config['chart'].forEach((model, index) => {
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].edit.click", model)
+            
+            var newModel = JSON.parse(JSON.stringify(config['chart'][config['chart'].length - 1 - index]))
+            newModel['alias'] = newModel['alias']+'_TEST'
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].onUpdateDialog", model, newModel)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].dialog.chartAtomComponentSvg.apply.click", model)
+            model = newModel
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].del.click", model)
+        })
+    }
+
+    statisticTest(config){
+        config['search'].forEach((model) => {
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onHiddenDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.onUpdateDialog", model)
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpSearchAtomView.dialog.apply.click")
+        })
+
+        config['statistic'].forEach((model) => {
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpStatisticAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpStatisticAtomView.onHiddenDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpStatisticAtomView.onDisplayDialog")
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpStatisticAtomView.onUpdateDialog", model)
+            this.delayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].tmpStatisticAtomView.dialog.apply.click")
+        })
+
+        config['statistic'].forEach((model, index) => {
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].edit.click", model)
+
+            var newModel = JSON.parse(JSON.stringify(config['statistic'][config['statistic'].length - 1 - index]))
+            newModel['alias'] = newModel['alias']+'_TEST'
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].onUpdateDialog", model, newModel)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].dialog.apply.click", model)
+            model = newModel
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+
+            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].del.click", model)
+        })
+    }
+}
+
 class TextAnalysisView extends View
 {
     constructor(position){
         super(ns.TEXTANALYSIS, position)
         this.initMenu()
 
-        new FileContainerView(this)
+        this.fileContainerView = new FileContainerView(this)
+        this.systemTest = new SystemTestView(this)
     }
 
     onNewObject(args){
-        if (args.className == 'TextFileView') {
-            new TextFileView(args.namespace)
-        }else if (args.className == 'TextFileOriginalView') {
-            new TextFileOriginalView(args.namespace)
-        }else if (args.className == 'TextFileFunctionView') {
-            new TextFileFunctionView(args.namespace)
-        }else if (args.className == 'SearchFunctionView') {
-            new SearchFunctionView(args.namespace)
-        }else if (args.className == 'InsightFunctionView') {
-            new InsightFunctionView(args.namespace)
-        }else if (args.className == 'ChartFunctionView') {
-            new ChartFunctionView(args.namespace)
-        }else if (args.className == 'StatisticFunctionView') {
-            new StatisticFunctionView(args.namespace)
-        }else if (args.className == 'SearchAtomView') {
-            new SearchAtomView(args.model)
-        }else if (args.className == 'InsightAtomView') {
-            new InsightAtomView(args.model)
-        }else if (args.className == 'ChartAtomView') {
-            new ChartAtomView(args.model)
-        }else if (args.className == 'StatisticAtomView') {
-            new StatisticAtomView(args.model)
-        }else if (args.className == 'BatchInsightView') {
-            new BatchInsightView(args.namespace)
-        }else if (args.className == 'BatchStatisticView') {
-            new BatchStatisticView(args.namespace)
+        if (args.class_name == 'TextFileView') {
+            this.fileContainerView.textFileViews[args.namespace] = new TextFileView(args.namespace)
+        }else if (args.class_name == 'TextFileOriginalView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileOriginalView = new TextFileOriginalView(args.namespace)
+        }else if (args.class_name == 'TextFileFunctionView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView = new TextFileFunctionView(args.namespace)
+        }else if (args.class_name == 'SearchFunctionView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.searchFunctionView = new SearchFunctionView(args.namespace)
+        }else if (args.class_name == 'InsightFunctionView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.insightFunctionView = new InsightFunctionView(args.namespace)
+        }else if (args.class_name == 'ChartFunctionView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.chartFunctionView = new ChartFunctionView(args.namespace)
+        }else if (args.class_name == 'StatisticFunctionView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.statisticFunctionView = new StatisticFunctionView(args.namespace)
+        }else if (args.class_name == 'SearchAtomView') {
+            if (args.model.namespace.split('/').length == 5) {
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpSearchAtomView = new SearchAtomView(args.model)
+            }else{
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.searchFunctionView.views[args.model.namespace] = new SearchAtomView(args.model)
+            }
+        }else if (args.class_name == 'InsightAtomView') {
+            if (args.model.namespace.split('/').length == 5) {
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpInsightAtomView = new InsightAtomView(args.model)
+            }else{
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.insightFunctionView.views[args.model.namespace] = new InsightAtomView(args.model)
+            }
+        }else if (args.class_name == 'ChartAtomView') {
+            if (args.model.namespace.split('/').length == 5) {
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpChartAtomView = new ChartAtomView(args.model)
+            }else{
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.chartFunctionView.views[args.model.namespace] = new ChartAtomView(args.model)
+            }
+        }else if (args.class_name == 'StatisticAtomView') {
+            if (args.model.namespace.split('/').length == 5) {
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpStatisticAtomView = new StatisticAtomView(args.model)
+            }else{
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.statisticFunctionView.views[args.model.namespace] = new StatisticAtomView(args.model)
+            }
         }
+    }
+
+    onChangeObject(args){
+        if (args.class_name == 'SearchAtomView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.searchFunctionView.views[args.new_namespace] = this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.searchFunctionView.views[args.old_namespace]
+            delete this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.searchFunctionView.views[args.old_namespace]
+        }else if (args.class_name == 'InsightAtomView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.insightFunctionView.views[args.new_namespace] = this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.insightFunctionView.views[args.old_namespace]
+            delete this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.insightFunctionView.views[args.old_namespace]
+        }else if (args.class_name == 'ChartAtomView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.chartFunctionView.views[args.new_namespace] = this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.chartFunctionView.views[args.old_namespace]
+            delete this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.chartFunctionView.views[args.old_namespace]
+        }else if (args.class_name == 'StatisticAtomView') {
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.statisticFunctionView.views[args.new_namespace] = this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.statisticFunctionView.views[args.old_namespace]
+            delete this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.statisticFunctionView.views[args.old_namespace]
+        }
+    }
+
+    getTextFileViewNamespace(namespace){
+        return namespace.split('/').slice(0,4).join('/')
     }
 
     initMenu(){
@@ -77,19 +308,22 @@ class FileContainerView extends View
 {
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.FILECONTAINER}`, textAnalysisView.container)
+        this.textFileViews = {}
+        this.activeTextFileView = ''
+
         this.fileContainerComponentTab = new FileContainerComponentTab(this)
         this.dcgmAnalysisDialog = new DCGMAnalysisDialog(this)
         // this.shareDownloadDialog = new ShareDownloadDialog(this)
 
-        new BatchInsightView(this)
-        new BatchStatisticView(this)
+        this.batchInsightView = new BatchInsightView(this)
+        this.batchStatisticView = new BatchStatisticView(this)
         // new GlobalChartView(this)
 
         let that = this
         ipcRenderer.on('open-file', async function () {
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
-                that.socket.emit("new_file", file.filePaths)
+                that.controlNewFile(file.filePaths)
             }
         })
         // ipcRenderer.on('save-config', async function () {
@@ -158,6 +392,10 @@ class FileContainerView extends View
                 })
             }
         })
+    }
+
+    controlNewFile(filePaths){
+        this.socket.emit("new_file", filePaths)
     }
 
     controlDisplayFile(namespace){
@@ -248,6 +486,7 @@ class FileContainerView extends View
     }
 
     onDisplayFile(params){
+        this.activeTextFileView = params.active_text_file_model
         this.fileContainerComponentTab.displayFile(params)
     }
 }
@@ -256,7 +495,14 @@ class TextFileView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
-        
+        this.tmpSearchAtomView = ''
+        this.tmpInsightAtomView = ''
+        this.tmpChartAtomView = ''
+        this.tmpStatisticAtomView = ''
+
+        this.textFileOriginalView = ''
+        this.textFileFunctionView = ''
+
         var tmpSearchAtom = document.createElement('div')
         tmpSearchAtom.id = `${namespace}${ns.TMPSEARCHATOMMODEL}`
         var tmpInsightAtom = document.createElement('div')
@@ -270,9 +516,6 @@ class TextFileView extends View
         this.container.append(tmpInsightAtom)
         this.container.append(tmpChartAtom)
         this.container.append(tmpStatisticAtom)
-
-        this.socket.emit("display")
-        console.log(namespace)
     }
 
     onDelete(){
@@ -295,9 +538,9 @@ class TextFileOriginalView extends View
     }
 
     onSetHeight(model){
-        this.textFileOriginalComponentTable.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
-        this.textFileOriginalComponentTable.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
-        this.textFileOriginalComponentTable.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
+        this.textFileOriginalComponentTable.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.textFileOriginalComponentTable.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.textFileOriginalComponentTable.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
     }
 
     onRefreshTable(model){
@@ -309,6 +552,10 @@ class TextFileFunctionView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.searchFunctionView = ''
+        this.insightFunctionView = ''
+        this.chartFunctionView = ''
+        this.statisticFunctionView = ''
 
         this.container.style.border = '1px solid #ddd'
         this.container.style.height = '0px'
@@ -330,7 +577,7 @@ class TextFileFunctionView extends View
     }
 
     onSetHeight(model){
-        this.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rateHeight)}px`
+        this.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
     }
 }
 
@@ -338,6 +585,7 @@ class SearchFunctionView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.views = {}
         this.searchFunctionComponentList = new SearchFunctionComponentList(this)
     }
 
@@ -350,6 +598,7 @@ class InsightFunctionView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.views = {}
         this.insightFunctionComponentList = new InsightFunctionComponentList(this)
     }
 
@@ -362,6 +611,7 @@ class ChartFunctionView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.views = {}
         this.chartFunctionComponentList = new ChartFunctionComponentList(this)
     }
 
@@ -374,6 +624,7 @@ class StatisticFunctionView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.views = {}
         this.statisticFunctionComponentList = new StatisticFunctionComponentList(this)
     }
 
@@ -387,43 +638,12 @@ class SearchAtomView extends ListView
     constructor(model){
         super(model.namespace, document.getElementById(model.namespace))
         this.model = model
-        this.searchAtomComponentDialog = new SearchAtomComponentDialog(this)
-        this.searchAtomComponentTable = new SearchAtomComponentTable(this)
-    }
-
-    controlSearch(model){
-        if(this.namespace.includes(ns.TMPSEARCHATOMMODEL)){
-            this.socket.emit("search", model, 'tmp')
-        }else{
-            this.socket.emit("search", model)
-        }
-        this.searchAtomComponentDialog.hidden()
+        this.dialog = new SearchAtomComponentDialog(this)
+        this.view = new SearchAtomComponentTable(this)
     }
 
     controlScroll(point){
         this.socket.emit("scroll", point)
-    }
-
-    onRefreshTable(model){
-        this.model = model
-        if (!this.searchAtomComponentDialog.alias.value){
-            this.onUpdateDialog(model)
-        }
-        this.searchAtomComponentTable.refresh(this.model)
-    }
-
-    onDisplayDialog(){
-        this.searchAtomComponentDialog.display()
-    }
-
-    onUpdateDialog(model){
-        this.model = model
-        this.searchAtomComponentDialog.update(this.model)
-    }
-
-    onDelete(){
-        this.delete()
-        this.socket.emit("delete")
     }
 }
 
@@ -433,43 +653,12 @@ class InsightAtomView extends ListView
         super(model.namespace, document.getElementById(model.namespace))
         this.model = model
 
-        this.insightAtomComponentDialog = new InsightAtomComponentDialog(this)
-        this.insightAtomComponentTable = new InsightAtomComponentTable(this)
-    }
-
-    controlInsight(model){
-        if(this.namespace.includes(ns.TMPINSIGHATOMMODEL)){
-            this.socket.emit("insight", model, 'tmp')
-        }else{
-            this.socket.emit("insight", model)
-        }
-        this.insightAtomComponentDialog.hidden()
+        this.dialog = new InsightAtomComponentDialog(this)
+        this.view = new InsightAtomComponentTable(this)
     }
 
     controlScroll(point){
         this.socket.emit("scroll", point)
-    }
-
-    onRefreshTable(model){
-        this.model = model
-        if (!this.insightAtomComponentDialog.alias.value){
-            this.onUpdateDialog(model)
-        }
-        this.insightAtomComponentTable.refresh(this.model)
-    }
-
-    onDisplayDialog(){
-        this.insightAtomComponentDialog.display()
-    }
-
-    onUpdateDialog(model){
-        this.model = model
-        this.insightAtomComponentDialog.update(this.model)
-    }
-
-    onDelete(){
-        this.delete()
-        this.socket.emit("delete")
     }
 }
 
@@ -478,18 +667,8 @@ class ChartAtomView extends ListView
     constructor(model){
         super(model.namespace, document.getElementById(model.namespace))
         this.model = model
-
-        this.chartAtomComponentSvgDialog = new ChartAtomComponentSvgDialog(this)
-        this.chartAtomComponentSequentialChart = new ChartAtomComponentSequentialChart(this)
-    }
-
-    controlChart(model){
-        if(this.namespace.includes(ns.TMPCHARTATOMMODEL)){
-            this.socket.emit("chart", model, 'tmp')
-        }else{
-            this.socket.emit("chart", model)
-        }
-        this.chartAtomComponentSvgDialog.hidden()
+        this.dialog = new ChartAtomComponentSvgDialog(this)
+        this.view = new ChartAtomComponentSequentialChart(this)
     }
 
     controlClearKeyValueTree(){
@@ -500,26 +679,9 @@ class ChartAtomView extends ListView
         this.socket.emit("click_event", params)
     }
 
-    onRefreshChart(model){
-        this.stopLoader()
-        this.model = model
-        this.onUpdateDialog(model)
-        this.chartAtomComponentSequentialChart.refresh(this.model.selectLines)
-        this.chartAtomComponentSequentialChart.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 20)}px`, width:`${document.body.offsetWidth}px`})
-    }
-
-    onDisplayDialog(){
-        this.chartAtomComponentSvgDialog.display()
-    }
-
-    onUpdateDialog(model){
-        this.model = model
-        this.chartAtomComponentSvgDialog.update(this.model)
-    }
-
-    onDelete(){
-        this.delete()
-        this.socket.emit("delete")
+    onRefresh(model){
+        super.onRefresh(model)
+        this.view.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 20)}px`, width:`${document.body.offsetWidth}px`})
     }
 }
 
@@ -528,22 +690,11 @@ class StatisticAtomView extends ListView
     constructor(model){
         super(model.namespace, document.getElementById(model.namespace))
         this.model = model
-
-        this.statisticAtomComponentDialog = new StatisticAtomComponentDialog(this)
-        this.statisticAtomComponentTextarea = new StatisticAtomComponentTextarea(this)
-    }
-
-    controlStatistic(model){
-        if(this.namespace.includes(ns.TMPSTATISTICATOMMODEL)){
-            this.socket.emit("statistic", model, 'tmp')
-        }else{
-            this.socket.emit("statistic", model)
-        }
-        this.statisticAtomComponentDialog.hidden()
+        this.dialog = new StatisticAtomComponentDialog(this)
+        this.view = new StatisticAtomComponentTextarea(this)
     }
 
     controlStatisticTest(model){
-        this.startLoader()
         this.socket.emit("statistic_test", model)
     }
 
@@ -551,31 +702,9 @@ class StatisticAtomView extends ListView
         this.socket.emit("get_compare_graph", alias)
     }
 
-    onRefreshTextarea(model){
-        this.stopLoader()
-        this.model = model
-        this.onUpdateDialog(this.model)
-        this.statisticAtomComponentTextarea.refresh(this.model)
-    }
-
     onRefreshTest(model){
-        this.stopLoader()
         this.model = model
         this.statisticAtomComponentDialog.refreshTest(this.model)
-    }
-
-    onDisplayDialog(){
-        this.statisticAtomComponentDialog.display()
-    }
-
-    onUpdateDialog(model){
-        this.model = model
-        this.statisticAtomComponentDialog.update(this.model)
-    }
-
-    onDelete(){
-        this.delete()
-        this.socket.emit("delete")
     }
 }
 
@@ -591,13 +720,13 @@ class BatchInsightView extends View
 
     controlBatchInsight(dirPath, config){
         this.socket.emit("new", dirPath, config)
-        this.batchInsightComponentTableDialog.batchInsightComponentTable.deleteTableAllChilds()
         this.batchInsightComponentDialog.hidden()
-        this.batchInsightComponentTableDialog.display()
+        this.batchInsightComponentSvgDialog.display()
     }
 
     controlGetUniversal(clusterNum){
         this.socket.emit("get_universal", clusterNum, async (response) => {
+            console.log(response)
             this.batchInsightComponentTableDialog.batchInsightComponentTable.refreshUniversal(response)
             this.batchInsightComponentTableDialog.display()
         })
@@ -605,21 +734,22 @@ class BatchInsightView extends View
 
     controlGetSingleInsight(namespace){
         this.socket.emit("get_single_insight", namespace, async (response) => {
+            console.log(response)
             this.batchInsightComponentTableDialog.batchInsightComponentTable.refreshSingleInsight(response)
             this.batchInsightComponentTableDialog.display()
         })
     }
 
-    onRefresh(sample){
-        this.batchInsightComponentTableDialog.batchInsightComponentTable.refresh(sample)
+    onRefresh(clusterTree){
+        this.batchInsightComponentSvgDialog.batchInsightComponentSvg.update(clusterTree)
     }
 
     onDisplayDialog(){
         this.batchInsightComponentDialog.display()
     }
 
-    onDisplayTableDialog(){
-        this.batchInsightComponentTableDialog.display()
+    onDisplaySvgDialog(){
+        this.batchInsightComponentSvgDialog.display()
     }
 }
 

@@ -249,6 +249,17 @@ async function createWindow() {
         ]
       },
       {
+        label: 'AppTest',
+        submenu: [
+          {
+            label: 'System Test',
+            click: () => {
+              win.webContents.send('system-test')
+            }
+          }
+        ]
+      },
+      {
         label: 'View',
         submenu: [
           { role: 'reload' },

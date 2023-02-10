@@ -8,65 +8,65 @@ from asyncio import get_event_loop
 # from text_analysis import BatchStatisticModel
 
 
-class Parallel(object):
+# class Parallel(object):
 
-    def __init__(self):
-        self._cpu_count = cpu_count()
-        self.responses = ''
-        # self.smm = SharedMemoryManager()
-        # self.smm.start()
+#     def __init__(self):
+#         self._cpu_count = cpu_count()
+#         self.responses = ''
+#         # self.smm = SharedMemoryManager()
+#         # self.smm.start()
 
-        self.exe = ProcessPoolExecutor(self._cpu_count)
-        fs = [self.exe.submit(Parallel.work_init, cpu_num) for cpu_num in range(self._cpu_count)]
-        self.container = {}
+#         self.exe = ProcessPoolExecutor(self._cpu_count)
+#         fs = [self.exe.submit(Parallel.work_init, cpu_num) for cpu_num in range(self._cpu_count)]
+#         self.container = {}
 
-    @staticmethod
-    def work_init(cpu_num):
-        print(f'Init Cpu Num:{cpu_num} {current_process()=}')
+#     @staticmethod
+#     def work_init(cpu_num):
+#         print(f'Init Cpu Num:{cpu_num} {current_process()=}')
 
-    def shutdown(self):
-        self.container = {}
+#     def shutdown(self):
+#         self.container = {}
 
-    def copy_to_shm(self, namespace, data):
-        self.container[namespace] = Manager().list(data)
-        return self.container[namespace]
+#     def copy_to_shm(self, namespace, data):
+#         self.container[namespace] = Manager().list(data)
+#         return self.container[namespace]
 
-    def delete_shm(self, namespace):
-        self.container[namespace] = ''
-        del self.container[namespace]
+#     def delete_shm(self, namespace):
+#         self.container[namespace] = ''
+#         del self.container[namespace]
 
-    # async def run():
-    # tasks = []
-    # async with ClientSession() as session:
-    #     for i in range(total):
-    #         task = ensure_future(BatchStatisticModel.test('TEST', 'TEST'))
-    #         tasks.append(task)
+#     # async def run():
+#     # tasks = []
+#     # async with ClientSession() as session:
+#     #     for i in range(total):
+#     #         task = ensure_future(BatchStatisticModel.test('TEST', 'TEST'))
+#     #         tasks.append(task)
 
-    #     self.responses = gather(*tasks)
-    #     await self.responses
+#     #     self.responses = gather(*tasks)
+#     #     await self.responses
 
-    @staticmethod
-    def exec_loop():
-        loop = get_event_loop()
-        future = ensure_future(BatchStatisticModel.test('TEST', 'TEST'))
-        loop.run_until_complete(future)
+#     @staticmethod
+#     def exec_loop():
+#         loop = get_event_loop()
+#         future = ensure_future(BatchStatisticModel.test('TEST', 'TEST'))
+#         loop.run_until_complete(future)
 
-    def parallel(self, models):
-        # processes = []
+#     def parallel(self, models):
+#         # processes = []
 
-        # for namespace in models.keys():
-        #     p = Process(target=models[namespace].search, args=())
-        #     processes.append(p)
+#         # for namespace in models.keys():
+#         #     p = Process(target=models[namespace].search, args=())
+#         #     processes.append(p)
 
-        # [x.start() for x in processes]
-        fs = []
-        ns = list(models.keys())
-        # for namespace in ns:
-        #     fs.append(self.exe.submit(models[namespace].search, namespace))
+#         # [x.start() for x in processes]
+#         fs = []
+#         ns = list(models.keys())
+#         # for namespace in ns:
+#         #     fs.append(self.exe.submit(models[namespace].search, namespace))
 
-        fs = [self.exe.submit(Parallel.exec_loop) for namespace in models.keys()]
-        for data in as_completed(fs):
-            print(data.result())
+#         fs = [self.exe.submit(Parallel.exec_loop) for namespace in models.keys()]
+#         for data in as_completed(fs):
+#             print(data.result())
 
 
 if __name__ == '__main__':

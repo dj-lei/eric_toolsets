@@ -13,5 +13,6 @@
   "TMPSTATISTICATOMMODEL": "/TmpStatisticAtomModel",
   "BATCHINSIGHT": "/BatchInsight",
   "BATCHSTATISTIC": "/BatchStatistic",
-  "GLOBALCHART": "/GlobalChart"
+  "GLOBALCHART": "/GlobalChart",
+  "SYSTEMTEST": "/SystemTest"
 }

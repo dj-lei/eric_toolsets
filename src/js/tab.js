@@ -36,9 +36,9 @@ class FileContainerComponentTab extends Tab
     updatePlaceholder(model){
         let that = this
         var tablink = this.tabs[model.namespace].ins
-        tablink.style.width = `${model.fileName.length * 8}px`
+        tablink.style.width = `${model.file_name.length * 8}px`
         var title = this.tabs[model.namespace].title
-        title.innerHTML = model.fileName
+        title.innerHTML = model.file_name
         title.addEventListener('click', function()
         {
             that.fileContainerView.controlDisplayFile(model.namespace)
@@ -76,10 +76,10 @@ class FileContainerComponentTab extends Tab
 
     displayFile(params)
     {
-        if((params.earlierActiveTextFileModel != '') & (params.earlierActiveTextFileModel in this.tabs)){
-            this.tabs[params.earlierActiveTextFileModel].title.style.backgroundColor = "#555"
+        if((params.earlier_active_text_file_model != '') & (params.earlier_active_text_file_model in this.tabs)){
+            this.tabs[params.earlier_active_text_file_model].title.style.backgroundColor = "#555"
         }
-        this.tabs[params.activeTextFileModel].title.style.backgroundColor = "#333"
+        this.tabs[params.active_text_file_model].title.style.backgroundColor = "#333"
     }
 }
 

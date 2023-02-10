@@ -51,7 +51,7 @@ class TextFileOriginalComponentTable extends Table
     refresh(model){
         this.deleteTableAllChilds()
         this.slider.max = model.count
-        model.displayLines.forEach((line) => {
+        model.display_lines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
@@ -129,7 +129,7 @@ class SearchAtomComponentTable extends Table
         this.deleteTableAllChilds()
         this.slider.max = model.count
         this.searchAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
-        model.displayLines.forEach((line) => {
+        model.display_lines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
@@ -207,7 +207,7 @@ class InsightAtomComponentTable extends Table
         this.deleteTableAllChilds()
         this.slider.max = model.count
         this.insightAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
-        model.displayLines.forEach((line) => {
+        model.display_lines.forEach((line) => {
             var tr = document.createElement('tr')
             tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
@@ -220,24 +220,39 @@ class BatchInsightComponentTableDialog extends Dialog
     constructor(batchInsightView){
         super(batchInsightView.container)
         this.container.style.zIndex = 2
-        this.subContainer.style.width = '90%' 
+        this.subContainer.style.width = '50%' 
         this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
 
-        this.batchInsightComponentTable = new BatchInsightComponentTable(this.subContainer)
+        this.batchInsightComponentTable = new BatchInsightComponentTable(this)
     }
 }
 
 class BatchInsightComponentTable extends Table
 {
-    constructor(container){
-        super(container)
+    constructor(batchInsightComponentTableDialog){
+        super(batchInsightComponentTableDialog.subContainer)
+        this.batchInsightComponentTableDialog = batchInsightComponentTableDialog
 
         this.container.append(this.table)
+
+        let that = this
+
+        this.bottomBtnSets = this.createElementDiv()
+        this.bottomBtnSets.style.position = 'fixed'
+        this.bottomBtnSets.style.bottom = 0
+        this.bottomBtnSets.style.width = '50%'
+        this.container.append(this.bottomBtnSets)
+
+        var cancelBtn = this.createElementButton('CANCEL')
+        cancelBtn.style.backgroundColor = 'red'
+        cancelBtn.style.float = 'right'
+        cancelBtn.onclick = function(){that.batchInsightComponentTableDialog.hidden()}
+        this.bottomBtnSets.appendChild(cancelBtn)
     }
 
-    refreshUniversal(displayLines){
+    refreshUniversal(display_lines){
         this.deleteTableAllChilds()
-        displayLines.forEach((line) => {
+        display_lines.forEach((line) => {
             var tr = document.createElement('tr')
             var td = document.createElement('td')
             td.innerHTML = line
@@ -246,27 +261,25 @@ class BatchInsightComponentTable extends Table
         })
     }
 
-    refreshSingleInsight(model){
+    refreshSingleInsight(data){
         this.deleteTableAllChilds()
-        Object.keys(model).forEach((insightAtom) => {
-            model[insightAtom].forEach((outlier) => {
-                var tr = document.createElement('tr')
-                var insightAtomAlias = document.createElement('td')
-                insightAtomAlias.innerHTML = insightAtom
-                tr.appendChild(insightAtomAlias)
+        data.forEach((outlier) => {
+            console.log(outlier)
+            var tr = document.createElement('tr')
+            var alias = document.createElement('td')
+            alias.innerHTML = outlier.alias
+            var timestamp = document.createElement('td')
+            timestamp.innerHTML = outlier.timestamp
+            var abnormalType = document.createElement('td')
+            abnormalType.innerHTML = outlier.abnormal_type
+            var desc = document.createElement('td')
+            desc.innerHTML = outlier.desc
 
-                var timestamp = document.createElement('td')
-                timestamp.innerHTML = outlier.timestamp
-                var type = document.createElement('td')
-                type.innerHTML = outlier.type
-                var desc = document.createElement('td')
-                desc.innerHTML = outlier.desc
-
-                tr.appendChild(timestamp)
-                tr.appendChild(type)
-                tr.appendChild(desc)
-                this.table.appendChild(tr)
-            })
+            tr.appendChild(alias)
+            tr.appendChild(timestamp)
+            tr.appendChild(abnormalType)
+            tr.appendChild(desc)
+            this.table.appendChild(tr)
         })
     }
 
