@@ -1,8 +1,16 @@
 from utils import *
+from special import take_apart_dcgm, take_apart_telog
 
-from special import take_apart_dcgm
-import socket_server
 import socketio
+from aiohttp import web
+from aiohttp.web_runner import GracefulExit
+from engineio.payload import Payload
+from asyncio import get_event_loop
+Payload.max_decode_packets = 40000
+
+sio = socketio.AsyncServer()
+app = web.Application()
+sio.attach(app)
 
 special_symbols = ['/','\*','\{','\}','\[','\]','\(','\)','#','+','-','!','=',':',',','"','\'','>','<','@','$','%','^','\&','\|',' ']
 color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
@@ -59,7 +67,7 @@ class Model(socketio.AsyncNamespace, AsyncObject):
     async def __init__(self, namespace, mode):
         if mode == 'normal':
             super().__init__(namespace)
-            socket_server.sio.register_namespace(self)
+            sio.register_namespace(self)
         else:
             self.namespace = namespace
 
@@ -92,7 +100,7 @@ class Model(socketio.AsyncNamespace, AsyncObject):
 
     async def on_connected(self, sid, namespace):
         self.sid = sid
-        # print('Two-way connection established: ', namespace)
+        print('Two-way connection established: ', namespace)
 
     async def on_hidden(self, sid):
         await self.emit('hidden', namespace=self.namespace)
@@ -137,6 +145,21 @@ class Model(socketio.AsyncNamespace, AsyncObject):
     async def isBatchAble(self, namespace):
         pass
 
+    async def on_display_dialog(self, sid):
+        await self.emit('displayDialog', namespace=self.namespace)
+
+    async def on_hidden_dialog(self, sid):
+        await self.emit('hiddenDialog', namespace=self.namespace)
+
+    async def on_update_dialog(self, sid):
+        await self.emit('updateDialog', self.model(), namespace=self.namespace)
+
+    async def on_display_show(self, sid):
+        await self.emit('displayShow', namespace=self.namespace)
+
+    async def on_hidden_show(self, sid):
+        await self.emit('hiddenShow', namespace=self.namespace)
+
 
 class ListModel(Model):
     async def __init__(self, namespace, mode):
@@ -160,9 +183,9 @@ class ListModel(Model):
         model['namespace'] = new_namespace
         await self.parent.on_change(sid, self.namespace, model)
         await self.change_view_object(self.namespace, new_namespace)
-        await socket_server.sio.disconnect(sid, namespace=self.namespace)
+        await sio.disconnect(sid, namespace=self.namespace)
         self.__dict__.update(model)
-        socket_server.sio.register_namespace(self)
+        sio.register_namespace(self)
 
     async def on_connected(self, sid, namespace):
         await super().on_connected(sid, namespace)
@@ -178,17 +201,22 @@ class ListModel(Model):
         await self.emit('refresh', self.model(), namespace=self.namespace)
         await self.emit('stopLoader', namespace=self.namespace)
 
-    async def on_display_dialog(self, sid):
-        await self.emit('displayDialog', namespace=self.namespace)
-
-    async def on_hidden_dialog(self, sid):
-        await self.emit('hiddenDialog', namespace=self.namespace)
-
-    async def on_update_dialog(self, sid):
-        await self.emit('updateDialog', self.model(), namespace=self.namespace)
-
     async def on_delete(self, sid):
         await self.parent.on_delete(sid, self.namespace)
+
+
+class BatchModel(Model):
+    async def __init__(self, namespace, mode):
+        await super().__init__(namespace, mode)
+        self.dir_path = ''
+        self.config_path = ''
+        self.config = ''
+
+    async def on_exec(self, sid, dir_path, config):
+        await self.exec(dir_path, config)
+
+    async def on_refresh(self, sid, sample):
+        await self.emit('refresh', sample, namespace=self.namespace)
 
 
 class Fellow(Model):
@@ -280,6 +308,10 @@ class TextAnalysisModel(Model):
         self.parallel = parallel
         self.file_container_model = await FileContainerModel(self, self.mode)
 
+        self.batch_insight_model = await BatchInsightModel(self, self.mode)
+        self.batch_statistic_model = await BatchStatisticModel(self, self.mode)
+        self.global_chart_model = await GlobalChartModel(self, self.mode)
+
     async def listener(self, publish_namespace):
         pass
 
@@ -294,6 +326,30 @@ class TextAnalysisModel(Model):
         self.alias_data[ref.alias] = ''
         del self.alias_data[ref.alias]
 
+    async def on_display_batch_insight(self, sid):
+        await self.batch_insight_model.on_display_dialog(sid)
+
+    async def on_display_batch_statistic(self, sid):
+        await self.batch_statistic_model.on_display_dialog(sid)
+
+    async def on_display_batch_insight_show(self, sid):
+        await self.batch_insight_model.on_display_show(sid)
+
+    async def on_display_batch_statistic_show(self, sid):
+        await self.batch_statistic_model.on_display_show(sid)
+ 
+    async def on_display_global_chart(self, sid):
+        await self.global_chart_model.on_display_dialog(sid)
+
+    async def on_display_global_chart_show(self, sid):
+        await self.global_chart_model.on_display_show(sid)
+
+    async def on_shutdown(self, sid):
+        await app.shutdown()
+        await app.cleanup()
+        print('Exit!!!!!')
+        raise GracefulExit()
+
 
 class FileContainerModel(Model):
     async def __init__(self, text_analysis_model, mode='normal'):
@@ -302,9 +358,6 @@ class FileContainerModel(Model):
 
         self.text_file_models = {}
         self.active_text_file_model = ''
-
-        self.batch_insight_model = await BatchInsightModel(self, self.mode)
-        self.batch_statistic_model = await BatchStatisticModel(self, self.mode)
 
     async def listener(self, publish_namespace):
         await self.publish(publish_namespace)
@@ -316,9 +369,6 @@ class FileContainerModel(Model):
             self.text_file_models[new_file_namespace] = await TextFileModel(self, new_file_namespace, path, self.mode)
             await self.emit('newFile', self.text_file_models[new_file_namespace].model(), namespace=self.namespace)
             await self.on_display_file(sid, new_file_namespace)
-
-    async def on_delete_file(self, sid, namespace):
-        await self.text_file_models[namespace].on_delete(sid)
         
     def on_get_config(self, sid):
         return self.text_file_models[self.active_text_file_model].on_get_config()
@@ -359,23 +409,19 @@ class FileContainerModel(Model):
 
     async def on_display_tmp_statistic_atom_dialog(self, sid):
         await self.text_file_models[self.active_text_file_model].on_display_tmp_statistic_atom_dialog(sid)
-
-    async def on_display_batch_insight(self, sid):
-        await self.batch_insight_model.on_display_dialog(sid)
-
-    async def on_display_batch_statistic(self, sid):
-        await self.batch_statistic_model.on_display_dialog(sid)
-
-    async def on_display_batch_insight_view(self, sid):
-        await self.batch_insight_model.on_display_table_dialog(sid)
-
-    async def on_display_batch_statistic_view(self, sid):
-        await self.batch_statistic_model.on_display_table_dialog(sid)
-    
+   
     def on_dcgm_analysis(self, sid, params):
         print('Dcgm Analysis!', params)
         try:
             take_apart_dcgm(params['dcgm_dir'] + '\\', params['save_dir'] + '\\', params['telog_filter'], params['elog_filter'])
+            return Response(status.SUCCESS, msg.NONE, '').__dict__
+        except Exception as e:
+            return Response(status.ERROR, str(e), '').__dict__
+
+    def on_telog_analysis(self, sid, params):
+        print('Telog Analysis!', params)
+        try:
+            take_apart_telog(params['telog_dir'] + '\\', params['save_dir'] + '\\', params['telog_filter'])
             return Response(status.SUCCESS, msg.NONE, '').__dict__
         except Exception as e:
             return Response(status.ERROR, str(e), '').__dict__
@@ -422,9 +468,8 @@ class TextFileModel(Model):
 
         if self.mode == 'normal':
             self.parent.text_file_models[self.namespace] = ''
-            await self.emit('delete', namespace=self.namespace)
-            await socket_server.sio.disconnect(self.sid, namespace = self.namespace)
-            del socket_server.sio.namespace_handlers[self.namespace]
+            await sio.disconnect(self.sid, namespace = self.namespace)
+            del sio.namespace_handlers[self.namespace]
             del self.parent.text_file_models[self.namespace]
         
     def on_get_config(self):
@@ -543,7 +588,7 @@ class TextFileOriginalModel(Model):
 
         #         reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.searchs[uid].cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
         #         lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
-        await self.emit('refreshTable', self.model(), namespace=self.namespace)
+        await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def on_set_height(self, sid, rate):
         self.rate_height = rate
@@ -781,7 +826,7 @@ class InsightAtomModel(ListModel):
 
     def model(self):
         return {'count': self.count, 'namespace': self.namespace, 'alias': self.alias, 'desc':self.desc, 'exp_search': self.exp_search, 
-        'exp_extract': self.exp_extract, 'exp_mark': self.exp_mark, 'display_lines': self.display_lines}
+        'is_case_sensitive':self.is_case_sensitive, 'forward_rows':self.forward_rows, 'backward_rows':self.backward_rows, 'exp_extract': self.exp_extract, 'exp_mark': self.exp_mark, 'display_lines': self.display_lines}
 
     async def listener(self, publish_namespace):
         pass
@@ -819,7 +864,7 @@ class InsightAtomModel(ListModel):
         forward_time = ''
         backward_time = ''
         select_mark = {}
-        if len(self.res_mark.keys()) > 0:
+        if self.is_has_mark:
             for mark in self.res_mark.keys():
                 timestamp = dp(self.res_mark[mark]['timestamp'][self.number])
                 forward_time = timestamp - timedelta(seconds=self.forward_range)
@@ -853,21 +898,14 @@ class InsightAtomModel(ListModel):
         self.res_search_units = []
 
         for index, line in enumerate(self.text_file_model.lines):
-            if self.is_case_sensitive:
-                if len(re.findall(self.exp_search, line)) > 0:
-                    self.res_search_units.append([index+self.backward_rows, index+self.forward_rows])
-                    if not self.is_has_mark:
-                        if len(re.findall(self.exp_mark['exp'], line)) > 0:
-                            self.is_has_mark = True
-            else:
-                pass
+            if len(re.findall(self.exp_search, line, flags= 0 if self.is_case_sensitive else re.IGNORECASE)) > 0:
+                self.res_search_units.append([index-self.backward_rows, index+self.forward_rows+1])
+                if not self.is_has_mark:
+                    if len(re.findall(self.exp_mark['exp'], line)) > 0:
+                        self.is_has_mark = True
 
         if self.is_has_mark:
             self.fuzzy_extract()
-            for unit in self.res_search_units:
-                self.res_lines.extend(unit)
-            self.count = len(self.res_search_units)
-            self.res_lines = sorted(set(self.res_lines),key=self.res_lines.index)
 
     def fuzzy_extract(self):
         def self_clean_special_symbols(text, symbol):
@@ -1189,10 +1227,10 @@ class StatisticAtomModel(ListModel):
             self.result.append(path, score, std1, std2)
 
 
-class BatchInsightModel(Model):
-    async def __init__(self, file_container_model, mode='normal'):
-        await super().__init__(file_container_model.namespace + ns.BATCHINSIGHT, mode)
-        self.parent = file_container_model
+class BatchInsightModel(BatchModel):
+    async def __init__(self, text_analysis_model, mode='normal'):
+        await super().__init__(text_analysis_model.namespace + ns.BATCHINSIGHT, mode)
+        self.parent = text_analysis_model
         self.cluster_num = 2
         self.batch_insight = {}
         self.samples = {}
@@ -1330,37 +1368,30 @@ class BatchInsightModel(Model):
         return dict(self.result.loc[(self.result['fileName'] == file_name), :].reset_index(drop=True).loc[0, :])['resOutlier'].to_dict('records')
 
 
-class BatchStatisticModel(Model):
-    async def __init__(self, file_container_model, mode='normal'):
-        await super().__init__(file_container_model.namespace + ns.BATCHSTATISTIC, mode)
-        self.parent = file_container_model
-        self.dir_path = ''
-        self.config_path = ''
-        self.config = ''
-        self.result = pd.DataFrame()
+class BatchStatisticModel(BatchModel):
+    async def __init__(self, text_analysis_model, mode='normal'):
+        await super().__init__(text_analysis_model.namespace + ns.BATCHSTATISTIC, mode)
+        self.parent = text_analysis_model
+        self.table = pd.DataFrame()
+        self.result = ''
+        self.result_type = ''
+
+        self.text_analysis_model = text_analysis_model
 
     def model(self):
-        return {'namespace':self.namespace, 'result': self.result}
+        return {'namespace':self.namespace, 'result': str(self.result)}
 
-    async def on_new(self, sid, dir_path, config):
-        await self.new(dir_path, config)
+    async def on_code(self, sid, code):
+        self.code(code)
+        await self.emit('refreshCode', self.model(), namespace=self.namespace)
 
-    async def on_refresh(self, sid, sample):
-        await self.emit('refresh', sample, namespace=self.namespace)
-
-    async def on_display_dialog(self, sid):
-        await self.emit('displayDialog', namespace=self.namespace)
-
-    async def on_display_table_dialog(self, sid):
-        await self.emit('displayTableDialog', namespace=self.namespace)
-
-    async def new(self, dir_path, config):
+    async def exec(self, dir_path, config):
         self.dir_path = dir_path
         self.config_path = config
         self.config = json.dumps(json.load(open(config)))
 
         for path in iterate_files_in_directory(self.dir_path):
-            new_file_namespace = self.parent.namespace+'/'+path.split('\\')[-1]
+            new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+path.split('\\')[-1]
             
             tmp_file = await TextFileModel(self.parent, new_file_namespace, self.dir_path+'\\'+path, 'batch')
             await tmp_file.on_load_config('', [self.dir_path+'\\'+path, self.config], ['search', 'statistic'])
@@ -1369,6 +1400,14 @@ class BatchStatisticModel(Model):
                 await self.on_refresh('', sample)
             await tmp_file.on_delete('')
             print('Finish :', tmp_file.file_name)
+
+    def code(self, code):
+        try:
+            exec(code)
+        except Exception as e:
+            self.result = str(e)
+            self.result_type = "error"
+        self.result_type = type(self.result)
 
     # @staticmethod
     # async def test(new_file_namespace, path):
@@ -1387,61 +1426,58 @@ class BatchStatisticModel(Model):
         for statistic_namespace in statistic_function_model.models.keys():
             atom = statistic_function_model.models[statistic_namespace]
             sample[atom.alias] = atom.result
-        self.result = self.result.append(sample, ignore_index=True)
+        self.table = self.table.append(sample, ignore_index=True)
         return sample
 
 
 class GlobalChartModel(Model):
-    async def __init__(self, namespace, mode='normal'):
-        await super().__init__(namespace, mode)
-
+    async def __init__(self, text_analysis_model, mode='normal'):
+        await super().__init__(text_analysis_model.namespace + ns.GLOBALCHART, mode)
+        self.parent = text_analysis_model
         self.key_value_tree = {}
         self.select_lines = {}
 
-        self.file_container_model = self.subscribe_namespace(self.get_file_container_model_namespace())
-        await self.new_view_object()
+        self.file_container_model = self.subscribe_namespace(ns.TEXTANALYSIS + ns.FILECONTAINER)
+        self.text_analysis_model = text_analysis_model
 
     def model(self):
-        if self.key_value_tree == {}:
-            self.reload_global_key_value_tree()
-        return {'namespace': self.namespace, 'keyValueTree': self.key_value_tree, 'selectLines':self.select_lines}
+        return {'namespace': self.namespace, 'key_value_tree': self.key_value_tree, 'select_lines':self.select_lines}
 
     async def listener(self, subscribe_namespace):
-        await self.on_refresh_svg('')
+        self.generate_global_key_value_tree()
+        await self.on_update_dialog('')
 
-    async def on_refresh_svg(self, sid):
-        await self.emit('refreshSvg', self.model(), namespace=self.namespace)
-
-    async def on_refresh_chart(self, sid):
-        await self.emit('refreshChart', self.model(), namespace=self.namespace)
-
-    async def on_chart(self, sid, model):
+    async def on_exec(self, sid, model):
         self.__dict__.update(model)
 
         self.chart()
-        await self.emit('refreshChart', self.model(), namespace=self.namespace)
+        await self.emit('refresh', self.model(), namespace=self.namespace)
+
+    async def on_clear_global_key_value_tree(self, sid):
+        self.generate_global_key_value_tree()
+        await self.on_update_dialog(sid)
 
     def chart(self):
         selected_key = {}
-        for file_namespace in self.key_value_tree['children']:
-            for search_atom_model in self.key_value_tree[file_namespace]['children']:
+        for file in self.key_value_tree['children']:
+            for search_atom_model in file['children']:
                 for key in search_atom_model['children']:
                     if key['check'] == True:
-                        namespace = file_namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION + '/' + search_atom_model['namespace']
-                        search_alias = self.file_container_model.text_file_models[file_namespace].search_function_model.search_atom_models[namespace].alias
-                        key_value = self.file_container_model.text_file_models[file_namespace].search_function_model.search_atom_models[namespace].res_key_value.__dict__[key['name']]
-                        if len(key_value.global_index) > 0:
-                            selected_key[self.key_value_tree[file_namespace]['name']+'.'+search_alias+'.'+key['name']] = key_value
+                        # namespace = file['namespace'] + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION + '/' + search_atom_model['namespace']
+                        search_alias = self.file_container_model.text_file_models[file['namespace']].text_file_function_model.search_function_model.models[search_atom_model['namespace']].alias
+                        key_value = self.file_container_model.text_file_models[file['namespace']].text_file_function_model.search_function_model.models[search_atom_model['namespace']].res_key_value[key['name']]
+                        if len(key_value['global_index']) > 0:
+                            selected_key[file['name']+'.'+search_alias+'.'+key['name']] = key_value
 
         final = {}
         for key in selected_key.keys():
             tmp = list(selected_key.keys())
             tmp.remove(key)
             res = pd.DataFrame()
-            res = pd.concat([res, pd.DataFrame(selected_key[key].__dict__)])
+            res = pd.concat([res, pd.DataFrame(selected_key[key])])
             res['full_name'] = key
             for s_key in tmp:
-                temp = pd.DataFrame(selected_key[s_key].__dict__)
+                temp = pd.DataFrame(selected_key[s_key])
                 temp['full_name'] = s_key
                 res = pd.concat([res, temp]).reset_index(drop=True)
             # res['timestamp'] = res.apply(parse_data_format, axis=1)
@@ -1455,12 +1491,28 @@ class GlobalChartModel(Model):
             final[key] = json.loads(res.to_json(orient='records'))
         self.select_lines = final
 
-    def reload_global_key_value_tree(self):
+    def generate_global_key_value_tree(self):
         self.key_value_tree = {}
         self.key_value_tree = {'namespace': 'Key Value', 'name': 'Key Value', 'check': False, 'children': []}
         for file_namespace in self.file_container_model.text_file_models.keys():
-            atoms = []
-            for chart_namespace in self.file_container_model.text_file_models[file_namespace].chart_function_model.keys():
-                chart_atom_model = self.file_container_model.text_file_models[file_namespace].chart_function_model[chart_namespace]
-                atoms.append(chart_atom_model.reload_key_value_tree())
-            self.key_value_tree['children'].append({'namespace': file_namespace, 'name': self.file_container_model.text_file_models[file_namespace].file_name, 'check': False, 'children': atoms})
+
+            text_file_model = self.file_container_model.text_file_models[file_namespace]
+            key_value_tree = {}
+            key_value_tree = {'namespace': text_file_model.namespace, 'name': text_file_model.namespace.split('/')[-1], 'check': False, 'children': []}
+            search_function_model = self.file_container_model.text_file_models[file_namespace].text_file_function_model.search_function_model
+            for namespace in search_function_model.models.keys():
+                keys = []
+                for key in search_function_model.models[namespace].res_key_value.keys():
+                    keys.append({'name': key, 'check': False})
+                key_value_tree['children'].append({'namespace': namespace, 'name': search_function_model.models[namespace].alias, 'check': False, 'children': keys})
+            self.key_value_tree['children'].append(key_value_tree)
+
+
+if __name__ == '__main__':
+    # freeze_support()
+    # parallel = Parallel()
+
+    loop = get_event_loop()
+    loop.run_until_complete(TextAnalysisModel('parallel'))
+
+    web.run_app(app, host="127.0.0.1", port=8000)

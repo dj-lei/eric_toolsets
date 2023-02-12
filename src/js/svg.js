@@ -266,16 +266,20 @@ class ChartAtomComponentSvgDialog extends Dialog
 
         this.alias = ''
         this.desc = ''
+        this.subContainer.appendChild(this.createElementHr())
         // alias
         this.alias = this.createElementTextInput()
         this.subContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
         this.subContainer.appendChild(this.alias)
+        this.subContainer.appendChild(this.createElementHr())
 
         // search description
         this.desc = this.createElementTextInput()
         this.subContainer.appendChild(this.createElementHeader('Graph Description'))
         this.subContainer.appendChild(this.desc)
+        this.subContainer.appendChild(this.createElementHr())
 
+        this.subContainer.appendChild(this.createElementHeader('Key Value Tree'))
         this.chartAtomComponentSvg = new ChartAtomComponentSvg(this)
     }
 
@@ -347,6 +351,8 @@ class GlobalChartComponentSvgDialog extends Dialog
 {
     constructor(globalChartView){
         super(globalChartView.container)
+        this.globalChartView = globalChartView
+        
         this.subContainer.style.width = '90%' 
         this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
 
@@ -356,10 +362,18 @@ class GlobalChartComponentSvgDialog extends Dialog
     apply(){
         let model = {
             namespace: this.globalChartView.namespace,
-            alias: "sss",
-            key_value_tree: this.globalChartView.model.keyValueTree,
+            alias: "global",
+            key_value_tree: this.globalChartView.model.key_value_tree,
         }
-        this.globalChartView.controlChart(model)
+        this.globalChartView.controlExec(model)
+    }
+
+    update(model){
+        this.globalChartComponentSvg.update(model.key_value_tree)
+    }
+
+    clear(){
+        this.globalChartView.controlClearKeyValueTree()
     }
 }
 
@@ -404,11 +418,6 @@ class GlobalChartComponentSvg extends Tree
                 d3.select(event.target.parentNode).select('text').attr("stroke", "#33CC00")
             }
         }
-    }
-
-    refresh(data){
-        this.data = data
-        this.draw(this.data)
     }
 }
 

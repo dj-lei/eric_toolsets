@@ -18,14 +18,6 @@ class StatisticAtomComponentTextarea extends Textarea
         let that = this
         this.container.style.display = 'none'
 
-        this.statisticAtomView.del.addEventListener("click", function() {
-            that.statisticAtomView.onDelete()
-        })
-
-        this.statisticAtomView.edit.addEventListener("click", function() {
-            that.statisticAtomView.onDisplayDialog()
-        })
-
         this.statisticAtomView.collapsible.innerHTML = '+ ' + this.statisticAtomView.model.desc
         this.statisticAtomView.collapsible.addEventListener("click", function() {
             if (that.container.style.display === "inline-block") {

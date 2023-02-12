@@ -1,7 +1,12 @@
-import socket_server
+# import socket_server
 from aiohttp import web
 from text_analysis import TextAnalysisModel
 from asyncio import get_event_loop
+import socketio
+from engineio.payload import Payload
+
+Payload.max_decode_packets = 40000
+
 # from asyncio import ensure_future, gather
 # from concurrent.futures import ProcessPoolExecutor, as_completed
 # from multiprocessing import freeze_support, current_process, cpu_count, Manager, Process

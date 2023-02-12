@@ -22,8 +22,7 @@ class Chart extends Component
 		this.bottomBtnSets = this.createElementDiv()
 		this.bottomBtnSets.style.position = 'fixed'
 		this.bottomBtnSets.style.bottom = 0
-		this.bottomBtnSets.style.width = '100%'
-		this.container.append(this.bottomBtnSets)
+		this.bottomBtnSets.style.width = '50%'
 
 		this.container.append(ch)
 		this.container.append(this.bottomBtnSets)
@@ -362,6 +361,43 @@ class SequentialChart extends Chart
 		}
 	}
 
+	setToolBox(){
+		let that = this
+		this.option['toolbox']['right'] = "3%"
+		this.option['toolbox']['feature'] = {
+			// myTool4:{
+			// 	show:true,
+			// 	title: 'Register',
+			// 	icon: 'path://M499.2 281.6l243.2 243.2L413.866667 853.333333H170.666667v-243.2l328.533333-328.533333z m0 123.733333L256 648.533333V768h119.466667l243.2-243.2-119.466667-119.466667zM614.4 170.666667L853.333333 413.866667l-72.533333 72.533333-243.2-243.2L614.4 170.666667z',
+			// 	onclick: (e) =>{
+			// 		that.chartAtomView.onDisplayCompareGraphDialog(that.chartAtomView.model)
+			// 	}
+			// },
+			saveAsImage: {
+				show: true,
+				excludeComponents: ['toolbox'],
+				pixelRatio: 2
+			},
+			// myTool2:{
+			// 	show:true,
+			// 	title: 'Edit',
+			// 	icon: 'path://M499.2 281.6l243.2 243.2L413.866667 853.333333H170.666667v-243.2l328.533333-328.533333z m0 123.733333L256 648.533333V768h119.466667l243.2-243.2-119.466667-119.466667zM614.4 170.666667L853.333333 413.866667l-72.533333 72.533333-243.2-243.2L614.4 170.666667z',
+			// 	onclick: (e) =>{
+			// 		that.config.desc.value = that.option['title']['text']
+			// 		that.config.open()
+			// 	}
+			// },
+			myTool1:{
+				show:true,
+				title: 'Export',
+				icon: 'path://M712.533333 371.2l-128 128-59.733333-59.733333 128-128L597.333333 256l-42.666666-42.666667h256v256l-42.666667-42.666666-55.466667-55.466667zM657.066667 256H768v110.933333V256h-110.933333zM298.666667 298.666667v426.666666h426.666666v-256l85.333334 85.333334v256H213.333333V213.333333h256l85.333334 85.333334H298.666667z',
+				onclick: (e) =>{
+					that.exportExcel()
+				}
+			},
+		}
+	}
+
 	drawLines(){
 		let that = this
 		// package line
@@ -473,14 +509,6 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 		this.container.style.display = 'none'
 	
 		let that = this
-		this.chartAtomView.del.addEventListener("click", function() {
-			that.chartAtomView.onDelete()
-		})
-
-		this.chartAtomView.edit.addEventListener("click", function() {
-			that.chartAtomView.onDisplayDialog()
-		})
-
 		this.chartAtomView.collapsible.innerHTML = '+ ' + this.chartAtomView.model.desc
 		this.chartAtomView.collapsible.addEventListener("click", function() {
 			if (that.container.style.display === "block") {
@@ -509,43 +537,6 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 			that.chartAtomView.controlClickEvent({'type': params.componentType, 'data': params.data})
 		});
 	}
-
-	setToolBox(){
-		let that = this
-		this.option['toolbox']['right'] = "3%"
-		this.option['toolbox']['feature'] = {
-			// myTool4:{
-			// 	show:true,
-			// 	title: 'Register',
-			// 	icon: 'path://M499.2 281.6l243.2 243.2L413.866667 853.333333H170.666667v-243.2l328.533333-328.533333z m0 123.733333L256 648.533333V768h119.466667l243.2-243.2-119.466667-119.466667zM614.4 170.666667L853.333333 413.866667l-72.533333 72.533333-243.2-243.2L614.4 170.666667z',
-			// 	onclick: (e) =>{
-			// 		that.chartAtomView.onDisplayCompareGraphDialog(that.chartAtomView.model)
-			// 	}
-			// },
-			saveAsImage: {
-				show: true,
-				excludeComponents: ['toolbox'],
-				pixelRatio: 2
-			},
-			// myTool2:{
-			// 	show:true,
-			// 	title: 'Edit',
-			// 	icon: 'path://M499.2 281.6l243.2 243.2L413.866667 853.333333H170.666667v-243.2l328.533333-328.533333z m0 123.733333L256 648.533333V768h119.466667l243.2-243.2-119.466667-119.466667zM614.4 170.666667L853.333333 413.866667l-72.533333 72.533333-243.2-243.2L614.4 170.666667z',
-			// 	onclick: (e) =>{
-			// 		that.config.desc.value = that.option['title']['text']
-			// 		that.config.open()
-			// 	}
-			// },
-			myTool1:{
-				show:true,
-				title: 'Export',
-				icon: 'path://M712.533333 371.2l-128 128-59.733333-59.733333 128-128L597.333333 256l-42.666666-42.666667h256v256l-42.666667-42.666666-55.466667-55.466667zM657.066667 256H768v110.933333V256h-110.933333zM298.666667 298.666667v426.666666h426.666666v-256l85.333334 85.333334v256H213.333333V213.333333h256l85.333334 85.333334H298.666667z',
-				onclick: (e) =>{
-					that.exportExcel()
-				}
-			},
-		}
-	}
 }
 
 class GlobalChartComponentSequentialChartDialog extends Dialog
@@ -557,18 +548,55 @@ class GlobalChartComponentSequentialChartDialog extends Dialog
 
         this.globalChartComponentSequentialChart = new GlobalChartComponentSequentialChart(this)
     }
+
+	refresh(model){
+		this.globalChartComponentSequentialChart.refresh(model)
+	}
+
+	clear(){
+		this.globalChartComponentSequentialChart.clear()
+	}
+
+	resize(){
+		this.globalChartComponentSequentialChart.chart.resize({height:`${document.body.offsetHeight - 150}px`, width:`${parseInt(document.body.offsetWidth * 0.9)}px`})
+	}
 }
 
 class GlobalChartComponentSequentialChart extends SequentialChart
 {
     constructor(dialog){
         super(dialog.subContainer)
+
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.float = 'right'
+        this.cancel.onclick = function(){dialog.hidden()}
+        this.bottomBtnSets.appendChild(this.cancel)
     }
 
-	refresh(lines){
-		super.refresh(lines)
-		this.chart.setOption(this.option)
-		this.bindChartClickEvent()
+	refresh(model){
+		super.refresh(model.select_lines)
+		this.setToolBox()
+		this.chart.setOption(this.option, true)
+		// this.bindChartClickEvent()
+	}
+
+	drawLines(){
+		let that = this
+		// package line
+		console.log(this.selectedLines)
+		if (Object.keys(this.selectedLines).length == 0) {
+			this.option['yAxis'] = [{'type':'value'}]
+		}
+		Object.keys(this.selectedLines).forEach((line) => {
+			if (this.selectedLines[line].length > 0){
+				if (this.selectedLines[line][0].type == 'mark'){
+					this.setMarkLine(line, this.selectedLines[line])
+				}else{
+					this.setLine(line, this.selectedLines[line])
+				}
+			}
+		})
 	}
 
 	bindChartClickEvent(){

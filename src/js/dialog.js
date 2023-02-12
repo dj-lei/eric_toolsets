@@ -338,33 +338,70 @@ class InsightAtomComponentDialog extends Dialog
 
     init(){
         let that = this
-
+        this.subContainer.appendChild(this.createElementHr())
         // alias
         this.alias = this.createElementTextInput()
         this.subContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
         this.subContainer.appendChild(this.alias)
+        this.subContainer.appendChild(this.createElementHr())
 
         // search description
         this.desc = this.createElementTextInput()
         this.subContainer.appendChild(this.createElementHeader('Insight Description'))
         this.subContainer.appendChild(this.desc)
+        this.subContainer.appendChild(this.createElementHr())
 
-        // search regex express 
+        // search regular express 
         this.expSearch = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Search Express, narrow the scope of insight'))
+        var header = this.createElementHeader('Search Express(Python Regular)')
+        header.appendChild(this.createElementAHref(' Document', 'https://docs.python.org/3/library/re.html'))
+        this.subContainer.appendChild(header)
         this.subContainer.appendChild(this.expSearch)
 
-        // extract key value regex express
+        var isCaseSensitiveContainer = this.createElementDiv()
+        isCaseSensitiveContainer.style.width = '100%'
+        this.isCaseSensitive = this.createElementCheckboxInput()
+        isCaseSensitiveContainer.append(this.isCaseSensitive)
+        isCaseSensitiveContainer.append(this.createElementA(' Is Case Sensitive'))
+
+        var isForwardRowsContainer = this.createElementDiv()
+        isForwardRowsContainer.style.width = '100%'
+        this.forwardRows = this.createElementTextInput()
+        this.forwardRows.style.padding = '3px 5px'
+        this.forwardRows.style.width = '5%'
+        this.forwardRows.value = '0'
+        isForwardRowsContainer.append(this.forwardRows)
+        isForwardRowsContainer.append(this.createElementA(' Forward Rows'))
+
+        var isBackwardRowsContainer = this.createElementDiv()
+        isBackwardRowsContainer.style.width = '100%'
+        this.backwardRows = this.createElementTextInput()
+        this.backwardRows.style.padding = '3px 5px'
+        this.backwardRows.style.width = '5%'
+        this.backwardRows.value = '0'
+        isBackwardRowsContainer.append(this.backwardRows)
+        isBackwardRowsContainer.append(this.createElementA(' Backward Rows'))
+
+        this.subContainer.appendChild(isCaseSensitiveContainer)
+        this.subContainer.appendChild(isForwardRowsContainer)
+        this.subContainer.appendChild(isBackwardRowsContainer)
+        this.subContainer.appendChild(this.createElementHr())
+
+        // extract key value regular express
         this.expExtract = this.createElementTextInput()
-        this.expExtract.style.width = '85%'
-        this.subContainer.appendChild(this.createElementHeader('Extract Timestamp Regex Express'))
+        this.expExtract.style.width = '100%'
+
+        header = this.createElementHeader('Extract Timestamp Regex Express(Python Parse)')
+        header.appendChild(this.createElementAHref(' Document', 'https://docs.python.org/3/library/re.html'))
+        this.subContainer.appendChild(header)
         this.subContainer.appendChild(this.expExtract)
+        this.subContainer.appendChild(this.createElementHr())
 
         // mark key location express
         this.expMarkAlias = this.createElementTextInput()
         this.expMarkAlias.style.width = '10%'
         this.expMark = this.createElementTextInput()
-        this.expMark.style.width = '65%'
+        this.expMark.style.width = '80%'
         this.expMarkColor = this.createElementColorInput()
         this.subContainer.appendChild(this.createElementHeader('Mark Location Express'))
         this.subContainer.appendChild(this.expMarkAlias)
@@ -389,6 +426,9 @@ class InsightAtomComponentDialog extends Dialog
             alias: this.alias.value,
             desc: this.desc.value,
             exp_search: this.expSearch.value,
+            is_case_sensitive: this.isCaseSensitive.checked ? true : false,
+            forward_rows: parseInt(this.forwardRows.value),
+            backward_rows: parseInt(this.backwardRows.value),
             exp_extract: this.expExtract.value,
             exp_mark: {'alias':this.expMarkAlias.value, 'exp':this.expMark.value, 'color': this.expMarkColor.value},
         }
@@ -399,8 +439,10 @@ class InsightAtomComponentDialog extends Dialog
         this.alias.value = model.alias
         this.desc.value = model.desc
         this.expSearch.value = model.exp_search
+        this.isCaseSensitive.checked = model.is_case_sensitive
+        this.forwardRows.value = model.forward_rows
+        this.backwardRows.value = model.backward_rows
         this.expExtract.value = model.exp_extract
-
         this.expMarkAlias.value = model.exp_mark.alias
         this.expMark.value = model.exp_mark.exp
         this.expMarkColor.value = model.exp_mark.color
@@ -434,21 +476,24 @@ class StatisticAtomComponentDialog extends Dialog
 
         //******************** code *******************/
         var codeContainer = this.createElementDiv()
-
+        codeContainer.appendChild(this.createElementHr())
         // alias
         this.alias = this.createElementTextInput()
         codeContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
         codeContainer.appendChild(this.alias)
+        codeContainer.appendChild(this.createElementHr())
 
         // search description
         this.desc = this.createElementTextInput()
         codeContainer.appendChild(this.createElementHeader('Code Description'))
         codeContainer.appendChild(this.desc)
+        codeContainer.appendChild(this.createElementHr())
 
         //  python code 
         this.code = this.createElementTextarea()
         codeContainer.appendChild(this.createElementHeader('Python Code'))
         codeContainer.appendChild(this.code)
+        codeContainer.appendChild(this.createElementHr())
 
         //  code test result 
         this.result = this.createElementTextarea()
@@ -457,15 +502,15 @@ class StatisticAtomComponentDialog extends Dialog
 
         // search and cancel button
         this.apply = this.createElementButton('STATISTIC')
-        this.apply.style.width = '33%'
+        this.apply.style.width = '60%'
         this.apply.onclick = function(){that.statistic()}
         this.test = this.createElementButton('TEST')
         this.test.style.backgroundColor = 'blue'
-        this.test.style.width = '33%'
+        this.test.style.width = '20%'
         this.test.onclick = function(){that.statisticTest()}
         this.cancel = this.createElementButton('CANCEL')
         this.cancel.style.backgroundColor = 'red'
-        this.cancel.style.width = '33%'
+        this.cancel.style.width = '20%'
         this.cancel.onclick = function(){that.hidden()}
         codeContainer.appendChild(this.apply)
         codeContainer.appendChild(this.test)
@@ -604,6 +649,7 @@ class BatchInsightComponentDialog extends Dialog
     init(){
         let that = this
 
+        this.subContainer.appendChild(this.createElementHr())
         // Files Directory
         this.dir = this.createElementTextInput()
         this.dir.style.width = '85%'
@@ -617,6 +663,7 @@ class BatchInsightComponentDialog extends Dialog
         this.subContainer.appendChild(this.createElementHeader('Files Directory'))
         this.subContainer.appendChild(this.dir)
         this.subContainer.appendChild(browseDir)
+        this.subContainer.appendChild(this.createElementHr())
 
         // Config path
         this.configPath = this.createElementTextInput()
@@ -663,6 +710,7 @@ class BatchStatisticComponentDialog extends Dialog
     init(){
         let that = this
 
+        this.subContainer.appendChild(this.createElementHr())
         // Files Directory
         this.dir = this.createElementTextInput()
         this.dir.style.width = '85%'
@@ -676,7 +724,8 @@ class BatchStatisticComponentDialog extends Dialog
         this.subContainer.appendChild(this.createElementHeader('Files Directory'))
         this.subContainer.appendChild(this.dir)
         this.subContainer.appendChild(browseDir)
-
+        this.subContainer.appendChild(this.createElementHr())
+        
         // Config path
         this.configPath = this.createElementTextInput()
         this.configPath.style.width = '85%'
@@ -705,7 +754,7 @@ class BatchStatisticComponentDialog extends Dialog
     }
 
     run(){
-        this.fileContainerView.controlBatchStatistic(this.dir.value, this.configPath.value)
+        this.fileContainerView.controlExec(this.dir.value, this.configPath.value)
     }
 }
 
@@ -789,6 +838,79 @@ class DCGMAnalysisDialog extends Dialog
     }
 }
 
+class TelogAnalysisDialog extends Dialog
+{
+    constructor(fileContainerView){
+        super(fileContainerView.container)
+        this.fileContainerView = fileContainerView
+
+        this.telogDir = ''
+        this.saveDir = ''
+        this.telogFilter = ''
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // Telog Directory
+        this.telogDir = this.createElementTextInput()
+        this.telogDir.style.width = '85%'
+        var browseTelogDir = this.createElementButton('BROWSE')
+        browseTelogDir.style.width = '15%'
+        browseTelogDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.telogDir.value = path
+            })
+        }
+        this.subContainer.appendChild(this.createElementHeader('Telog Directory'))
+        this.subContainer.appendChild(this.telogDir)
+        this.subContainer.appendChild(browseTelogDir)
+
+        // Save Directory
+        this.saveDir = this.createElementTextInput()
+        this.saveDir.style.width = '85%'
+        var browseSaveDir = this.createElementButton('BROWSE')
+        browseSaveDir.style.width = '15%'
+        browseSaveDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.saveDir.value = path
+            })
+        }
+        this.subContainer.appendChild(this.createElementHeader('Save Directory'))
+        this.subContainer.appendChild(this.saveDir)
+        this.subContainer.appendChild(browseSaveDir)
+
+        // Filter condition
+        this.telogFilter = this.createElementTextInput()
+        this.telogFilter.style.width = '100%'
+        this.subContainer.appendChild(this.createElementHeader('Optional: Telog Filter Condition(Case sensitive, Comma delimited)'))
+        this.subContainer.appendChild(this.telogFilter)
+
+        // search and cancel button
+        this.apply = document.createElement('button')
+        this.apply.innerHTML = 'RUN'
+        this.apply.onclick = function(){that.run()}
+        this.cancel = document.createElement('button')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.innerHTML = 'CANCEL'
+        this.cancel.onclick = function(){that.hidden()}
+
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
+    }
+
+    run(){
+        let params = {
+            telog_dir: this.telogDir.value,
+            save_dir: this.saveDir.value,
+            telog_filter: this.telogFilter.value
+        }
+
+        this.fileContainerView.controlTelogAnalysis(params)
+    }
+}
+
 class ShareDownloadDialog extends Dialog
 {
     constructor(fileContainerView){
@@ -796,13 +918,13 @@ class ShareDownloadDialog extends Dialog
         this.fileContainerView = fileContainerView
 
         this.configs = []
-        // this.init()
+        this.init()
     }
 
     async init(){
         let that = this
 
-        await http.get(urls.query_themes, {
+        await http.get(urls.query_configs, {
             params: {
             },
             })
@@ -824,46 +946,60 @@ class ShareDownloadDialog extends Dialog
                 label.innerHTML = config
                 div.appendChild(input)
                 div.appendChild(label)
-                this.container.appendChild(div)
+                this.subContainer.appendChild(div)
             })
 
-            var download = document.createElement('button')
-            download.style.width = "33%"
-            download.innerHTML = 'DOWNLOAD'
-            download.onclick = function(){that.download()}
-            var refresh = document.createElement('button')
-            refresh.style.width = "33%"
-            refresh.innerHTML = 'REFRESH'
-            refresh.onclick = function(){that.refresh()}
-            var cancel = document.createElement('button')
-            cancel.style.width = "33%"
-            cancel.style.backgroundColor = 'red'
-            cancel.innerHTML = 'CANCEL'
-            cancel.onclick = function(){that.close()}
-
-            this.container.appendChild(download)
-            this.container.appendChild(refresh)
-            this.container.appendChild(cancel)
-            this.modal.appendChild(this.container)
+            let that = this
+            this.downloadBtn = this.createElementButton('DOWNLOAD')
+            this.downloadBtn.style.width = "33%"
+            this.downloadBtn.onclick = function(){that.download()}
+            this.refreshBtn = this.createElementButton('REFRESH')
+            this.refreshBtn.style.width = "33%"
+            this.refreshBtn.style.backgroundColor = 'grey'
+            this.refreshBtn.onclick = function(){that.refresh()}
+            this.cancelBtn = this.createElementButton('CANCEL')
+            this.cancelBtn.style.width = "34%"
+            this.cancelBtn.style.backgroundColor = 'red'
+            this.cancelBtn.onclick = function(){that.hidden()}
+    
+            this.subContainer.appendChild(this.downloadBtn)
+            this.subContainer.appendChild(this.refreshBtn)
+            this.subContainer.appendChild(this.cancelBtn)
             })
             .catch(function (error) {
                 alert('Can not link to sharing service!')
                 that.hidden()
             })
     }
+    async upload(){
+        let content = await ipcRenderer.invoke('import-config')
+        if(content[1] != ''){
+            await http.get(urls.save_config, {
+                params: {
+                    filename: content[0],
+                    config: content[1]
+                },
+                })
+              .then(response => {
+                    console.log(response.data)
+            }).catch(function (error) {
+                alert('Can not link to sharing service!')
+            })
+        }
+    }
 
     async download(){
         if (process.env.NODE_ENV == 'development'){
-            await ipcRenderer.invoke('downloadURL', {url:`http://localhost:8001/download_theme/${this.container.querySelector('input[name="share-download"]:checked').value}`})
+            await ipcRenderer.invoke('downloadURL', {url:`http://localhost:8001/download_config/${this.container.querySelector('input[name="share-download"]:checked').value}`})
         }else{
-            await ipcRenderer.invoke('downloadURL', {url:`http://10.166.152.87/share/download_theme/${this.container.querySelector('input[name="share-download"]:checked').value}`})
+            await ipcRenderer.invoke('downloadURL', {url:`http://10.166.152.87/share/download_config/${this.container.querySelector('input[name="share-download"]:checked').value}`})
         }
     }
 
     refresh(){
-        this.deleteAllChilds()
+        this.deleteDomAllChilds(this.subContainer)
         this.init()
     }
 }
 
-export {Dialog, SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, ShareDownloadDialog}
+export {Dialog, SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog}

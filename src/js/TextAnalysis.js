@@ -2,8 +2,8 @@ import status from '@/config/status.json'
 import ns from '@/config/namespace.json'
 
 import { ipcRenderer } from 'electron'
-import { View, ListView} from './element'
-import { SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, ShareDownloadDialog } from './dialog'
+import { View, ListView, BatchView} from './element'
+import { SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
 import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable, BatchInsightComponentTableDialog, BatchStatisticComponentTableDialog } from './table'
 import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
@@ -222,6 +222,41 @@ class TextAnalysisView extends View
 
         this.fileContainerView = new FileContainerView(this)
         this.systemTest = new SystemTestView(this)
+
+        this.batchInsightView = new BatchInsightView(this)
+        this.batchStatisticView = new BatchStatisticView(this)
+        this.globalChartView = new GlobalChartView(this)
+
+        let that = this
+        ipcRenderer.on('shutdown', () => {
+            that.socket.emit("shutdown")
+        })
+        ipcRenderer.on('new-batch-insight', () => {
+            that.socket.emit("display_batch_insight")
+        })
+        ipcRenderer.on('new-batch-statistic', () => {
+            that.socket.emit("display_batch_statistic")
+        })
+        ipcRenderer.on('open-batch-insight-show', () => {
+            that.socket.emit("display_batch_insight_show")
+        })
+        ipcRenderer.on('open-batch-statistic-show', () => {
+            that.socket.emit("display_batch_statistic_show")
+        })
+        ipcRenderer.on('new-global-chart', () => {
+            that.socket.emit("display_global_chart")
+        })
+        ipcRenderer.on('open-global-chart-show', () => {
+            that.socket.emit("display_global_chart_show")
+        })
+    }
+
+    controlDisplayBatchInsight(){
+        this.socket.emit("display_batch_insight")
+    }
+
+    controlDisplayBatchStatistic(){
+        this.socket.emit("display_batch_statistic")
     }
 
     onNewObject(args){
@@ -288,12 +323,6 @@ class TextAnalysisView extends View
 
     initMenu(){
         let that = this
-        // ipcRenderer.on('open-global-keyvalue-tree', () => {
-        //     that.openGlobalKeyValueTree()
-        // })
-        // ipcRenderer.on('open-global-chart', () => {
-        //     that.openGlobalSequentialChart()
-        // })
         // ipcRenderer.on('share-download', async () => {
         //     // await ipcRenderer.invoke('downloadURL', {url:'http://localhost:8001/download_theme/config.txt'})
         //     that.openShareDownloadDialog()
@@ -311,13 +340,10 @@ class FileContainerView extends View
         this.textFileViews = {}
         this.activeTextFileView = ''
 
-        this.fileContainerComponentTab = new FileContainerComponentTab(this)
+        this.show = new FileContainerComponentTab(this)
         this.dcgmAnalysisDialog = new DCGMAnalysisDialog(this)
-        // this.shareDownloadDialog = new ShareDownloadDialog(this)
-
-        this.batchInsightView = new BatchInsightView(this)
-        this.batchStatisticView = new BatchStatisticView(this)
-        // new GlobalChartView(this)
+        this.telogAnalysisDialog = new TelogAnalysisDialog(this)
+        this.shareDownloadDialog = new ShareDownloadDialog(this)
 
         let that = this
         ipcRenderer.on('open-file', async function () {
@@ -358,39 +384,17 @@ class FileContainerView extends View
         ipcRenderer.on('open-func-area', () => {
             that.controlDisplayTextFileFunction()
         })
-        ipcRenderer.on('new-batch-insight', () => {
-            that.socket.emit("display_batch_insight")
-        })
-        ipcRenderer.on('new-batch-statistic', () => {
-            that.socket.emit("display_batch_statistic")
-        })
-        ipcRenderer.on('open-batch-insight-view', () => {
-            that.socket.emit("display_batch_insight_view")
-        })
-        ipcRenderer.on('open-batch-statistic-view', () => {
-            that.socket.emit("display_batch_statistic_view")
-        })
         ipcRenderer.on('dcgm-analysis', () => {
             that.dcgmAnalysisDialog.display()
+        })
+        ipcRenderer.on('telog-analysis', () => {
+            that.telogAnalysisDialog.display()
         })
         ipcRenderer.on('share-download', () => {
             that.shareDownloadDialog.display()
         })
-        ipcRenderer.on('share-upload', async () => {
-            let content = await ipcRenderer.invoke('import-config')
-            if(content[1] != ''){
-                await http.get(urls.save_theme, {
-                    params: {
-                        filename: content[0],
-                        theme: content[1]
-                    },
-                    })
-                  .then(response => {
-                        console.log(response.data)
-                }).catch(function (error) {
-                    alert('Can not link to sharing service!')
-                })
-            }
+        ipcRenderer.on('share-upload', () => {
+            that.shareDownloadDialog.upload()
         })
     }
 
@@ -403,9 +407,9 @@ class FileContainerView extends View
     }
 
     controlDeleteFile(namespace){
-        this.socket.emit("delete_file", namespace)
+        this.textFileViews[namespace].controlDelete()
 
-        var namespaces = Object.keys(this.fileContainerComponentTab.tabs)
+        var namespaces = Object.keys(this.show.tabs)
         var index = namespaces.indexOf(namespace)
         if((index == 0)&(namespaces.length == 1)){
             null
@@ -416,8 +420,8 @@ class FileContainerView extends View
             index = index - 1
             this.controlDisplayFile(namespaces[index])
         }
-        common.removeAll(this.fileContainerComponentTab.tabs[namespace].ins)
-        delete this.fileContainerComponentTab.tabs[namespace]
+        common.removeAll(this.show.tabs[namespace].ins)
+        delete this.show.tabs[namespace]
         
     }
 
@@ -456,9 +460,7 @@ class FileContainerView extends View
     }
 
     controlDCGMAnalysis(params){
-        this.startLoader()
         this.socket.emit("dcgm_analysis", params, async (response) => {
-            this.stopLoader()
             if(response.status == status.SUCCESS){
                 alert('Dcgm Analysis Complete!')
             }else{
@@ -468,12 +470,15 @@ class FileContainerView extends View
         })
     }
 
-    controlDisplayBatchInsight(){
-        this.socket.emit("display_batch_insight")
-    }
-
-    controlDisplayBatchStatistic(){
-        this.socket.emit("display_batch_statistic")
+    controlTelogAnalysis(params){
+        this.socket.emit("telog_analysis", params, async (response) => {
+            if(response.status == status.SUCCESS){
+                alert('Telog Analysis Complete!')
+            }else{
+                alert(response.msg)
+            }
+            this.dcgmAnalysisDialog.hidden()
+        })
     }
 
     controlDisplayTextFileFunction(){
@@ -481,13 +486,13 @@ class FileContainerView extends View
     }
 
     onNewFile(textFileModel){
-        this.fileContainerComponentTab.subscribePlaceholder(textFileModel.namespace)
-        this.fileContainerComponentTab.updatePlaceholder(textFileModel)
+        this.show.subscribePlaceholder(textFileModel.namespace)
+        this.show.updatePlaceholder(textFileModel)
     }
 
     onDisplayFile(params){
         this.activeTextFileView = params.active_text_file_model
-        this.fileContainerComponentTab.displayFile(params)
+        this.show.displayFile(params)
     }
 }
 
@@ -527,7 +532,7 @@ class TextFileOriginalView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
-        this.textFileOriginalComponentTable = new TextFileOriginalComponentTable(this)
+        this.show = new TextFileOriginalComponentTable(this)
         
         this.container.style.border = '1px solid #ddd'
         this.controlScroll(0)
@@ -538,13 +543,13 @@ class TextFileOriginalView extends View
     }
 
     onSetHeight(model){
-        this.textFileOriginalComponentTable.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
-        this.textFileOriginalComponentTable.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
-        this.textFileOriginalComponentTable.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.show.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.show.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.show.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
     }
 
-    onRefreshTable(model){
-        this.textFileOriginalComponentTable.refresh(model)
+    onRefresh(model){
+        this.show.refresh(model)
     }
 }
 
@@ -559,8 +564,7 @@ class TextFileFunctionView extends View
 
         this.container.style.border = '1px solid #ddd'
         this.container.style.height = '0px'
-        this.textFileFunctionComponentTab = new TextFileFunctionComponentTab(this)
-        this.textFileFunctionComponentTab.searchTitle.style.backgroundColor = '#333'
+        this.show = new TextFileFunctionComponentTab(this)
         this.controlHidden()
     }
 
@@ -573,7 +577,7 @@ class TextFileFunctionView extends View
     }
 
     onDisplayFunction(func){
-        this.textFileFunctionComponentTab.displayFunction(func)
+        this.show.displayFunction(func)
     }
 
     onSetHeight(model){
@@ -586,11 +590,11 @@ class SearchFunctionView extends View
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
         this.views = {}
-        this.searchFunctionComponentList = new SearchFunctionComponentList(this)
+        this.show = new SearchFunctionComponentList(this)
     }
 
     onNew(model){
-        this.searchFunctionComponentList.subscribePlaceholder(model.namespace)
+        this.show.subscribePlaceholder(model.namespace)
     }
 }
 
@@ -599,11 +603,11 @@ class InsightFunctionView extends View
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
         this.views = {}
-        this.insightFunctionComponentList = new InsightFunctionComponentList(this)
+        this.show = new InsightFunctionComponentList(this)
     }
 
     onNew(model){
-        this.insightFunctionComponentList.subscribePlaceholder(model.namespace)
+        this.show.subscribePlaceholder(model.namespace)
     }
 }
 
@@ -612,11 +616,11 @@ class ChartFunctionView extends View
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
         this.views = {}
-        this.chartFunctionComponentList = new ChartFunctionComponentList(this)
+        this.show = new ChartFunctionComponentList(this)
     }
 
     onNew(model){
-        this.chartFunctionComponentList.subscribePlaceholder(model.namespace)
+        this.show.subscribePlaceholder(model.namespace)
     }
 }
 
@@ -625,11 +629,11 @@ class StatisticFunctionView extends View
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
         this.views = {}
-        this.statisticFunctionComponentList = new StatisticFunctionComponentList(this)
+        this.show = new StatisticFunctionComponentList(this)
     }
 
     onNew(model){
-        this.statisticFunctionComponentList.subscribePlaceholder(model.namespace)
+        this.show.subscribePlaceholder(model.namespace)
     }
 }
 
@@ -639,7 +643,7 @@ class SearchAtomView extends ListView
         super(model.namespace, document.getElementById(model.namespace))
         this.model = model
         this.dialog = new SearchAtomComponentDialog(this)
-        this.view = new SearchAtomComponentTable(this)
+        this.show = new SearchAtomComponentTable(this)
     }
 
     controlScroll(point){
@@ -654,7 +658,7 @@ class InsightAtomView extends ListView
         this.model = model
 
         this.dialog = new InsightAtomComponentDialog(this)
-        this.view = new InsightAtomComponentTable(this)
+        this.show = new InsightAtomComponentTable(this)
     }
 
     controlScroll(point){
@@ -668,7 +672,7 @@ class ChartAtomView extends ListView
         super(model.namespace, document.getElementById(model.namespace))
         this.model = model
         this.dialog = new ChartAtomComponentSvgDialog(this)
-        this.view = new ChartAtomComponentSequentialChart(this)
+        this.show = new ChartAtomComponentSequentialChart(this)
     }
 
     controlClearKeyValueTree(){
@@ -681,7 +685,7 @@ class ChartAtomView extends ListView
 
     onRefresh(model){
         super.onRefresh(model)
-        this.view.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 20)}px`, width:`${document.body.offsetWidth}px`})
+        this.show.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 20)}px`, width:`${document.body.offsetWidth}px`})
     }
 }
 
@@ -691,7 +695,7 @@ class StatisticAtomView extends ListView
         super(model.namespace, document.getElementById(model.namespace))
         this.model = model
         this.dialog = new StatisticAtomComponentDialog(this)
-        this.view = new StatisticAtomComponentTextarea(this)
+        this.show = new StatisticAtomComponentTextarea(this)
     }
 
     controlStatisticTest(model){
@@ -704,14 +708,14 @@ class StatisticAtomView extends ListView
 
     onRefreshTest(model){
         this.model = model
-        this.statisticAtomComponentDialog.refreshTest(this.model)
+        this.dialog.refreshTest(this.model)
     }
 }
 
-class BatchInsightView extends View
+class BatchInsightView extends BatchView
 {
-    constructor(fileContainerView){
-        super(`${fileContainerView.namespace}${ns.BATCHINSIGHT}`, fileContainerView.container)
+    constructor(textAnalysisView){
+        super(`${textAnalysisView.namespace}${ns.BATCHINSIGHT}`, textAnalysisView.container)
 
         this.batchInsightComponentDialog = new BatchInsightComponentDialog(this)
         this.batchInsightComponentSvgDialog = new BatchInsightComponentSvgDialog(this)
@@ -753,66 +757,52 @@ class BatchInsightView extends View
     }
 }
 
-class BatchStatisticView extends View
+class BatchStatisticView extends BatchView
 {
-    constructor(fileContainerView){
-        super(`${fileContainerView.namespace}${ns.BATCHSTATISTIC}`, fileContainerView.container)
+    constructor(textAnalysisView){
+        super(`${textAnalysisView.namespace}${ns.BATCHSTATISTIC}`, textAnalysisView.container)
 
-        this.batchStatisticComponentDialog = new BatchStatisticComponentDialog(this)
-        this.batchStatisticComponentTableDialog = new BatchStatisticComponentTableDialog(this)
+        this.dialog = new BatchStatisticComponentDialog(this)
+        this.show = new BatchStatisticComponentTableDialog(this)
     }
 
-    controlBatchStatistic(dirPath, config){
-        this.socket.emit("new", dirPath, config)
-        this.batchStatisticComponentTableDialog.batchStatisticComponentTable.deleteTableAllChilds()
-        this.batchStatisticComponentDialog.hidden()
-        this.batchStatisticComponentTableDialog.display()
+    controlCode(code){
+        this.socket.emit("code", code)
     }
 
-    onRefresh(sample){
-        this.batchStatisticComponentTableDialog.batchStatisticComponentTable.refresh(sample)
-    }
-
-    onDisplayDialog(){
-        this.batchStatisticComponentDialog.display()
-    }
-
-    onDisplayTableDialog(){
-        this.batchStatisticComponentTableDialog.display()
+    onRefreshCode(sample){
+        this.show.refreshCode(sample)
     }
 }
 
-class GlobalChartView extends View
+class GlobalChartView extends BatchView
 {
-    constructor(fileContainerView){
-        super(`${fileContainerView.namespace}${ns.GLOBALCHART}`, fileContainerView.container)
+    constructor(textAnalysisView){
+        super(`${textAnalysisView.namespace}${ns.GLOBALCHART}`, textAnalysisView.container)
 
-        this.globalChartComponentSvgDialog = new GlobalChartComponentSvgDialog(this)
-        this.globalChartComponentSequentialChartDialog = new GlobalChartComponentSequentialChartDialog(this)
+        this.dialog = new GlobalChartComponentSvgDialog(this)
+        this.show = new GlobalChartComponentSequentialChartDialog(this)
     }
 
-    controlChart(model){
-        this.globalChartComponentSvgDialog.hidden()
-        this.socket.emit("chart", model)
+    controlClearKeyValueTree(){
+        this.socket.emit("clear_global_key_value_tree")
     }
 
-    onRefreshSvg(model){
+    controlExec(model){
+        this.socket.emit("exec", model)
+        this.show.clear()
+        this.dialog.hidden()
+        this.show.display()
+    }
+
+    onRefresh(model){
+        super.onRefresh(model)
+        this.show.resize()
+    }
+
+    onUpdateDialog(model){
         this.model = model
-        this.globalChartComponentSvgDialog.globalChartComponentSvg.refresh(this.model)
-    }
-
-    onRefreshChart(model){
-        this.model = model
-        this.globalChartComponentChartDialog.globalChartComponentChart.refresh(this.model.selectLines)
-        this.onDisplayChartDialog()
-    }
-
-    onDisplaySvgDialog(){
-        this.globalChartComponentSvgDialog.display()
-    }
-
-    onDisplayChartDialog(){
-        this.globalChartComponentSequentialChartDialog.display()
+        this.dialog.update(this.model)
     }
 }
 

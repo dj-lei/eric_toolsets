@@ -3,12 +3,15 @@
 import { app, protocol, BrowserWindow, dialog, ipcMain, Menu} from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
-import service from '@/plugins/socket'
+
 const path = require('path')
 const fs = require('fs')
 const { spawn }  = require("child_process")
 const { autoUpdater } = require('electron-updater')
 const isDevelopment = process.env.NODE_ENV !== 'production'
+
+import { io } from "socket.io-client"
+const socket = io("http://127.0.0.1:8000/TextAnalysis")
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -87,13 +90,14 @@ async function createWindow() {
 
   // start python background program 
   if (!process.env.WEBPACK_DEV_SERVER_URL) {
-    const bat = spawn(path.join(__dirname).replace("app.asar", "view\\view.exe"), [], {shell: true, detached: true})
+    const bat = spawn(path.join(__dirname).replace("app.asar", "text_analysis\\text_analysis.exe"), [], {shell: true, detached: true})
   }
 
   win.on("closed", function(){
-    service.emit('shutdown_all', {}, (res) => {
-      console.log(res)
-    })
+    socket.emit("shutdown")
+    // service.emit('shutdown_all', {}, (res) => {
+    //   console.log(res)
+    // })
     // console.log(bat.pid)
     // exec(`taskkill '/T' '/F' 'PID' ${bat.pid}`)
     // bat.kill( "SIGKILL" )
@@ -168,6 +172,12 @@ async function createWindow() {
               win.webContents.send('new-statistic')
             }
           },
+          {
+            label: 'New Global Chart',
+            click: () => {
+              win.webContents.send('new-global-chart')
+            }
+          },
           { type: 'separator' },
           {
             label: 'Open Function Area',
@@ -177,15 +187,9 @@ async function createWindow() {
             }
           },
           {
-            label: 'Open Global KeyValue Tree',
+            label: 'Open Global Chart Show',
             click: () => {
-              win.webContents.send('open-global-keyvalue-tree')
-            }
-          },
-          {
-            label: 'Open Global Chart',
-            click: () => {
-              win.webContents.send('open-global-chart')
+              win.webContents.send('open-global-chart-show')
             }
           },
         ]
@@ -207,15 +211,15 @@ async function createWindow() {
           },
           { type: 'separator' },
           {
-            label: 'Open Batch Insight View',
+            label: 'Open Batch Insight Show',
             click: () => {
-              win.webContents.send('open-batch-insight-view')
+              win.webContents.send('open-batch-insight-show')
             }
           },
           {
-            label: 'Open Batch Statistic View',
+            label: 'Open Batch Statistic Show',
             click: () => {
-              win.webContents.send('open-batch-statistic-view')
+              win.webContents.send('open-batch-statistic-show')
             }
           },
         ]
@@ -244,6 +248,12 @@ async function createWindow() {
             label: 'DCGM Analysis',
             click: () => {
               win.webContents.send('dcgm-analysis')
+            }
+          },
+          {
+            label: 'Telog Analysis',
+            click: () => {
+              win.webContents.send('telog-analysis')
             }
           }
         ]

@@ -7,7 +7,8 @@ def analysis_telog(lines, filters):
     device = ''
     for line in lines:
         try:
-            line = line.decode("utf-8")
+            if type(line) != str:
+                line = line.decode("utf-8")
             if ('te log read' in line) & ('lhsh' in line):
                 if device != '':
                     if not satisfies:
@@ -166,3 +167,17 @@ def take_apart_dcgm(dcgm_dir_path, save_path, telog_filters, elog_filters):
                             
                         with open(save_path+elog.replace('_dcg_e2.log.gz', '')+'_'+dev_name+'_elog.log', 'w', encoding='utf-8') as f:
                             f.write(''.join(elog_data[dev]))
+
+def take_apart_telog(telog_dir_path, save_path, telog_filters):
+    for num, filename in enumerate(iterate_files_in_directory(telog_dir_path)):
+        print(num, filename)
+        telog_path = telog_dir_path + filename
+
+        telog_data = {}
+        with open(telog_path, 'r') as file:
+            telog_data = analysis_telog(file.readlines(), telog_filters)
+                
+        for dev in telog_data.keys():
+            dev_name = clean_special_symbols(dev,'_')
+            with open(save_path+filename+'_'+dev_name+'_telog.log', 'w', encoding='utf-8') as f:
+                f.write(''.join(telog_data[dev]))

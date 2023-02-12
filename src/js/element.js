@@ -78,6 +78,12 @@ class Element
         this.container.removeChild(this.container.lastChild)
       }
     }
+
+    deleteDomAllChilds(dom){
+        while (dom.firstChild) {
+            dom.removeChild(dom.lastChild)
+        }
+    }
 }
 
 class View extends Element
@@ -93,6 +99,8 @@ class View extends Element
         this.socket = io(`${server}${this.namespace}`)
 
         var funcs = common.arrayExtend(Object.getOwnPropertyNames(Object.getPrototypeOf(this)), Object.getOwnPropertyNames(Object.getPrototypeOf(this.__proto__)))
+        funcs = common.arrayExtend(funcs, Object.getOwnPropertyNames(View.prototype))
+        funcs = common.arrayDuplicates(funcs)
         funcs.forEach((functionName) => {
             if(functionName.slice(0,2) === 'on'){
                 var listenName = functionName.slice(2)
@@ -104,6 +112,11 @@ class View extends Element
         })
 
         this.socket.emit("connected", this.namespace)
+    }
+
+    controlDelete(){
+        this.delete()
+        this.socket.emit("delete")
     }
 
     onReconnect(namespace){
@@ -122,6 +135,26 @@ class View extends Element
 
     onHidden(){
         this.hidden()
+    }
+
+    onDisplayDialog(){
+        this.dialog.display()
+    }
+
+    onHiddenDialog(){
+        this.dialog.hidden()
+    }
+
+    onUpdateDialog(model){
+        this.dialog.update(model)
+    }
+
+    onDisplayShow(){
+        this.show.display()
+    }
+
+    onHiddenShow(){
+        this.show.hidden()
     }
 
     onStartLoader(){
@@ -151,6 +184,14 @@ class ListView extends View
         this.collapsible.style.width = '94%'
         this.collapsible.style.textAlign = 'left'
 
+        let that = this
+        this.del.addEventListener("click", function() {
+            that.controlDelete()
+        })
+        this.edit.addEventListener("click", function() {
+            that.onDisplayDialog()
+        })
+
         this.onHidden()
         this.container.append(this.del)
         this.container.append(this.edit)
@@ -172,7 +213,7 @@ class ListView extends View
     onRefresh(model){
         this.model = model
         this.onUpdateDialog(model)
-        this.view.refresh(this.model)
+        this.show.refresh(this.model)
     }
 
     onDisplay(){
@@ -188,31 +229,6 @@ class ListView extends View
         this.collapsible.style.display = 'none'
     }
 
-    onStartLoader(){
-        super.onStartLoader()
-    }
-
-    onStopLoader(){
-        super.onStopLoader()
-    }
-
-    onDisplayDialog(){
-        this.dialog.display()
-    }
-
-    onHiddenDialog(){
-        this.dialog.hidden()
-    }
-
-    onUpdateDialog(model){
-        this.dialog.update(model)
-    }
-
-    onDelete(){
-        this.delete()
-        this.socket.emit("delete")
-    }
-
     createElementButton(name){
         var button = document.createElement('button')
         button.style.color = 'white'
@@ -223,6 +239,24 @@ class ListView extends View
         button.style.fontSize = '12px'
         button.innerHTML = name
         return button
+    }
+}
+
+class BatchView extends View
+{
+    constructor(namespace, position){
+        super(namespace, position)
+    }
+
+    controlExec(dirPath, config){
+        this.socket.emit("exec", dirPath, config)
+        this.show.clear()
+        this.dialog.hidden()
+        this.show.display()
+    }
+
+    onRefresh(sample){
+        this.show.refresh(sample)
     }
 }
 
@@ -366,6 +400,28 @@ class Component extends Element
         return table
     }
 
+    createElementTr(){
+        var tr = document.createElement('tr')
+        tr.style.borderBottom = '1px solid #ddd'
+        return tr
+    }
+
+    createElementTh(){
+        var th = document.createElement('th')
+        th.style.border = '1px solid #ddd'
+        th.style.textAlign = 'left'
+        th.style.padding = '12px'
+        return th
+    }
+
+    createElementTd(){
+        var td = document.createElement('td')
+        td.style.border = '1px solid #555'
+        td.style.textAlign = 'left'
+        td.style.padding = '10px'
+        return td
+    }
+
     createElementTextarea(){
         var textarea = document.createElement('textarea')
         textarea.style.display = 'inline-block'
@@ -386,4 +442,4 @@ class Component extends Element
     }
 }
 
-export {Element, View, ListView, Component}
+export {Element, View, ListView, BatchView, Component}

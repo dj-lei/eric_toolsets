@@ -1,7 +1,7 @@
 export const urls = {
-    query_themes: "query_themes",
-    save_theme: "save_theme",
-    download_theme: "download_theme"
+    query_configs: "query_configs",
+    save_config: "save_config",
+    download_config: "download_config"
   }
 
 export default urls

@@ -20,8 +20,12 @@ module.exports = defineConfig({
         ],
         extraFiles: [
           {
-            "from": "src/python/dist/view",
-            "to": "resources/view"
+            "from": "src/python/dist/text_analysis",
+            "to": "resources/text_analysis"
+          },
+          {
+            "from": "src/config",
+            "to": "resources/config"
           }
         ]
       }
