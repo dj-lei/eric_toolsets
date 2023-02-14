@@ -436,7 +436,7 @@ class FileContainerView extends View
     }
 
     controlLoadConfig(config){
-        this.socket.emit("load_config", config)
+        this.socket.emit("load_config", config[0])
     }
 
     controlSearch(model){
@@ -521,10 +521,6 @@ class TextFileView extends View
         this.container.append(tmpInsightAtom)
         this.container.append(tmpChartAtom)
         this.container.append(tmpStatisticAtom)
-    }
-
-    onDelete(){
-        super.delete()
     }
 }
 

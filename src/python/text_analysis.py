@@ -8,7 +8,7 @@ from engineio.payload import Payload
 from asyncio import get_event_loop
 Payload.max_decode_packets = 40000
 
-sio = socketio.AsyncServer(logger=True, always_connect=False)
+sio = socketio.AsyncServer(always_connect=False)
 app = web.Application()
 sio.attach(app)
 
@@ -120,6 +120,10 @@ class Model(socketio.AsyncNamespace, AsyncObject):
 
     async def send_message(self, sid, namespace, func_name, *args):
         await pub.send_message(sid, namespace, self.namespace, func_name, *args)
+
+    def on_model(self, sid):
+        print('request model!')
+        return self.model()
 
     def subscribe_namespace(self, namespace):
         self.subscribes.append(namespace)
@@ -486,7 +490,12 @@ class TextFileModel(Model):
         await self.text_file_function_model.on_delete(sid)
 
         if self.mode == 'normal':
+            await self.emit('delete', namespace = self.namespace)
             await super().on_delete(sid)
+            await self.tmp_search_atom_model.on_delete(sid)
+            await self.tmp_insight_atom_model.on_delete(sid)
+            await self.tmp_chart_atom_model.on_delete(sid)
+            await self.tmp_statistic_atom_model.on_delete(sid)
             self.parent.text_file_models[self.namespace] = ''
             del self.parent.text_file_models[self.namespace]
         
@@ -520,9 +529,11 @@ class TextFileModel(Model):
 
         return Response(status.SUCCESS, msg.NONE, self.config).__dict__
 
-    async def on_load_config(self, sid, config, load=['search', 'insight', 'chart', 'statistic']):
-        self.path = config[0]
-        self.config = json.loads(config[1])
+    async def on_load_config(self, sid, path, load=['search', 'insight', 'chart', 'statistic']):
+        self.path = path
+        with open(self.path) as f:
+            self.config = json.loads(f.read())
+
         if 'search' in load:
             search_atom_models = self.config['search']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION, 'on_load_config', search_atom_models)

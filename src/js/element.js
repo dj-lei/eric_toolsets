@@ -110,6 +110,8 @@ class View extends Element
                 })
             }
         })
+        console.log("connected", this.namespace)
+        this.socket.disconnect().connect()
         this.socket.emit("connected", this.namespace)
     }
 
@@ -137,7 +139,13 @@ class View extends Element
 
     onDelete(){
         this.delete()
+        this.socket.removeAllListeners()
         this.socket.disconnect()
+        this.socket.close()
+        this.socket = ''
+        console.log('disconnect', this.namespace, this.socket.disconnected)
+        // console.log(this.socket)
+        // delete this
     }
 
     onDisplayDialog(){
