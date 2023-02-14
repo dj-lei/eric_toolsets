@@ -8,13 +8,15 @@ from engineio.payload import Payload
 from asyncio import get_event_loop
 Payload.max_decode_packets = 40000
 
-sio = socketio.AsyncServer()
+sio = socketio.AsyncServer(logger=True, always_connect=False)
 app = web.Application()
 sio.attach(app)
 
 special_symbols = ['/','\*','\{','\}','\[','\]','\(','\)','#','+','-','!','=',':',',','"','\'','>','<','@','$','%','^','\&','\|',' ']
 color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
         '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
+
+sys.path.append(os.path.join(os.path.dirname(__file__)))
 ns = json_to_object(json.load(open('../config/namespace.json')))
 status = json_to_object(json.load(open('../config/status.json')))
 msg = json_to_object(json.load(open('../config/msg.json')))
@@ -102,11 +104,19 @@ class Model(socketio.AsyncNamespace, AsyncObject):
         self.sid = sid
         print('Two-way connection established: ', namespace)
 
+    async def on_disconnect(self, sid):
+        sio.disconnect(self.sid)
+
     async def on_hidden(self, sid):
         await self.emit('hidden', namespace=self.namespace)
 
     async def on_display(self, sid):
         await self.emit('display', namespace=self.namespace)
+
+    async def on_delete(self, sid):
+        await self.emit('delete', namespace = self.namespace)
+        await self.on_disconnect(sid)
+        del sio.namespace_handlers[self.namespace]
 
     async def send_message(self, sid, namespace, func_name, *args):
         await pub.send_message(sid, namespace, self.namespace, func_name, *args)
@@ -201,9 +211,6 @@ class ListModel(Model):
         await self.emit('refresh', self.model(), namespace=self.namespace)
         await self.emit('stopLoader', namespace=self.namespace)
 
-    async def on_delete(self, sid):
-        await self.parent.on_delete(sid, self.namespace)
-
 
 class BatchModel(Model):
     async def __init__(self, namespace, mode):
@@ -262,16 +269,20 @@ class Fellow(Model):
         await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_change_alias_data', self.models[old_namespace].alias, new_model['alias'])
         self.models[new_model['namespace']] = self.models[old_namespace]
         del self.models[old_namespace]
-
-    async def on_delete(self, sid, namespace):
+    
+    async def on_delete_single(self, sid, namespace):
         await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_logout_alias_data', self.models[namespace])
+        await self.models[namespace].on_delete(sid)
         self.models[namespace] = ''
         del self.models[namespace]
-    
+
     async def on_delete_all(self, sid):
         ns = set(list(self.models.keys()))
         for namespace in ns:
-            await self.on_delete(sid, namespace)
+            await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_logout_alias_data', self.models[namespace])
+            await self.models[namespace].on_delete(sid)
+            self.models[namespace] = ''
+            del self.models[namespace]
 
     async def isPublishAble(self, namespace): #notice subscriber refresh
         if self.config_count > 0:
@@ -466,10 +477,17 @@ class TextFileModel(Model):
         await self.text_file_function_model.chart_function_model.on_delete_all(sid)
         await self.text_file_function_model.statistic_function_model.on_delete_all(sid)
 
+        await self.text_file_function_model.search_function_model.on_delete(sid)
+        await self.text_file_function_model.insight_function_model.on_delete(sid)
+        await self.text_file_function_model.chart_function_model.on_delete(sid)
+        await self.text_file_function_model.statistic_function_model.on_delete(sid)
+
+        await self.text_file_original_model.on_delete(sid)
+        await self.text_file_function_model.on_delete(sid)
+
         if self.mode == 'normal':
+            await super().on_delete(sid)
             self.parent.text_file_models[self.namespace] = ''
-            await sio.disconnect(self.sid, namespace = self.namespace)
-            del sio.namespace_handlers[self.namespace]
             del self.parent.text_file_models[self.namespace]
         
     def on_get_config(self):

@@ -110,12 +110,10 @@ class View extends Element
                 })
             }
         })
-
         this.socket.emit("connected", this.namespace)
     }
 
     controlDelete(){
-        this.delete()
         this.socket.emit("delete")
     }
 
@@ -135,6 +133,11 @@ class View extends Element
 
     onHidden(){
         this.hidden()
+    }
+
+    onDelete(){
+        this.delete()
+        this.socket.disconnect()
     }
 
     onDisplayDialog(){
