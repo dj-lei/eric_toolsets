@@ -741,6 +741,7 @@ class BatchInsightView extends BatchView
     }
 
     onRefresh(clusterTree){
+        console.log(clusterTree)
         this.batchInsightComponentSvgDialog.batchInsightComponentSvg.update(clusterTree)
     }
 

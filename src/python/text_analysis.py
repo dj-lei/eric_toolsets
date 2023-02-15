@@ -8,7 +8,7 @@ from engineio.payload import Payload
 from asyncio import get_event_loop
 Payload.max_decode_packets = 40000
 
-sio = socketio.AsyncServer(always_connect=False)
+sio = socketio.AsyncServer()
 app = web.Application()
 sio.attach(app)
 
@@ -105,7 +105,7 @@ class Model(socketio.AsyncNamespace, AsyncObject):
         print('Two-way connection established: ', namespace)
 
     async def on_disconnect(self, sid):
-        sio.disconnect(self.sid)
+        await sio.disconnect(self.sid)
 
     async def on_hidden(self, sid):
         await self.emit('hidden', namespace=self.namespace)
@@ -122,7 +122,6 @@ class Model(socketio.AsyncNamespace, AsyncObject):
         await pub.send_message(sid, namespace, self.namespace, func_name, *args)
 
     def on_model(self, sid):
-        print('request model!')
         return self.model()
 
     def subscribe_namespace(self, namespace):
@@ -308,6 +307,11 @@ class Fellow(Model):
                         func()
                 self.is_load_config = False
                 self.connected_count = 0
+                # if self.__class__.__name__.split('Function')[0].lower() in ['search', 'insight']:
+                #     if self.mode == 'normal':
+                #         await self.text_analysis_model.file_container_model.on_load_other_config('')
+                #     else:
+                #         await self.send_message('', self.get_text_file_model_namespace(), 'on_load_other_config')
         else:
             if self.mode == 'normal':
                 await self.models[namespace].on_refresh('')
@@ -362,7 +366,6 @@ class TextAnalysisModel(Model):
     async def on_shutdown(self, sid):
         await app.shutdown()
         await app.cleanup()
-        print('Exit!!!!!')
         raise GracefulExit()
 
 
@@ -392,6 +395,9 @@ class FileContainerModel(Model):
         await self.send_message(sid, self.active_text_file_model + ns.TEXTFILEFUNCTION, 'on_select_function', 'search')
         await self.send_message(sid, self.active_text_file_model, 'on_adjust_view_rate', 0.5)
         await self.text_file_models[self.active_text_file_model].on_load_config(sid, config)
+
+    async def on_load_other_config(self, sid):
+        await self.text_file_models[self.active_text_file_model].on_load_other_config(sid)
 
     async def on_new_function(self, sid, func, model):
         await self.send_message(sid, self.active_text_file_model + ns.TEXTFILEFUNCTION, 'on_select_function', func.lower())
@@ -450,6 +456,7 @@ class TextFileModel(Model):
         self.path = path
         self.file_name = path.split('\\')[-1]
         self.config = {}
+        self.load = ['search', 'insight', 'chart', 'statistic']
 
         with open(self.path, 'r') as f:
             self.lines = f.readlines()
@@ -476,28 +483,30 @@ class TextFileModel(Model):
 
     async def on_delete(self, sid):
         self.lines = ''
-        await self.text_file_function_model.search_function_model.on_delete_all(sid)
-        await self.text_file_function_model.insight_function_model.on_delete_all(sid)
-        await self.text_file_function_model.chart_function_model.on_delete_all(sid)
-        await self.text_file_function_model.statistic_function_model.on_delete_all(sid)
-
-        await self.text_file_function_model.search_function_model.on_delete(sid)
-        await self.text_file_function_model.insight_function_model.on_delete(sid)
-        await self.text_file_function_model.chart_function_model.on_delete(sid)
-        await self.text_file_function_model.statistic_function_model.on_delete(sid)
-
-        await self.text_file_original_model.on_delete(sid)
-        await self.text_file_function_model.on_delete(sid)
 
         if self.mode == 'normal':
+            await self.text_file_function_model.search_function_model.on_delete_all(sid)
+            await self.text_file_function_model.insight_function_model.on_delete_all(sid)
+            await self.text_file_function_model.chart_function_model.on_delete_all(sid)
+            await self.text_file_function_model.statistic_function_model.on_delete_all(sid)
+
+            await self.text_file_function_model.search_function_model.on_delete(sid)
+            await self.text_file_function_model.insight_function_model.on_delete(sid)
+            await self.text_file_function_model.chart_function_model.on_delete(sid)
+            await self.text_file_function_model.statistic_function_model.on_delete(sid)
+
+            await self.text_file_original_model.on_delete(sid)
+            await self.text_file_function_model.on_delete(sid)
+
             await self.emit('delete', namespace = self.namespace)
             await super().on_delete(sid)
             await self.tmp_search_atom_model.on_delete(sid)
             await self.tmp_insight_atom_model.on_delete(sid)
             await self.tmp_chart_atom_model.on_delete(sid)
             await self.tmp_statistic_atom_model.on_delete(sid)
-            self.parent.text_file_models[self.namespace] = ''
-            del self.parent.text_file_models[self.namespace]
+
+        self.parent.text_file_models[self.namespace] = ''
+        del self.parent.text_file_models[self.namespace]
         
     def on_get_config(self):
         self.config['search'] = []
@@ -531,25 +540,35 @@ class TextFileModel(Model):
 
     async def on_load_config(self, sid, path, load=['search', 'insight', 'chart', 'statistic']):
         self.path = path
+        self.load = load
         with open(self.path) as f:
             self.config = json.loads(f.read())
 
-        if 'search' in load:
+        if 'search' in self.load:
             search_atom_models = self.config['search']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION, 'on_load_config', search_atom_models)
 
-        if 'insight' in load:
+        if 'insight' in self.load:
             insight_atom_models = self.config['insight']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.INSIGHTFUNCTION, 'on_load_config', insight_atom_models)
 
-        if 'chart' in load:
+        if 'chart' in self.load:
             chart_atom_models = self.config['chart']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atom_models)
-        
-        if 'statistic' in load:
+
+        if 'statistic' in self.load:
             statistic_atom_models = self.config['statistic']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
-        
+
+    async def on_load_other_config(self, sid):
+        if 'chart' in self.load:
+            chart_atom_models = self.config['chart']
+            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atom_models)
+
+        if 'statistic' in self.load:
+            statistic_atom_models = self.config['statistic']
+            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
+
     async def on_adjust_view_rate(self, sid, rate):
         await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_set_height', rate)
         await self.send_message(sid, self.get_text_file_function_model_namespace(), 'on_set_height', 1 - rate)
@@ -755,17 +774,17 @@ class SearchAtomModel(ListModel):
         for index, line in enumerate(self.text_file_model.lines):
             if self.is_case_sensitive:
                 if len(re.findall(self.exp_search, line)) > 0:
-                    self.res_search_units.append([index-self.backward_rows, index+self.forward_rows+1])
+                    self.res_search_units.append([index-self.forward_rows, index+self.backward_rows+1])
             else:
                 if len(re.findall(self.exp_search, line, flags=re.IGNORECASE)) > 0:
-                    self.res_search_units.append([index-self.backward_rows, index+self.forward_rows+1])
+                    self.res_search_units.append([index-self.forward_rows, index+self.backward_rows+1])
 
         self.extract()
         for unit in self.res_search_units:
             self.res_lines.extend(range(unit[0], unit[1]))
         self.res_lines = sorted(set(self.res_lines))
         self.count = len(self.res_lines)
-        self.scroll(0)
+        self.scroll(0)     
 
     def extract(self):
         if len(self.exp_extract) == 0:
@@ -778,6 +797,7 @@ class SearchAtomModel(ListModel):
             # handle key value
             for exp in self.exp_extract:
                 r = parse(exp, string)
+
                 if r is not None:
                     ts = r.named['timestamp']
                     for key in r.named.keys():
@@ -793,7 +813,7 @@ class SearchAtomModel(ListModel):
 
             # handle mark
             for exp in self.exp_mark:
-                if len(re.findall(exp['exp'], string)) > 0:
+                if len(re.findall(exp['exp'], string, flags=re.IGNORECASE)) > 0:
                     if exp['alias'] not in self.res_key_value:
                         self.res_key_value[exp['alias']] = {'search_alias': self.alias, 'name':exp['alias'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
                     self.res_key_value[exp['alias']]['global_index'].append(unit[0]+self.backward_rows)
@@ -928,9 +948,9 @@ class InsightAtomModel(ListModel):
 
         for index, line in enumerate(self.text_file_model.lines):
             if len(re.findall(self.exp_search, line, flags= 0 if self.is_case_sensitive else re.IGNORECASE)) > 0:
-                self.res_search_units.append([index-self.backward_rows, index+self.forward_rows+1])
+                self.res_search_units.append([index-self.forward_rows, index+self.backward_rows+1])
                 if not self.is_has_mark:
-                    if len(re.findall(self.exp_mark['exp'], line)) > 0:
+                    if len(re.findall(self.exp_mark['exp'], line, flags=re.IGNORECASE)) > 0:
                         self.is_has_mark = True
 
         if self.is_has_mark:
@@ -977,7 +997,7 @@ class InsightAtomModel(ListModel):
                 self.res_residue_marks.append({'global_index':unit[0]+self.backward_rows, 'search_index':search_index, 'value':residue_mark, 'timestamp':ts})
 
             # handle mark
-            if len(re.findall(self.exp_mark['exp'], string)) > 0:
+            if len(re.findall(self.exp_mark['exp'], string, flags=re.IGNORECASE)) > 0:
                 if self.exp_mark['alias'] not in self.res_mark:
                     self.res_mark[self.exp_mark['alias']] = {'insight_alias': self.alias, 'name':self.exp_mark['exp'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
                 self.res_mark[self.exp_mark['alias']]['global_index'].append(unit[0]+self.backward_rows)
@@ -1272,6 +1292,8 @@ class BatchInsightModel(BatchModel):
         self.is_include_consecutive = True
         self.is_search_based = False
 
+        self.text_analysis_model = text_analysis_model
+
     def model(self):
         return {'cluster_num': self.cluster_num, 'cluster_tree': self.cluster_tree }
 
@@ -1329,23 +1351,22 @@ class BatchInsightModel(BatchModel):
     async def new(self, dir_path, config):
         self.dir_path = dir_path
         self.config_path = config
-        self.config = json.dumps(json.load(open(config)))
-        self.samples = pd.DataFrame()
+        self.samples = []
         self.result = pd.DataFrame()
 
         for path in iterate_files_in_directory(self.dir_path):
-            new_file_namespace = self.parent.namespace+'/'+path.split('\\')[-1]
+            new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+path.split('\\')[-1]
             
-            tmp_file = await TextFileModel(self.parent, new_file_namespace, self.dir_path+'\\'+path, 'batch')
-            await tmp_file.on_load_config('', [self.dir_path+'\\'+path, self.config], ['insight'])
+            tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
+            await tmp_file.on_load_config('', self.config_path, ['insight'])
             self.insight(tmp_file)
             if len(self.samples) >= self.cluster_num:
-                self.cluster()
-                if self.mode == 'normal':
-                    await self.on_refresh('', self.cluster_tree)
-            await tmp_file.on_delete('')
+                # self.cluster()
+                await tmp_file.on_delete('')
             print('Finish :', tmp_file.file_name)
         self.cluster()
+        if self.mode == 'normal':
+            await self.on_refresh('', self.cluster_tree)
 
     def insight(self, text_file_model):
         insight_function_model = text_file_model.text_file_function_model.insight_function_model
@@ -1363,12 +1384,17 @@ class BatchInsightModel(BatchModel):
             item.extend(features)
         processed_outlier = processed_outlier.sort_values('timestamp', ascending=False).reset_index(drop=True)
         sample['resOutlier'] = processed_outlier
-        item = pd.DataFrame([[1 for _ in range(0, len(item))]], columns=item)
-        self.samples = pd.concat([self.samples, item]).reset_index(drop=True)
+        tmp = {}
+        for key in item:
+            tmp[key] = 1
+        # item = pd.DataFrame([[1 for _ in range(0, len(item))]], columns=item)
+        # self.samples = pd.concat([self.samples, item]).reset_index(drop=True)
+        self.samples.append(tmp)
         self.result = self.result.append(sample, ignore_index=True)
         return sample
 
     def cluster(self):
+        self.samples = pd.DataFrame(self.samples)
         self.samples = self.samples.fillna(0)
         kmeans = KMeans(init="random", n_clusters=self.cluster_num, max_iter=300)
         self.labels = kmeans.fit(self.samples).labels_
@@ -1417,13 +1443,12 @@ class BatchStatisticModel(BatchModel):
     async def exec(self, dir_path, config):
         self.dir_path = dir_path
         self.config_path = config
-        self.config = json.dumps(json.load(open(config)))
 
         for path in iterate_files_in_directory(self.dir_path):
             new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+path.split('\\')[-1]
             
-            tmp_file = await TextFileModel(self.parent, new_file_namespace, self.dir_path+'\\'+path, 'batch')
-            await tmp_file.on_load_config('', [self.dir_path+'\\'+path, self.config], ['search', 'statistic'])
+            tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
+            await tmp_file.on_load_config('', self.config_path, ['search', 'statistic'])
             sample = self.statistic(tmp_file)
             if self.mode == 'normal':
                 await self.on_refresh('', sample)
@@ -1536,6 +1561,72 @@ class GlobalChartModel(Model):
                 key_value_tree['children'].append({'namespace': namespace, 'name': search_function_model.models[namespace].alias, 'check': False, 'children': keys})
             self.key_value_tree['children'].append(key_value_tree)
 
+
+# from asyncio import ensure_future, gather
+# from concurrent.futures import ProcessPoolExecutor, as_completed
+# from multiprocessing import freeze_support, current_process, cpu_count, Manager, Process
+# from text_analysis import BatchStatisticModel
+
+
+# class Parallel(object):
+
+#     def __init__(self):
+#         self._cpu_count = cpu_count()
+#         self.responses = ''
+#         # self.smm = SharedMemoryManager()
+#         # self.smm.start()
+
+#         self.exe = ProcessPoolExecutor(self._cpu_count)
+#         fs = [self.exe.submit(Parallel.work_init, cpu_num) for cpu_num in range(self._cpu_count)]
+#         self.container = {}
+
+#     @staticmethod
+#     def work_init(cpu_num):
+#         print(f'Init Cpu Num:{cpu_num} {current_process()=}')
+
+#     def shutdown(self):
+#         self.container = {}
+
+#     def copy_to_shm(self, namespace, data):
+#         self.container[namespace] = Manager().list(data)
+#         return self.container[namespace]
+
+#     def delete_shm(self, namespace):
+#         self.container[namespace] = ''
+#         del self.container[namespace]
+
+#     # async def run():
+#     # tasks = []
+#     # async with ClientSession() as session:
+#     #     for i in range(total):
+#     #         task = ensure_future(BatchStatisticModel.test('TEST', 'TEST'))
+#     #         tasks.append(task)
+
+#     #     self.responses = gather(*tasks)
+#     #     await self.responses
+
+#     @staticmethod
+#     def exec_loop():
+#         loop = get_event_loop()
+#         future = ensure_future(BatchStatisticModel.test('TEST', 'TEST'))
+#         loop.run_until_complete(future)
+
+#     def parallel(self, models):
+#         # processes = []
+
+#         # for namespace in models.keys():
+#         #     p = Process(target=models[namespace].search, args=())
+#         #     processes.append(p)
+
+#         # [x.start() for x in processes]
+#         fs = []
+#         ns = list(models.keys())
+#         # for namespace in ns:
+#         #     fs.append(self.exe.submit(models[namespace].search, namespace))
+
+#         fs = [self.exe.submit(Parallel.exec_loop) for namespace in models.keys()]
+#         for data in as_completed(fs):
+#             print(data.result())
 
 if __name__ == '__main__':
     # freeze_support()
