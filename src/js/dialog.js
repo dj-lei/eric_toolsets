@@ -918,9 +918,10 @@ class ShareDownloadDialog extends Dialog
         this.fileContainerView = fileContainerView
 
         this.configs = []
-        if (process.env.NODE_ENV === 'production') {
-            this.init()
-        }
+        // if (process.env.NODE_ENV === 'production') {
+        //     this.init()
+        // }
+        this.init()
     }
 
     async init(){

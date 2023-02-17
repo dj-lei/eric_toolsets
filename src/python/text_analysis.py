@@ -307,11 +307,11 @@ class Fellow(Model):
                         func()
                 self.is_load_config = False
                 self.connected_count = 0
-                # if self.__class__.__name__.split('Function')[0].lower() in ['search', 'insight']:
-                #     if self.mode == 'normal':
-                #         await self.text_analysis_model.file_container_model.on_load_other_config('')
-                #     else:
-                #         await self.send_message('', self.get_text_file_model_namespace(), 'on_load_other_config')
+                if self.__class__.__name__.split('Function')[0].lower() in ['search', 'insight']:
+                    if self.mode == 'normal':
+                        await self.text_analysis_model.file_container_model.on_load_other_config('')
+                    else:
+                        await self.send_message('', self.get_text_file_model_namespace(), 'on_load_other_config')
         else:
             if self.mode == 'normal':
                 await self.models[namespace].on_refresh('')
@@ -552,13 +552,13 @@ class TextFileModel(Model):
             insight_atom_models = self.config['insight']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.INSIGHTFUNCTION, 'on_load_config', insight_atom_models)
 
-        if 'chart' in self.load:
-            chart_atom_models = self.config['chart']
-            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atom_models)
+        # if 'chart' in self.load:
+        #     chart_atom_models = self.config['chart']
+        #     await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atom_models)
 
-        if 'statistic' in self.load:
-            statistic_atom_models = self.config['statistic']
-            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
+        # if 'statistic' in self.load:
+        #     statistic_atom_models = self.config['statistic']
+        #     await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
 
     async def on_load_other_config(self, sid):
         if 'chart' in self.load:
@@ -755,7 +755,8 @@ class SearchAtomModel(ListModel):
 
     def model(self):
         return {'count': self.count, 'namespace': self.namespace, 'alias': self.alias, 'desc':self.desc, 'exp_search': self.exp_search, 
-        'is_case_sensitive':self.is_case_sensitive, 'forward_rows':self.forward_rows, 'backward_rows':self.backward_rows, 'exp_extract': self.exp_extract, 'exp_mark': self.exp_mark, 'display_lines': self.display_lines}
+        'is_case_sensitive':self.is_case_sensitive, 'forward_rows':self.forward_rows, 'backward_rows':self.backward_rows, 'exp_extract': self.exp_extract, 
+        'exp_mark': self.exp_mark, 'display_lines': self.display_lines, 'key_value':self.res_key_value}
 
     async def listener(self, publish_namespace):
         pass
@@ -799,7 +800,7 @@ class SearchAtomModel(ListModel):
                 r = parse(exp, string)
 
                 if r is not None:
-                    ts = r.named['timestamp']
+                    ts = str(r.named['timestamp'])
                     for key in r.named.keys():
                         if key == 'timestamp':
                             continue
@@ -909,39 +910,39 @@ class InsightAtomModel(ListModel):
 
         self.search()
 
-        timestamp = ''
-        forward_time = ''
-        backward_time = ''
-        select_mark = {}
-        if self.is_has_mark:
-            for mark in self.res_mark.keys():
-                timestamp = dp(self.res_mark[mark]['timestamp'][self.number])
-                forward_time = timestamp - timedelta(seconds=self.forward_range)
-                backward_time = timestamp + timedelta(seconds=self.backward_range)
-                select_mark = {'name': 'mark', 'type': 'manual', 'abnormal_type': 'ManualSelect', 'global_index':self.res_mark[mark]['global_index'][self.number], 
-                    'search_index':self.res_mark[mark]['search_index'][self.number], 'timestamp':self.res_mark[mark]['timestamp'][self.number], 
-                    'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name'], 'origin': self.text_file_model.lines[self.res_mark[mark]['global_index'][self.number]]}
+        # timestamp = ''
+        # forward_time = ''
+        # backward_time = ''
+        # select_mark = {}
+        # if self.is_has_mark:
+        #     for mark in self.res_mark.keys():
+        #         timestamp = dp(self.res_mark[mark]['timestamp'][self.number])
+        #         forward_time = timestamp - timedelta(seconds=self.forward_range)
+        #         backward_time = timestamp + timedelta(seconds=self.backward_range)
+        #         select_mark = {'name': 'mark', 'type': 'manual', 'abnormal_type': 'ManualSelect', 'global_index':self.res_mark[mark]['global_index'][self.number], 
+        #             'search_index':self.res_mark[mark]['search_index'][self.number], 'timestamp':self.res_mark[mark]['timestamp'][self.number], 
+        #             'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name'], 'origin': self.text_file_model.lines[self.res_mark[mark]['global_index'][self.number]]}
 
-            res_residue_marks = pd.DataFrame(self.res_residue_marks)
-            indices = get_points_in_time_range(str(forward_time), str(backward_time), list(res_residue_marks.timestamp.values))
-            self.outlier.extend(self.judge_mark_outlier(res_residue_marks, indices))
+        #     res_residue_marks = pd.DataFrame(self.res_residue_marks)
+        #     indices = get_points_in_time_range(str(forward_time), str(backward_time), list(res_residue_marks.timestamp.values))
+        #     self.outlier.extend(self.judge_mark_outlier(res_residue_marks, indices))
 
-            for key in self.res_key_value.keys():
-                if (len(self.res_key_value[key]['global_index']) > 0):
-                    indices = get_points_in_time_range(str(forward_time), str(backward_time), self.res_key_value[key]['timestamp'])
-                    # print(key, self.res_key_value[key]['type'], indices)
-                    if (self.res_key_value[key]['type'] == 'str'):
-                        outlier = self.judge_discrete_key_value_outlier(pd.DataFrame(self.res_key_value[key]), indices)
-                    else:
-                        outlier = self.judge_consecutive_key_value_outlier(pd.DataFrame(self.res_key_value[key]), indices)
-                    self.outlier.extend(outlier)
-            # outlier sort 
-            self.outlier = pd.DataFrame(self.outlier)
-            self.outlier = self.outlier.sort_values('timestamp', ascending=True).reset_index(drop=True)
-            self.outlier =  json.loads(self.outlier.to_json(orient='records'))
-            self.outlier.append(select_mark)
-            self.count = len(self.outlier)
-            self.scroll(0)
+        #     for key in self.res_key_value.keys():
+        #         if (len(self.res_key_value[key]['global_index']) > 0):
+        #             indices = get_points_in_time_range(str(forward_time), str(backward_time), self.res_key_value[key]['timestamp'])
+        #             # print(key, self.res_key_value[key]['type'], indices)
+        #             if (self.res_key_value[key]['type'] == 'str'):
+        #                 outlier = self.judge_discrete_key_value_outlier(pd.DataFrame(self.res_key_value[key]), indices)
+        #             else:
+        #                 outlier = self.judge_consecutive_key_value_outlier(pd.DataFrame(self.res_key_value[key]), indices)
+        #             self.outlier.extend(outlier)
+        #     # outlier sort 
+        #     self.outlier = pd.DataFrame(self.outlier)
+        #     self.outlier = self.outlier.sort_values('timestamp', ascending=True).reset_index(drop=True)
+        #     self.outlier =  json.loads(self.outlier.to_json(orient='records'))
+        #     self.outlier.append(select_mark)
+        #     self.count = len(self.outlier)
+        #     self.scroll(0)
 
     def search(self):
         self.res_search_units = []
