@@ -921,7 +921,7 @@ class ShareDownloadDialog extends Dialog
         // if (process.env.NODE_ENV === 'production') {
         //     this.init()
         // }
-        this.init()
+        // this.init()
     }
 
     async init(){

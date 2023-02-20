@@ -500,6 +500,7 @@ class TextFileView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.container.style.overflow = 'hidden'
         this.tmpSearchAtomView = ''
         this.tmpInsightAtomView = ''
         this.tmpChartAtomView = ''
@@ -558,8 +559,9 @@ class TextFileFunctionView extends View
         this.chartFunctionView = ''
         this.statisticFunctionView = ''
 
-        this.container.style.border = '1px solid #ddd'
-        this.container.style.height = '0px'
+        // this.container.style.border = '1px solid #ddd'
+        // this.container.style.height = '0px'
+        // this.container.style.overflowY = 'auto'
         this.show = new TextFileFunctionComponentTab(this)
         this.controlHidden()
     }
@@ -587,6 +589,8 @@ class SearchFunctionView extends View
         super(namespace, common.getParentContainer(namespace))
         this.views = {}
         this.show = new SearchFunctionComponentList(this)
+        this.container.style.overflowY = 'auto'
+        this.show.container.style.overflowY = 'auto'
     }
 
     onNew(model){

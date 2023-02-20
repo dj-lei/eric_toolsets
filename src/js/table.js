@@ -1,5 +1,6 @@
 import { Component } from './element'
 import { Dialog } from './dialog'
+import { InsightAtomComponentSequentialChart } from './chart'
 
 class Table extends Component
 {
@@ -122,7 +123,7 @@ class SearchAtomComponentTable extends Table
         this.slider.max = model.count
         this.searchAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
         model.display_lines.forEach((line) => {
-            var tr = document.createElement('tr')
+            var tr = this.createElementTr()
             tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
         })
@@ -152,8 +153,8 @@ class InsightAtomComponentTable extends Table
         let that = this
         this.container.style.display = "none"
         this.table.style.display = "none"
-        this.slider.style.display = "none"
-        this.slider.style.height = `${18 * 15}px`
+        this.table.style.overflowY = "auto"
+        this.table.style.height = `400px`
 
         this.insightAtomView.collapsible.innerHTML = '+ ' + this.insightAtomView.model.desc
         this.insightAtomView.collapsible.addEventListener("click", function() {
@@ -168,32 +169,45 @@ class InsightAtomComponentTable extends Table
             }
         })
 
-        this.slider.addEventListener('input', (event) => {
-            that.insightAtomView.controlScroll(parseInt(event.target.value))
-        })
-
-        this.table.addEventListener("wheel", function(e){
-            if (e.deltaY < 0){
-                that.slider.value = parseInt(that.slider.value) - 1
-            }else{
-                that.slider.value = parseInt(that.slider.value) + 1
-            }
-            that.insightAtomView.controlScroll(parseInt(that.slider.value))
-            e.preventDefault()
-            e.stopPropagation()
-        })
-
         this.container.append(this.table)
-        this.container.append(this.slider)
     }
 
     refresh(model){
         this.deleteTableAllChilds()
         this.slider.max = model.count
         this.insightAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
-        model.display_lines.forEach((line) => {
-            var tr = document.createElement('tr')
-            tr.insertAdjacentHTML('beforeend', line)
+        model.display_lines.forEach((line, index) => {
+            var tr = this.createElementTr()
+            var tdIndex = this.createElementTd()
+            tdIndex.innerHTML = index
+
+            var tdAbnormalType = this.createElementTd()
+            tdAbnormalType.innerHTML = line['abnormal_type']
+
+            var tdTimestamp = this.createElementTd()
+            tdTimestamp.innerHTML = line['timestamp']
+
+            var tdContent = this.createElementTd()
+            var tdDesc = this.createElementTd()
+            if (line['type'] == 'mark') {
+                tdContent.innerHTML = line['origin']
+                tdDesc.innerHTML = line['desc']
+            }else if(line['type'] == 'str') {
+                tdContent.innerHTML = line['origin']
+                tdDesc.innerHTML = line['desc']
+            }else if(line['type'] == 'float') {
+                var chart = new InsightAtomComponentSequentialChart(tdContent)
+                chart.refresh(line['value'])
+                chart.chart.resize({height:`200px`, width:`1000px`})
+                tdDesc.innerHTML = ''
+            }
+
+            tr.appendChild(tdIndex)
+            tr.appendChild(tdAbnormalType)
+            tr.appendChild(tdTimestamp)
+            tr.appendChild(tdContent)
+            tr.appendChild(tdDesc)
+            // tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
         })
     }

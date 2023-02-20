@@ -501,6 +501,28 @@ class FileContainerComponentCompareGraphSequentialChart extends SequentialChart
 	}
 }
 
+class InsightAtomComponentSequentialChart extends SequentialChart
+{
+	constructor(container){
+		super(container)
+	}
+
+	refresh(lines){
+		super.refresh(lines)
+		this.bindChartClickEvent()
+		this.chart.setOption(this.option, true)
+	}
+
+	bindChartClickEvent(){
+		let that = this
+
+		// bind click event and paint
+		// this.chart.on('click', function(params) {
+		// 	that.chartAtomView.controlClickEvent({'type': params.componentType, 'data': params.data})
+		// });
+	}
+}
+
 class ChartAtomComponentSequentialChart extends SequentialChart
 {
 	constructor(chartAtomView){
@@ -613,4 +635,4 @@ class GlobalChartComponentSequentialChart extends SequentialChart
 	}
 }
 
-export {GlobalChartComponentSequentialChartDialog, ChartAtomComponentSequentialChart}
+export {GlobalChartComponentSequentialChartDialog, InsightAtomComponentSequentialChart, ChartAtomComponentSequentialChart}

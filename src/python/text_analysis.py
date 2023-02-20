@@ -844,8 +844,8 @@ class InsightAtomModel(ListModel):
         self.forward_rows = 0
         self.backward_rows = 0
 
-        self.forward_range = 60
-        self.backward_range = 2
+        # self.forward_range = 60
+        # self.backward_range = 2
         self.number = 0
 
         self.point = 0
@@ -861,13 +861,13 @@ class InsightAtomModel(ListModel):
         self.res_mark = {}
         self.res_residue_marks = []
 
-        self.compare_graphs = [
-            {'abnormal_type': 'AbnormalUpPulse', 'value': [0,1,0], 'similarity': 0.7, 'inflection_point':0, 'outlier':1, 'return_point':2},
-            {'abnormal_type': 'AbnormalDownPulse', 'value': [1,0,1], 'similarity': 0.7, 'inflection_point':0, 'outlier':1, 'return_point':2},
-            {'abnormal_type': 'AbnormalUp', 'value': [0,0,1,1], 'similarity': 0.75, 'inflection_point':1, 'outlier':2},
-            {'abnormal_type': 'AbnormalDown', 'value': [1,1,0,0], 'similarity': 0.75, 'inflection_point':1, 'outlier':2}
-        ]
-        self.scale_max = 100
+        # self.compare_graphs = [
+        #     {'abnormal_type': 'AbnormalUpPulse', 'value': [0,1,0], 'similarity': 0.7, 'inflection_point':0, 'outlier':1, 'return_point':2},
+        #     {'abnormal_type': 'AbnormalDownPulse', 'value': [1,0,1], 'similarity': 0.7, 'inflection_point':0, 'outlier':1, 'return_point':2},
+        #     {'abnormal_type': 'AbnormalUp', 'value': [0,0,1,1], 'similarity': 0.75, 'inflection_point':1, 'outlier':2},
+        #     {'abnormal_type': 'AbnormalDown', 'value': [1,1,0,0], 'similarity': 0.75, 'inflection_point':1, 'outlier':2}
+        # ]
+        # self.scale_max = 100
 
         self.text_file_model = self.subscribe_namespace(self.get_text_file_model_namespace())
         self.outlier = []
@@ -907,42 +907,45 @@ class InsightAtomModel(ListModel):
         self.res_lines = []
         self.res_mark = {}
         self.res_residue_marks = []
+        filter_strs = ['name', 'id', '.cc']
 
         self.search()
 
-        # timestamp = ''
-        # forward_time = ''
-        # backward_time = ''
-        # select_mark = {}
-        # if self.is_has_mark:
-        #     for mark in self.res_mark.keys():
-        #         timestamp = dp(self.res_mark[mark]['timestamp'][self.number])
-        #         forward_time = timestamp - timedelta(seconds=self.forward_range)
-        #         backward_time = timestamp + timedelta(seconds=self.backward_range)
-        #         select_mark = {'name': 'mark', 'type': 'manual', 'abnormal_type': 'ManualSelect', 'global_index':self.res_mark[mark]['global_index'][self.number], 
-        #             'search_index':self.res_mark[mark]['search_index'][self.number], 'timestamp':self.res_mark[mark]['timestamp'][self.number], 
-        #             'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name'], 'origin': self.text_file_model.lines[self.res_mark[mark]['global_index'][self.number]]}
+        select_mark = {}
+        if self.is_has_mark:
+            timestamp = ''
+            for mark in self.res_mark.keys():
+                timestamp = self.res_mark[mark]['timestamp'][self.number]
+                select_mark = {'name': 'mark', 'type': 'mark', 'abnormal_type': 'ManualSelect', 'global_index':self.res_mark[mark]['global_index'][self.number], 
+                    'search_index':self.res_mark[mark]['search_index'][self.number], 'timestamp':self.res_mark[mark]['timestamp'][self.number], 
+                    'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name'], 'origin': self.text_file_model.lines[self.res_mark[mark]['global_index'][self.number]]}
 
-        #     res_residue_marks = pd.DataFrame(self.res_residue_marks)
-        #     indices = get_points_in_time_range(str(forward_time), str(backward_time), list(res_residue_marks.timestamp.values))
-        #     self.outlier.extend(self.judge_mark_outlier(res_residue_marks, indices))
+            self.outlier.extend(self.judge_mark_outlier(self.res_residue_marks, timestamp))
 
-        #     for key in self.res_key_value.keys():
-        #         if (len(self.res_key_value[key]['global_index']) > 0):
-        #             indices = get_points_in_time_range(str(forward_time), str(backward_time), self.res_key_value[key]['timestamp'])
-        #             # print(key, self.res_key_value[key]['type'], indices)
-        #             if (self.res_key_value[key]['type'] == 'str'):
-        #                 outlier = self.judge_discrete_key_value_outlier(pd.DataFrame(self.res_key_value[key]), indices)
-        #             else:
-        #                 outlier = self.judge_consecutive_key_value_outlier(pd.DataFrame(self.res_key_value[key]), indices)
-        #             self.outlier.extend(outlier)
-        #     # outlier sort 
-        #     self.outlier = pd.DataFrame(self.outlier)
-        #     self.outlier = self.outlier.sort_values('timestamp', ascending=True).reset_index(drop=True)
-        #     self.outlier =  json.loads(self.outlier.to_json(orient='records'))
-        #     self.outlier.append(select_mark)
-        #     self.count = len(self.outlier)
-        #     self.scroll(0)
+            for key in self.res_key_value.keys():
+                flag =  True
+                for c in filter_strs:
+                    if c in key.lower():
+                        flag = False
+                if key[0].isdigit():
+                    flag = False
+
+                if flag:
+                    if (len(self.res_key_value[key]['global_index']) > 0):
+                        if (self.res_key_value[key]['type'] == 'str'):
+                            outlier = self.judge_discrete_key_value_outlier(self.res_key_value[key], timestamp)
+                        else:
+                            outlier = self.judge_consecutive_key_value_outlier(self.res_key_value[key], timestamp)
+                        self.outlier.extend(outlier)
+
+            # outlier sort 
+            self.outlier = pd.DataFrame(self.outlier)
+            self.outlier = self.outlier.sort_values('timestamp', ascending=True).reset_index(drop=True)
+            self.outlier =  json.loads(self.outlier.to_json(orient='records'))
+            self.outlier.append(select_mark)
+            self.count = len(self.outlier)
+            self.display_lines = self.outlier
+            # self.scroll(0)
 
     def search(self):
         self.res_search_units = []
@@ -959,7 +962,7 @@ class InsightAtomModel(ListModel):
 
     def fuzzy_extract(self):
         def self_clean_special_symbols(text, symbol):
-            for ch in ['::', '/','{','}','[',']','(',')','#','+','!',';',',','"','\'','>','<','@','`','$','^','&','|','\n']:
+            for ch in ['::', '/','{','}','[',']','(',')','#','+','!',';',',','"','\'','@','`','$','^','&','|','\n']:
                 if ch in text:
                     text = text.replace(ch,symbol)
             return re.sub(symbol+"+", symbol, text)
@@ -967,20 +970,23 @@ class InsightAtomModel(ListModel):
         def key_value_replace(word):
             return ''
 
-        regex = '([A-Za-z0-9_.]+?)[ ]?[:=][ ]?(.*?) '
+        regex = '([A-Za-z0-9_.-]+?)[ ]?[:=][ ]?([A-Za-z0-9_.]+?) '
         if len(self.exp_extract) == '':
             return
 
         for search_index, unit in enumerate(self.res_search_units):
-            string = '\n'.join(self.text_file_model.lines[unit[0]:unit[1]+1])
+            string = '\n'.join(self.text_file_model.lines[unit[0]:unit[1]])
             ts = ''
             # handle key value
             r = parse(self.exp_extract, string)
             if r is not None:
                 ts = str(r.named['timestamp'])
-                msg = r.named['msg']
+                msg = r.named['msg'].replace('>','-').replace('<','-')
                 msg = self_clean_special_symbols(msg, ' ')
-                for key, value in re.findall(regex, msg):
+                msg = msg[::-1] # msg reverse avoid dislocation
+                for value, key  in re.findall(regex, msg):
+                    key = key[::-1]
+                    value = value[::-1]
                     if is_float(value):
                         value = float(value)
                         if (value == float('inf')) | (value == float('-inf')):
@@ -994,7 +1000,8 @@ class InsightAtomModel(ListModel):
                     self.res_key_value[key+'_'+type(value).__name__]['search_index'].append(search_index)
                     self.res_key_value[key+'_'+type(value).__name__]['value'].append(value)
                     self.res_key_value[key+'_'+type(value).__name__]['timestamp'].append(ts)
-                residue_mark = re.sub(regex, key_value_replace, msg)
+                residue_mark = re.sub(regex, key_value_replace, msg).strip()
+                residue_mark = residue_mark[::-1]
                 self.res_residue_marks.append({'global_index':unit[0]+self.backward_rows, 'search_index':search_index, 'value':residue_mark, 'timestamp':ts})
 
             # handle mark
@@ -1014,7 +1021,10 @@ class InsightAtomModel(ListModel):
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
             self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+outlier['timestamp']+' '+outlier['type']+' '+outlier['desc']+'</td>')
 
-    def judge_mark_outlier(self, key_value, indices):
+    def judge_mark_outlier(self, res_residue_marks, timestamp):
+        special_words = set(['timeout', 'fault', 'error', 'abn', 'shutdown'])
+        filter_words = ['db', 'mamp']
+
         def self_clean_special_symbols(text, symbol):
             for ch in ['.', '_','-']:
                 if ch in text:
@@ -1022,109 +1032,108 @@ class InsightAtomModel(ListModel):
             text = re.sub(r'\d+', '', text)
             return re.sub(symbol+"+", symbol, text)
 
-        special_words = set(['timeout', 'fault', 'error', 'abn', 'shutdown', 'deactivate' , 'activate'])
+        def string_filter(df):
+            text = self_clean_special_symbols(df['value'], ' ')
+            words = []
+            for w in text.strip().split(' '):
+                w = w.lower()
+                if len(w) > 0:
+                    if (not w[0].isdigit()) & (w not in filter_words):
+                        words.append(w)
+                        
+            if len(set(words).intersection(special_words)) > 0:
+                return False
+                    
+            if len(words) < 2:
+                return True
+            
+            doc = nlp(' '.join(words))
+            pos = [w.pos_ for w in doc]
+                
+            if len(set(pos).intersection(set(['VERB', 'AUX']))) > 0:
+                return False
+            else:
+                return True
+
+        res_residue_marks = pd.DataFrame(res_residue_marks)
+        res_residue_marks = res_residue_marks.loc[(res_residue_marks['timestamp'] < timestamp), :]
+        res_residue_marks['is_filter'] = res_residue_marks.apply(string_filter, axis=1)
+        res_residue_marks = res_residue_marks.loc[(res_residue_marks['is_filter'] == False), :].reset_index(drop=True)
+        res_residue_marks = res_residue_marks.drop(columns=['is_filter'])
+
         res = []
-        if len(indices) > 0:
-            history = key_value.loc[0: indices[0], :]
-            history = history.drop_duplicates(['value'])
-            history = history.sort_values('timestamp', ascending=True).reset_index(drop=True)
-
-            near = key_value.loc[indices, :]
-            near = near.drop_duplicates(['value'])
-            near = near.sort_values('timestamp', ascending=True).reset_index(drop=True)
-
-            histories = history.value.values
-
-            for index, near_value in enumerate(near.value.values):
-                if near_value not in histories:
-                    t = self_clean_special_symbols(near_value, ' ')
-                    tmpwords = t.split(' ')
-                    words = []
-                    [words.extend(camel_case_split(word)) for word in tmpwords]
-                    doc = nlp(' '.join(words))
-                    pos = [w.pos_ for w in doc]
-                    flag = True if len(set(pos).intersection(set(['VERB', 'AUX']))) > 0 else False
-                    flag = True if len(set(words).intersection(special_words)) > 0 else flag
-                    if flag == True:
-                        res.append({'name': 'mark', 'type': 'mark', 'abnormal_type': 'UniquePrint', 'global_index':near['global_index'][index], 
-                        'search_index':near['search_index'][index], 'timestamp':near['timestamp'][index], 
-                        'value':near_value, 'desc':near_value, 'origin': self.text_file_model.lines[near['global_index'][index]]})
+        for item in res_residue_marks.to_dict(orient='records'):
+            item['name'] = 'residue'
+            item['type'] = 'mark'
+            item['abnormal_type'] = 'UniquePrint'
+            item['desc'] = item['value']
+            item['origin'] = self.text_file_model.lines[item['global_index']]
+            res.append(item)
          
         return res
 
-    def judge_discrete_key_value_outlier(self, key_value, indices):
-        history_change = []
-        near_change = []
-        res = []
-
-        if len(indices) > 0:
-            history = key_value.loc[0:indices[0], :]
-            cur_status = history['value'][0]
-            for stat in history.value.values:
-                if stat != cur_status:
-                    history_change.append([cur_status, stat])
-                    cur_status = stat
-
-            near = key_value.loc[indices, :].reset_index(drop=True)
-            near_change_indices = []
-            cur_status = history['value'].values[-1]
-            for index, stat in enumerate(near.value.values):
-                if stat != cur_status:
-                    near_change.append([cur_status, stat])
-                    near_change_indices.append(index)
-                    cur_status = stat
-
-            for index, change in enumerate(near_change):
-                if change not in history_change:
-                    # same name key classification
-                    res.append({'name':near['name'][0], 'type': 'str', 'abnormal_type': 'Mutation', 'global_index':near['global_index'][near_change_indices[index]], 
-                    'search_index':near['search_index'][near_change_indices[index]], 'timestamp':near['timestamp'][near_change_indices[index]], 
-                    'value':near['value'][near_change_indices[index]], 'desc': near['name'][0] + ':  ' + change[0] + ' --> ' + change[1], 'origin': self.text_file_model.lines[near['global_index'][near_change_indices[index]]],
-                    'origin': self.text_file_model.lines[near['global_index'][near_change_indices[index]]]})
-        
-        return res
-
-    def judge_consecutive_key_value_outlier(self, key_value, indices):
-        res = []
-
-        # filter special word , for example Id
-
-        if len(indices) > 0:
-            near = key_value.loc[indices, :].reset_index(drop=True)
-
-            # judege is Periodic 
-            # if true return
-            for graph in self.compare_graphs:
-                a = minmax_scale(list(near.value.values), feature_range=(0, self.scale_max))
-                b = minmax_scale(graph['value'], feature_range=(0, self.scale_max))
-                path, score = lcss_path(a, b)
-                if (score >= graph['similarity']) & (len(near.value.values) > len(graph['value'])):
-                    # Determine the optimal value of K in K-Means Clustering
-                    # cost =[]
-                    # for i in range(1, 11):
-                    #     KM = KMeans(n_clusters = i, max_iter = 500)
-                    #     KM.fit(X)
-                        
-                    #     # calculates squared error
-                    #     # for the clustered points
-                    #     cost.append(KM.inertia_)
-                    # 
-
-                    # print(near)
-                    if 'Pulse' in graph['abnormal_type']:
-                        res.append({'name':near['name'][0], 'type': key_value['type'][0], 'abnormal_type': graph['abnormal_type'], 'global_index':near['global_index'][path[graph['outlier']][0]], 
-                        'search_index':near['search_index'][path[graph['outlier']][0]], 'timestamp':near['timestamp'][path[graph['outlier']][0]], 
-                        'value':near['value'][path[graph['outlier']][0]], 'desc':near['name'][0] + ':  ' + str(near['value'][path[graph['inflection_point']][0]]) + ' --> ' + str(near['value'][path[graph['outlier']][0]]) + ' --> ' + str(near['value'][path[graph['return_point']][0]]),
-                        'origin': self.text_file_model.lines[near['global_index'][path[graph['outlier']][0]]]})
-                    else:
-                        res.append({'name':near['name'][0], 'type': key_value['type'][0], 'abnormal_type': graph['abnormal_type'], 'global_index':near['global_index'][path[graph['outlier']][0]], 
-                        'search_index':near['search_index'][path[graph['outlier']][0]], 'timestamp':near['timestamp'][path[graph['outlier']][0]], 
-                        'value':near['value'][path[graph['outlier']][0]], 'desc':near['name'][0] + ':  ' + str(near['value'][path[graph['inflection_point']][0]]) + ' --> ' + str(near['value'][path[graph['outlier']][0]]),
-                        'origin': self.text_file_model.lines[near['global_index'][path[graph['outlier']][0]]]})
+    def judge_discrete_key_value_outlier(self, key_value, timestamp):
+        flag = True
+        tmp = []
+        for index, t in enumerate(key_value['timestamp']):
+            if t < timestamp:
+                tmp.append(key_value['value'][index])
+            else:
                 break
-        return res
+        y = []
+        for v in tmp:
+            if len(v) >= 2:
+                if v[0:2] == '0x':
+                    y.append(v)
+                elif v[0].isdigit():
+                    pass
+                else:
+                    y.append(v)
+        
+        if len(y) < 1:
+            flag = False
 
-    
+        if flag:
+            return [{'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': 'Mutation', 'global_index':key_value['global_index'][len(y)-1], 
+            'search_index':key_value['search_index'][len(y)-1], 'timestamp':key_value['timestamp'][len(y)-1], 
+            'value': '-->'.join(y), 'desc': key_value['name'] + ': ' + '-->'.join(y), 
+            'origin': self.text_file_model.lines[key_value['global_index'][len(y)-1]]}]
+        else:
+            return []
+
+    def judge_consecutive_key_value_outlier(self, key_value, timestamp):
+        flag = True
+        y = []
+        for index, t in enumerate(key_value['timestamp']):
+            if t < timestamp:
+                y.append(key_value['value'][index])
+            else:
+                break
+
+        if (len(y) <= 3) | (len(set(y)) <= 1):
+            flag = False
+
+        if flag:
+            data = pd.DataFrame(y, columns=['y'])
+            signal = np.array([[i] for i in data['y']])
+            algo = rpt.Dynp(model="l2", min_size=1, jump=1).fit(signal)
+            result = algo.predict(n_bkps=2)
+
+            final = {}
+            res = pd.DataFrame(key_value).reset_index()
+            res = res.rename(columns={"index": "graph_index", "insight_alias": "search_alias"})
+            res = res.loc[0:len(y), :]
+            final[key_value['name']] = json.loads(res.to_json(orient='records'))
+
+            res['type'] = 'mark'
+            res['name'] = 'abnormal'
+            final['abnormal'] = json.loads(res.loc[result, :].to_json(orient='records'))
+            return [{'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': 'Mutation', 'global_index': key_value['global_index'][result[1]], 
+            'search_index':key_value['search_index'][result[1]], 'timestamp':key_value['timestamp'][result[1]], 'value':final, 'desc':result, 'origin': ''}]
+        else:
+            return []
+
+
 class ChartAtomModel(ListModel):
     async def __init__(self, parent, model, mode='normal'):
         await super().__init__(model['namespace'], mode)
@@ -1395,6 +1404,15 @@ class BatchInsightModel(BatchModel):
         return sample
 
     def cluster(self):
+        # Determine the optimal value of K in K-Means Clustering
+        # cost =[]
+        # for i in range(1, 11):
+        #     KM = KMeans(n_clusters = i, max_iter = 500)
+        #     KM.fit(X)
+            
+        #     # calculates squared error
+        #     # for the clustered points
+        #     cost.append(KM.inertia_)
         self.samples = pd.DataFrame(self.samples)
         self.samples = self.samples.fillna(0)
         kmeans = KMeans(init="random", n_clusters=self.cluster_num, max_iter=300)

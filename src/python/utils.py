@@ -14,16 +14,17 @@ import gzip
 # from tslearn.metrics import lcss_path
 # from sklearn.preprocessing import minmax_scale
 # from sklearn.cluster import KMeans
+import ruptures as rpt
 from parse import parse
 from datetime import timedelta
 from dateutil.parser import parse as dp
 from types import SimpleNamespace
 
-# import spacy
-# nlp = spacy.load("en_core_web_sm")
+import spacy
+nlp = spacy.load("en_core_web_sm")
 
-# import en_core_web_sm
-# nlp = en_core_web_sm.load()
+import en_core_web_sm
+nlp = en_core_web_sm.load()
 
 def createUuid4():
     return str(uuid.uuid4()).replace('-','')
