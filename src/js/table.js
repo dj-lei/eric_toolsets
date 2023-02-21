@@ -52,25 +52,12 @@ class TextFileOriginalComponentTable extends Table
     refresh(model){
         this.deleteTableAllChilds()
         this.slider.max = model.count
+        this.slider.value = model.point
         model.display_lines.forEach((line) => {
-            var tr = document.createElement('tr')
+            var tr = this.createElementTr()
             tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
         })
-        // if (that.lines.length < that.range) {
-        //     for(var i=0; i < that.range - that.lines.length; i++){
-        //         var tr = document.createElement('tr')
-        //         var td1 = document.createElement('td')
-        //         td1.setAttribute('style', 'color:#FFF;background-color:#666666;font-size:10px;')
-        //         var td2 = document.createElement('td')
-        //         td2.setAttribute('style', 'color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left')
-        //         td1.innerHTML = 'END'
-        //         td2.innerHTML = 'END'
-        //         tr.appendChild(td1)
-        //         tr.appendChild(td2)
-        //         that.table.appendChild(tr)
-        //     }
-        // }
     }
 }
 
@@ -105,9 +92,11 @@ class SearchAtomComponentTable extends Table
 
         this.table.addEventListener("wheel", function(e){
             if (e.deltaY < 0){
-                that.slider.value = parseInt(that.slider.value) - 1
+                that.slider.value = parseInt(that.slider.value) -1
+                that.searchAtomView.controlScroll(-1)
             }else{
                 that.slider.value = parseInt(that.slider.value) + 1
+                that.searchAtomView.controlScroll(1)
             }
             that.searchAtomView.controlScroll(parseInt(that.slider.value))
             e.preventDefault()
@@ -121,26 +110,13 @@ class SearchAtomComponentTable extends Table
     refresh(model){
         this.deleteTableAllChilds()
         this.slider.max = model.count
+        this.slider.value = model.point
         this.searchAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
         model.display_lines.forEach((line) => {
             var tr = this.createElementTr()
             tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
         })
-        // if (that.lines.length < that.range) {
-        //     for(var i=0; i < that.range - that.lines.length; i++){
-        //         var tr = document.createElement('tr')
-        //         var td1 = document.createElement('td')
-        //         td1.setAttribute('style', 'color:#FFF;background-color:#666666;font-size:10px;')
-        //         var td2 = document.createElement('td')
-        //         td2.setAttribute('style', 'color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left')
-        //         td1.innerHTML = 'END'
-        //         td2.innerHTML = 'END'
-        //         tr.appendChild(td1)
-        //         tr.appendChild(td2)
-        //         that.table.appendChild(tr)
-        //     }
-        // }
     }
 }
 
@@ -297,8 +273,9 @@ class BatchStatisticComponentTableDialog extends Dialog
     constructor(batchStatisticView){
         super(batchStatisticView.container)
         this.batchStatisticView = batchStatisticView
-        this.subContainer.style.width = '90%' 
-        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+        this.subContainer.style.width = '100%' 
+        this.subContainer.style.margin = 0
+        this.subContainer.style.height = `${document.body.offsetHeight}px`
 
         let that = this
         var topBtnSets = this.createElementDiv()
@@ -379,6 +356,9 @@ class BatchStatisticComponentTable extends Table
     constructor(container){
         super(container)
         this.isHasTh = false
+        this.container.style.overflowY = 'hidden'
+        this.table.style.overflowY = 'auto'
+        this.table.style.height = `${document.body.offsetHeight - 50}px`
         this.container.append(this.table)
     }
 

@@ -546,6 +546,7 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 		super.refresh(model.select_lines)
 		this.setToolBox()
 		this.bindChartClickEvent()
+		this.option['title']['text'] = model.desc
 		this.chart.setOption(this.option, true)
 
 		this.chartAtomView.collapsible.innerHTML = '+ ' + this.chartAtomView.model.desc

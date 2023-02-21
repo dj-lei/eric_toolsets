@@ -89,6 +89,13 @@ class TextFileFunctionComponentTab extends Tab
         super(textFileFunctionView.container)
         this.textFileFunctionView = textFileFunctionView
 
+        this.container.style.position = 'fixed'
+        this.container.style.zIndex = 1
+        this.container.style.left = 0
+        // this.container.style.top = 0
+        this.container.style.width = '100%'
+        this.container.style.overflow = 'hidden'
+
         let that = this
         this.subscribePlaceholder('Search')
         var tablink = this.getPlaceholder('Search')
@@ -101,17 +108,6 @@ class TextFileFunctionComponentTab extends Tab
             that.textFileFunctionView.controlSelectFunction('search')
         })
 
-        this.subscribePlaceholder('Insight')
-        tablink = this.getPlaceholder('Insight')
-        tablink.style.width = '25%'
-        this.insightTitle = this.tabs['Insight'].title
-        this.insightTitle.style.width = '100%'
-        this.insightTitle.innerHTML = 'Insight'
-        this.insightTitle.addEventListener('click', function()
-        {
-            that.textFileFunctionView.controlSelectFunction('insight')
-        })
-
         this.subscribePlaceholder('Chart')
         tablink = this.getPlaceholder('Chart')
         tablink.style.width = '24%'
@@ -122,6 +118,17 @@ class TextFileFunctionComponentTab extends Tab
         this.chartTitle.addEventListener('click', function()
         {
             that.textFileFunctionView.controlSelectFunction('chart')
+        })
+
+        this.subscribePlaceholder('Insight')
+        tablink = this.getPlaceholder('Insight')
+        tablink.style.width = '25%'
+        this.insightTitle = this.tabs['Insight'].title
+        this.insightTitle.style.width = '100%'
+        this.insightTitle.innerHTML = 'Insight'
+        this.insightTitle.addEventListener('click', function()
+        {
+            that.textFileFunctionView.controlSelectFunction('insight')
         })
 
         this.subscribePlaceholder('Statistic')

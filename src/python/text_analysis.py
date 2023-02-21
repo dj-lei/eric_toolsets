@@ -115,7 +115,7 @@ class Model(socketio.AsyncNamespace, AsyncObject):
 
     async def on_delete(self, sid):
         await self.emit('delete', namespace = self.namespace)
-        await self.on_disconnect(sid)
+        await self.on_disconnect(self.sid)
         del sio.namespace_handlers[self.namespace]
 
     async def send_message(self, sid, namespace, func_name, *args):
@@ -256,17 +256,18 @@ class Fellow(Model):
             if self.mode == 'normal':
                 await self.emit('new', model, namespace=self.namespace)
                 self.models[model['namespace']] = await self.class_name(self, model)
+                await self.send_message(sid, self.get_text_file_model_namespace(), 'on_register_alias_data', self.models[model['namespace']])
             else:
                 self.models[model['namespace']] = await self.class_name(self, model, self.mode)
+                await self.send_message(sid, self.get_text_file_model_namespace(), 'on_register_alias_data', self.models[model['namespace']])
                 await self.isBatchAble(model['namespace'])
-            await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_register_alias_data', self.models[model['namespace']])
 
     async def on_new(self, sid, model):
         new_namespace = self.namespace+'/'+model['alias']
         model['namespace'] = new_namespace
         await self.emit('new', model, namespace=self.namespace)
         self.models[new_namespace] = await self.class_name(self, model)
-        await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_register_alias_data', self.models[new_namespace])
+        await self.send_message(sid, self.get_text_file_model_namespace(), 'on_register_alias_data', self.models[new_namespace])
 
     async def on_change(self, sid, old_namespace, new_model):
         await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_change_alias_data', self.models[old_namespace].alias, new_model['alias'])
@@ -323,7 +324,7 @@ class Fellow(Model):
 class TextAnalysisModel(Model):
     async def __init__(self, parallel, mode='normal'):
         await super().__init__(ns.TEXTANALYSIS, mode)
-        self.alias_data = {}
+
         self.parallel = parallel
         self.file_container_model = await FileContainerModel(self, self.mode)
 
@@ -333,17 +334,6 @@ class TextAnalysisModel(Model):
 
     async def listener(self, publish_namespace):
         pass
-
-    async def on_register_alias_data(self, sid, ref):
-        self.alias_data[ref.alias] = ref
-
-    async def on_change_alias_data(self, sid, old_ref, new_ref):
-        self.alias_data[new_ref] = self.alias_data[old_ref]
-        del self.alias_data[old_ref]
-
-    async def on_logout_alias_data(self, sid, ref):
-        self.alias_data[ref.alias] = ''
-        del self.alias_data[ref.alias]
 
     async def on_display_batch_insight(self, sid):
         await self.batch_insight_model.on_display_dialog(sid)
@@ -382,7 +372,8 @@ class FileContainerModel(Model):
 
     async def on_new_file(self, sid, file_paths):
         for path in file_paths:
-            new_file_namespace = self.namespace+'/'+path.split('\\')[-1]
+            # new_file_namespace = self.namespace+'/'+path.split('\\')[-1]
+            new_file_namespace = self.namespace + '/' + createUuid4()
             
             self.text_file_models[new_file_namespace] = await TextFileModel(self, new_file_namespace, path, self.mode)
             await self.emit('newFile', self.text_file_models[new_file_namespace].model(), namespace=self.namespace)
@@ -453,6 +444,7 @@ class TextFileModel(Model):
         await super().__init__(namespace, mode)
         self.parent = file_container_model
 
+        self.alias_data = {}
         self.path = path
         self.file_name = path.split('\\')[-1]
         self.config = {}
@@ -498,13 +490,13 @@ class TextFileModel(Model):
             await self.text_file_original_model.on_delete(sid)
             await self.text_file_function_model.on_delete(sid)
 
-            await self.emit('delete', namespace = self.namespace)
-            await super().on_delete(sid)
             await self.tmp_search_atom_model.on_delete(sid)
             await self.tmp_insight_atom_model.on_delete(sid)
             await self.tmp_chart_atom_model.on_delete(sid)
             await self.tmp_statistic_atom_model.on_delete(sid)
 
+            await self.emit('delete', namespace = self.namespace)
+            await super().on_delete(sid)
         self.parent.text_file_models[self.namespace] = ''
         del self.parent.text_file_models[self.namespace]
         
@@ -569,6 +561,17 @@ class TextFileModel(Model):
             statistic_atom_models = self.config['statistic']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
 
+    async def on_register_alias_data(self, sid, ref):
+        self.alias_data[ref.alias] = ref
+
+    async def on_change_alias_data(self, sid, old_ref, new_ref):
+        self.alias_data[new_ref] = self.alias_data[old_ref]
+        del self.alias_data[old_ref]
+
+    async def on_logout_alias_data(self, sid, ref):
+        self.alias_data[ref.alias] = ''
+        del self.alias_data[ref.alias]
+
     async def on_adjust_view_rate(self, sid, rate):
         await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_set_height', rate)
         await self.send_message(sid, self.get_text_file_function_model_namespace(), 'on_set_height', 1 - rate)
@@ -593,7 +596,7 @@ class TextFileOriginalModel(Model):
         self.rate_height = 1
         self.step = 1
         self.point = 0
-        self.range = 60
+        self.range = 50
         self.count =  len(text_file_model.lines)
         self.exp_mark = False
         self.display_lines = []
@@ -601,21 +604,35 @@ class TextFileOriginalModel(Model):
         await self.new_view_object()
         
     def model(self):
-        return {'namespace': self.namespace, 'rate_height': self.rate_height, 'point': self.point, 'range': self.range, 'count': self.count, 'display_lines': self.display_lines}
+        return {'namespace': self.namespace, 'point': self.point, 'rate_height': self.rate_height, 'point': self.point, 'range': self.range, 'count': self.count, 'display_lines': self.display_lines}
 
     async def listener(self, publish_namespace):
         await self.on_set_height('', 1)
         await self.on_scroll('', 0)
 
-    async def on_scroll(self, sid, point):
+    async def on_connected(self, sid, namespace):
+        await super().on_connected(sid, namespace)
+        await self.on_scroll(sid, 0, self.range)
+
+    async def on_scroll(self, sid, point, range):
+        self.scroll(point, range)
+        await self.emit('refresh', self.model(), namespace=self.namespace)
+
+    def scroll(self, point, range):
         # def word_color_replace(word):
         #     return word.group(0).replace(word.group(1), '<span style="color:'+color[self.searchs[uid].cmd_words.index(word.group(1))]+'">'+word.group(1)+'</span>')
         if point in [1, -1]:
             self.point = self.point + point
         else:
             self.point = point
+        if self.point < 0:
+            self.point = 0
+        self.range = range
         self.display_lines = []
         if not self.exp_mark:
+            if (self.point + self.range) > len(self.parent.lines):
+                self.point = len(self.parent.lines) - self.range
+
             for index, line in enumerate(self.parent.lines[self.point:self.point+self.range]):
                 num = str(self.point + index)
                 num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
@@ -636,7 +653,6 @@ class TextFileOriginalModel(Model):
 
         #         reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.searchs[uid].cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
         #         lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
-        await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def on_set_height(self, sid, rate):
         self.rate_height = rate
@@ -754,7 +770,7 @@ class SearchAtomModel(ListModel):
         await self.new_view_object()
 
     def model(self):
-        return {'count': self.count, 'namespace': self.namespace, 'alias': self.alias, 'desc':self.desc, 'exp_search': self.exp_search, 
+        return {'count': self.count, 'point': self.point, 'namespace': self.namespace, 'alias': self.alias, 'desc':self.desc, 'exp_search': self.exp_search, 
         'is_case_sensitive':self.is_case_sensitive, 'forward_rows':self.forward_rows, 'backward_rows':self.backward_rows, 'exp_extract': self.exp_extract, 
         'exp_mark': self.exp_mark, 'display_lines': self.display_lines, 'key_value':self.res_key_value}
 
@@ -800,7 +816,7 @@ class SearchAtomModel(ListModel):
                 r = parse(exp, string)
 
                 if r is not None:
-                    ts = str(r.named['timestamp'])
+                    ts = str(dp(r.named['timestamp'], yearfirst=True))
                     for key in r.named.keys():
                         if key == 'timestamp':
                             continue
@@ -823,12 +839,119 @@ class SearchAtomModel(ListModel):
                     self.res_key_value[exp['alias']]['timestamp'].append(ts)
 
     def scroll(self, point):
-        self.point = point
+        if point in [1, -1]:
+            self.point = self.point + point
+        else:
+            self.point = point
+        if self.point < 0:
+            self.point = 0
+
         self.display_lines = []
+        if (self.point + self.range) > len(self.res_lines):
+            self.point = len(self.res_lines) - self.range
+
         for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
             num = str(self.point + index)
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
             self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file_model.lines[line]+'</td>')
+
+
+class ChartAtomModel(ListModel):
+    async def __init__(self, parent, model, mode='normal'):
+        await super().__init__(model['namespace'], mode)
+        self.parent = parent
+
+        self.key_value_tree = {}
+        self.select_lines = {}
+
+        self.search_function_model = self.subscribe_namespace(self.get_search_function_model_namespace())
+        self.text_file_model = self.search_function_model.parent.parent
+        
+        self.__dict__.update(model)
+        await self.new_view_object()
+
+    def model(self):
+        if self.key_value_tree == {}:
+            self.generate_key_value_tree()
+        return {'namespace': self.namespace, 'alias': self.alias, 'desc': self.desc, 'key_value_tree': self.key_value_tree, 'select_lines':self.select_lines}
+
+    async def listener(self, publish_namespace):
+        if publish_namespace == self.search_function_model.namespace:
+            self.generate_key_value_tree()
+            await self.on_update_dialog('')
+
+    async def on_click_event(self, sid, params):
+        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['data']['globalIndex'])
+
+    async def on_clear_key_value_tree(self, sid):
+        self.alias = ''
+        self.desc = ''
+        self.generate_key_value_tree()
+        await self.on_update_dialog(sid)
+
+    def chart(self):
+        self.select_lines = {}
+        selected_key = {}
+        for search_atom_model in self.key_value_tree['children']:
+            for key in search_atom_model['children']:
+                if key['check'] == True:
+                    namespace = self.text_file_model.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION + '/' + search_atom_model['namespace']
+                    search_alias = self.search_function_model.models[namespace].alias
+                    if key['name'] in self.search_function_model.models[namespace].res_key_value:
+                        key_value = self.search_function_model.models[namespace].res_key_value[key['name']]
+                        if len(key_value['global_index']) > 0:
+                            selected_key[search_alias+'.'+key['name']] = key_value
+        final = {}
+        for key in selected_key.keys():
+            tmp = list(selected_key.keys())
+            tmp.remove(key)
+            res = pd.DataFrame()
+            res = pd.concat([res, pd.DataFrame(selected_key[key])])
+            res['full_name'] = key
+            for s_key in tmp:
+                temp = pd.DataFrame(selected_key[s_key])
+                temp['full_name'] = s_key
+                res = pd.concat([res, temp]).reset_index(drop=True)
+            # res['timestamp'] = res.apply(parse_data_format, axis=1)
+            res = res.drop_duplicates(['timestamp'])
+            res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
+            res = res.loc[(res['full_name'] == key), :].reset_index()
+            res = res.rename(columns={"index": "graph_index"})
+            res['timestamp'] = res['timestamp'].astype(str)
+            # res['file_uid'] = key.split('.')[0]
+            # res['search_uid'] = key.split('.')[1]
+            final[key] = json.loads(res.to_json(orient='records'))
+        self.select_lines = final
+
+    def generate_key_value_tree(self):
+        self.key_value_tree = {}
+
+        self.key_value_tree = {'namespace': self.text_file_model.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
+        for namespace in self.search_function_model.models.keys():
+            keys = []
+            for key in self.search_function_model.models[namespace].res_key_value.keys():
+                keys.append({'name': key, 'check': False})
+            self.key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function_model.models[namespace].alias, 'check': False, 'children': keys})
+
+    def reload_key_value_tree(self):
+        tmp_key_value_tree = {'namespace': self.text_file_model.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
+        for namespace in self.search_function_model.models.keys():
+            keys = []
+            for key in self.search_function_model.models[namespace].res_key_value.__dict__.keys():
+                keys.append({'name': key, 'check': False})
+            tmp_key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function_model.models[namespace].alias, 'check': False, 'children': keys})
+
+        diff = DeepDiff(self.key_value_tree, tmp_key_value_tree)
+        print(diff)
+        if 'dictionary_item_added' in diff:
+            for item in diff['dictionary_item_added']:
+                l = item.replace('root', 'self.key_value_tree')
+                r = item.replace('root', 'tmp_key_value_tree')
+                exec(l+" = "+r)
+        elif 'dictionary_item_removed' in diff:
+            for item in diff['dictionary_item_removed']:
+                l = item.replace('root', 'self.key_value_tree')
+                exec("del "+l)
 
 
 class InsightAtomModel(ListModel):
@@ -980,7 +1103,7 @@ class InsightAtomModel(ListModel):
             # handle key value
             r = parse(self.exp_extract, string)
             if r is not None:
-                ts = str(r.named['timestamp'])
+                ts = str(dp(r.named['timestamp'], yearfirst=True))
                 msg = r.named['msg'].replace('>','-').replace('<','-')
                 msg = self_clean_special_symbols(msg, ' ')
                 msg = msg[::-1] # msg reverse avoid dislocation
@@ -1128,108 +1251,14 @@ class InsightAtomModel(ListModel):
             res['type'] = 'mark'
             res['name'] = 'abnormal'
             final['abnormal'] = json.loads(res.loc[result, :].to_json(orient='records'))
-            return [{'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': 'Mutation', 'global_index': key_value['global_index'][result[1]], 
-            'search_index':key_value['search_index'][result[1]], 'timestamp':key_value['timestamp'][result[1]], 'value':final, 'desc':result, 'origin': ''}]
+            
+            ret = {'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': 'Mutation', 'global_index': key_value['global_index'][result[1]], 
+                'search_index':key_value['search_index'][result[1]], 'timestamp':key_value['timestamp'][result[1]], 'value':final, 'desc':result, 'origin': ''}
+            
+            
+            return [ret]
         else:
             return []
-
-
-class ChartAtomModel(ListModel):
-    async def __init__(self, parent, model, mode='normal'):
-        await super().__init__(model['namespace'], mode)
-        self.parent = parent
-
-        self.key_value_tree = {}
-        self.select_lines = {}
-
-        self.search_function_model = self.subscribe_namespace(self.get_search_function_model_namespace())
-        self.text_file_model = self.search_function_model.parent.parent
-        
-        self.__dict__.update(model)
-        await self.new_view_object()
-
-    def model(self):
-        if self.key_value_tree == {}:
-            self.generate_key_value_tree()
-        return {'namespace': self.namespace, 'alias': self.alias, 'desc': self.desc, 'key_value_tree': self.key_value_tree, 'select_lines':self.select_lines}
-
-    async def listener(self, publish_namespace):
-        if publish_namespace == self.search_function_model.namespace:
-            self.generate_key_value_tree()
-            await self.on_update_dialog('')
-
-    async def on_click_event(self, sid, params):
-        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['data']['globalIndex'])
-
-    async def on_clear_key_value_tree(self, sid):
-        self.alias = ''
-        self.desc = ''
-        self.generate_key_value_tree()
-        await self.on_update_dialog(sid)
-
-    def chart(self):
-        self.select_lines = {}
-        selected_key = {}
-        for search_atom_model in self.key_value_tree['children']:
-            for key in search_atom_model['children']:
-                if key['check'] == True:
-                    namespace = self.text_file_model.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION + '/' + search_atom_model['namespace']
-                    search_alias = self.search_function_model.models[namespace].alias
-                    if key['name'] in self.search_function_model.models[namespace].res_key_value:
-                        key_value = self.search_function_model.models[namespace].res_key_value[key['name']]
-                        if len(key_value['global_index']) > 0:
-                            selected_key[search_alias+'.'+key['name']] = key_value
-        final = {}
-        for key in selected_key.keys():
-            tmp = list(selected_key.keys())
-            tmp.remove(key)
-            res = pd.DataFrame()
-            res = pd.concat([res, pd.DataFrame(selected_key[key])])
-            res['full_name'] = key
-            for s_key in tmp:
-                temp = pd.DataFrame(selected_key[s_key])
-                temp['full_name'] = s_key
-                res = pd.concat([res, temp]).reset_index(drop=True)
-            # res['timestamp'] = res.apply(parse_data_format, axis=1)
-            res = res.drop_duplicates(['timestamp'])
-            res = res.sort_values('timestamp', ascending=True).reset_index(drop=True)
-            res = res.loc[(res['full_name'] == key), :].reset_index()
-            res = res.rename(columns={"index": "graph_index"})
-            res['timestamp'] = res['timestamp'].astype(str)
-            # res['file_uid'] = key.split('.')[0]
-            # res['search_uid'] = key.split('.')[1]
-            final[key] = json.loads(res.to_json(orient='records'))
-        self.select_lines = final
-
-    def generate_key_value_tree(self):
-        self.key_value_tree = {}
-
-        self.key_value_tree = {'namespace': self.text_file_model.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
-        for namespace in self.search_function_model.models.keys():
-            keys = []
-            for key in self.search_function_model.models[namespace].res_key_value.keys():
-                keys.append({'name': key, 'check': False})
-            self.key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function_model.models[namespace].alias, 'check': False, 'children': keys})
-
-    def reload_key_value_tree(self):
-        tmp_key_value_tree = {'namespace': self.text_file_model.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
-        for namespace in self.search_function_model.models.keys():
-            keys = []
-            for key in self.search_function_model.models[namespace].res_key_value.__dict__.keys():
-                keys.append({'name': key, 'check': False})
-            tmp_key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function_model.models[namespace].alias, 'check': False, 'children': keys})
-
-        diff = DeepDiff(self.key_value_tree, tmp_key_value_tree)
-        print(diff)
-        if 'dictionary_item_added' in diff:
-            for item in diff['dictionary_item_added']:
-                l = item.replace('root', 'self.key_value_tree')
-                r = item.replace('root', 'tmp_key_value_tree')
-                exec(l+" = "+r)
-        elif 'dictionary_item_removed' in diff:
-            for item in diff['dictionary_item_removed']:
-                l = item.replace('root', 'self.key_value_tree')
-                exec("del "+l)
 
 
 class StatisticAtomModel(ListModel):
@@ -1245,6 +1274,7 @@ class StatisticAtomModel(ListModel):
 
         self.search_function_model = self.subscribe_namespace(self.get_search_function_model_namespace())
         self.text_analysis_model = self.subscribe_namespace(self.get_text_analysis_model_namespace())
+        self.text_file_model = self.subscribe_namespace(self.get_text_file_model_namespace())
         self.__dict__.update(model)
         await self.new_view_object()
 
@@ -1463,12 +1493,12 @@ class BatchStatisticModel(BatchModel):
         self.dir_path = dir_path
         self.config_path = config
 
-        for path in iterate_files_in_directory(self.dir_path):
-            new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+path.split('\\')[-1]
+        for index, path in enumerate(iterate_files_in_directory(self.dir_path)):
+            new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()
             
             tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
             await tmp_file.on_load_config('', self.config_path, ['search', 'statistic'])
-            sample = self.statistic(tmp_file)
+            sample = self.statistic(index, tmp_file)
             if self.mode == 'normal':
                 await self.on_refresh('', sample)
             await tmp_file.on_delete('')
@@ -1493,9 +1523,9 @@ class BatchStatisticModel(BatchModel):
     #     await tmp_file.on_delete('')
     #     print('Finish :', tmp_file.file_name)
 
-    def statistic(self, text_file_model):
+    def statistic(self, index, text_file_model):
         statistic_function_model = text_file_model.text_file_function_model.statistic_function_model
-        sample = {'filePath':text_file_model.path, 'configPath':self.config_path, 'fileName': text_file_model.file_name}
+        sample = {'index': index, 'filePath':text_file_model.path, 'configPath':self.config_path, 'fileName': text_file_model.file_name}
         for statistic_namespace in statistic_function_model.models.keys():
             atom = statistic_function_model.models[statistic_namespace]
             sample[atom.alias] = atom.result
@@ -1571,7 +1601,7 @@ class GlobalChartModel(Model):
 
             text_file_model = self.file_container_model.text_file_models[file_namespace]
             key_value_tree = {}
-            key_value_tree = {'namespace': text_file_model.namespace, 'name': text_file_model.namespace.split('/')[-1], 'check': False, 'children': []}
+            key_value_tree = {'namespace': text_file_model.namespace, 'name': text_file_model.file_name, 'check': False, 'children': []}
             search_function_model = self.file_container_model.text_file_models[file_namespace].text_file_function_model.search_function_model
             for namespace in search_function_model.models.keys():
                 keys = []

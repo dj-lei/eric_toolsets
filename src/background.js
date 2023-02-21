@@ -152,17 +152,17 @@ async function createWindow() {
             }
           },
           {
-            label: 'New Insight',
-            accelerator: 'CommandOrControl+G',
-            click: () => {
-              win.webContents.send('new-insight')
-            }
-          },
-          {
             label: 'New Chart',
             accelerator: 'CommandOrControl+H',
             click: () => {
               win.webContents.send('new-chart')
+            }
+          },
+          {
+            label: 'New Insight',
+            accelerator: 'CommandOrControl+G',
+            click: () => {
+              win.webContents.send('new-insight')
             }
           },
           {

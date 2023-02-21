@@ -11,7 +11,7 @@ class Dialog extends Component
         super(position)
         this.container.style.display = 'none'
         this.container.style.position = 'fixed'
-        this.container.style.zIndex = 1
+        this.container.style.zIndex = 2
         this.container.style.left = 0
         this.container.style.top = 0
         this.container.style.width = '100%'

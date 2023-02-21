@@ -532,11 +532,11 @@ class TextFileOriginalView extends View
         this.show = new TextFileOriginalComponentTable(this)
         
         this.container.style.border = '1px solid #ddd'
-        this.controlScroll(0)
     }
 
     controlScroll(point){
-        this.socket.emit("scroll", point)
+        var range = parseInt(this.container.clientHeight / 18) + 1
+        this.socket.emit("scroll", point, range)
     }
 
     onSetHeight(model){
@@ -561,7 +561,7 @@ class TextFileFunctionView extends View
 
         // this.container.style.border = '1px solid #ddd'
         // this.container.style.height = '0px'
-        // this.container.style.overflowY = 'auto'
+        this.container.style.overflowY = 'auto'
         this.show = new TextFileFunctionComponentTab(this)
         this.controlHidden()
     }
@@ -589,21 +589,6 @@ class SearchFunctionView extends View
         super(namespace, common.getParentContainer(namespace))
         this.views = {}
         this.show = new SearchFunctionComponentList(this)
-        this.container.style.overflowY = 'auto'
-        this.show.container.style.overflowY = 'auto'
-    }
-
-    onNew(model){
-        this.show.subscribePlaceholder(model.namespace)
-    }
-}
-
-class InsightFunctionView extends View
-{
-    constructor(namespace){
-        super(namespace, common.getParentContainer(namespace))
-        this.views = {}
-        this.show = new InsightFunctionComponentList(this)
     }
 
     onNew(model){
@@ -617,6 +602,19 @@ class ChartFunctionView extends View
         super(namespace, common.getParentContainer(namespace))
         this.views = {}
         this.show = new ChartFunctionComponentList(this)
+    }
+
+    onNew(model){
+        this.show.subscribePlaceholder(model.namespace)
+    }
+}
+
+class InsightFunctionView extends View
+{
+    constructor(namespace){
+        super(namespace, common.getParentContainer(namespace))
+        this.views = {}
+        this.show = new InsightFunctionComponentList(this)
     }
 
     onNew(model){
@@ -651,21 +649,6 @@ class SearchAtomView extends ListView
     }
 }
 
-class InsightAtomView extends ListView
-{
-    constructor(model){
-        super(model.namespace, document.getElementById(model.namespace))
-        this.model = model
-
-        this.dialog = new InsightAtomComponentDialog(this)
-        this.show = new InsightAtomComponentTable(this)
-    }
-
-    controlScroll(point){
-        this.socket.emit("scroll", point)
-    }
-}
-
 class ChartAtomView extends ListView
 {
     constructor(model){
@@ -685,7 +668,22 @@ class ChartAtomView extends ListView
 
     onRefresh(model){
         super.onRefresh(model)
-        this.show.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 20)}px`, width:`${document.body.offsetWidth}px`})
+        this.show.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 100)}px`, width:`${document.body.offsetWidth}px`})
+    }
+}
+
+class InsightAtomView extends ListView
+{
+    constructor(model){
+        super(model.namespace, document.getElementById(model.namespace))
+        this.model = model
+
+        this.dialog = new InsightAtomComponentDialog(this)
+        this.show = new InsightAtomComponentTable(this)
+    }
+
+    controlScroll(point){
+        this.socket.emit("scroll", point)
     }
 }
 

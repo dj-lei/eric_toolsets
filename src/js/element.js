@@ -143,9 +143,6 @@ class View extends Element
         this.socket.disconnect()
         this.socket.close()
         this.socket = ''
-        // console.log('disconnect', this.namespace, this.socket.disconnected)
-        // console.log(this.socket)
-        // delete this
     }
 
     onDisplayDialog(){
@@ -421,17 +418,17 @@ class Component extends Element
         var th = document.createElement('th')
         th.style.border = '1px solid #ddd'
         th.style.textAlign = 'left'
-        th.style.padding = '12px'
+        th.style.padding = '8px'
         return th
     }
 
     createElementTd(){
         var td = document.createElement('td')
-        td.style.fontSize = '12px'
+        td.style.fontSize = '10px'
         td.style.color = '#FFF'
         td.style.border = '1px solid #555'
         td.style.textAlign = 'left'
-        td.style.padding = '6px'
+        // td.style.padding = '6px'
         return td
     }
 

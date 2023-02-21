@@ -390,7 +390,7 @@ class GlobalChartComponentSvg extends Tree
         var clearBtn = this.createElementButton('CLEAR')
         clearBtn.style.backgroundColor = 'blue'
         clearBtn.style.float = 'right'
-        clearBtn.onclick = function(){that.clear()}
+        clearBtn.onclick = function(){dialog.clear()}
         var applyBtn = this.createElementButton('APPLY')
         applyBtn.style.backgroundColor = 'green'
         applyBtn.style.float = 'right'

@@ -4,6 +4,8 @@ class List extends Component
 {
     constructor(position){
         super(position)
+        this.container.style.marginTop = '32px'
+
         this.ul = this.createElementUl()
         this.ul.style.listStyleType = 'none'
         this.ul.style.padding = 0
