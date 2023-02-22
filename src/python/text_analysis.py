@@ -383,8 +383,6 @@ class FileContainerModel(Model):
         return self.text_file_models[self.active_text_file_model].on_get_config()
 
     async def on_load_config(self, sid, config):
-        await self.send_message(sid, self.active_text_file_model + ns.TEXTFILEFUNCTION, 'on_select_function', 'search')
-        await self.send_message(sid, self.active_text_file_model, 'on_adjust_view_rate', 0.5)
         await self.text_file_models[self.active_text_file_model].on_load_config(sid, config)
 
     async def on_load_other_config(self, sid):
@@ -535,12 +533,15 @@ class TextFileModel(Model):
         self.load = load
         with open(self.path) as f:
             self.config = json.loads(f.read())
+        await self.on_adjust_view_rate(sid, 0.5)
 
-        if 'search' in self.load:
+        if len(self.config['search']) > 0:
+            await self.send_message(sid, self.text_file_function_model.namespace, 'on_select_function', 'search')
             search_atom_models = self.config['search']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION, 'on_load_config', search_atom_models)
 
-        if 'insight' in self.load:
+        if len(self.config['insight']) > 0:
+            await self.send_message(sid, self.text_file_function_model.namespace, 'on_select_function', 'insight')
             insight_atom_models = self.config['insight']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.INSIGHTFUNCTION, 'on_load_config', insight_atom_models)
 
@@ -553,11 +554,13 @@ class TextFileModel(Model):
         #     await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
 
     async def on_load_other_config(self, sid):
-        if 'chart' in self.load:
+        if len(self.config['chart']) > 0:
+            await self.send_message(sid, self.text_file_function_model.namespace, 'on_select_function', 'chart')
             chart_atom_models = self.config['chart']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atom_models)
 
-        if 'statistic' in self.load:
+        if len(self.config['statistic']) > 0:
+            await self.send_message(sid, self.text_file_function_model.namespace, 'on_select_function', 'statistic')
             statistic_atom_models = self.config['statistic']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
 
@@ -614,8 +617,11 @@ class TextFileOriginalModel(Model):
         await super().on_connected(sid, namespace)
         await self.on_scroll(sid, 0, self.range)
 
-    async def on_scroll(self, sid, point, range):
-        self.scroll(point, range)
+    async def on_scroll(self, sid, point, range=None):
+        if range:
+            self.scroll(point, range)
+        else:
+            self.scroll(point, self.range)
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
     def scroll(self, point, range):
@@ -784,6 +790,9 @@ class SearchAtomModel(ListModel):
         self.scroll(point)
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
+    async def on_text_click_event(self, sid, params):
+        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['globalIndex'])
+
     def search(self):
         self.res_lines = []
         self.res_key_value = {}
@@ -853,7 +862,7 @@ class SearchAtomModel(ListModel):
         for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
             num = str(self.point + index)
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
-            self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file_model.lines[line]+'</td>')
+            self.display_lines.append({'text':num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file_model.lines[line]+'</td>', 'global_index': line})
 
 
 class ChartAtomModel(ListModel):
@@ -1004,24 +1013,13 @@ class InsightAtomModel(ListModel):
     async def listener(self, publish_namespace):
         pass
 
-    async def on_scroll(self, sid, point):
-        self.scroll(point)
-        await self.emit('refresh', self.model(), namespace=self.namespace)
+    async def on_chart_click_event(self, sid, params):
+        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['data']['globalIndex'])
+
+    async def on_text_click_event(self, sid, params):
+        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['globalIndex'])
 
     def insight(self):
-        #1. 选择Mark之前的时间范围
-        #2. 萃取Key value
-        #3. 移除Key value后为Mark
-        #4. 将KV与历史KV对比, 离散 连续, 拐点, 标准差
-            # 1.是否周期性
-            # 2. down
-            # 3. down pulse
-            # 4. up
-            # 5. up pulse
-        #5. 将mark与历史mark对比, 特殊打印
-        #6. 将异常KV,MARK按时间先后绘图, 预测异常kv, mark. root cause
-        #7. 可基于条件编辑类型.
-
         self.is_has_mark = False
         self.count = 0
         self.outlier = []
@@ -1036,14 +1034,15 @@ class InsightAtomModel(ListModel):
 
         select_mark = {}
         if self.is_has_mark:
-            timestamp = ''
             for mark in self.res_mark.keys():
-                timestamp = self.res_mark[mark]['timestamp'][self.number]
-                select_mark = {'name': 'mark', 'type': 'mark', 'abnormal_type': 'ManualSelect', 'global_index':self.res_mark[mark]['global_index'][self.number], 
+                mark_timestamp = self.res_mark[mark]['timestamp'][0]
+                mark_global_index = self.res_mark[mark]['global_index'][0]
+                mark_search_index = self.res_mark[mark]['search_index'][0]
+                select_mark = {'name': mark, 'type': 'mark', 'abnormal_type': 'ManualSelect', 'global_index':self.res_mark[mark]['global_index'][self.number], 
                     'search_index':self.res_mark[mark]['search_index'][self.number], 'timestamp':self.res_mark[mark]['timestamp'][self.number], 
                     'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name'], 'origin': self.text_file_model.lines[self.res_mark[mark]['global_index'][self.number]]}
 
-            self.outlier.extend(self.judge_mark_outlier(self.res_residue_marks, timestamp))
+            self.outlier.extend(self.judge_mark_outlier(self.res_residue_marks, mark_timestamp, mark_global_index, mark_search_index))
 
             for key in self.res_key_value.keys():
                 flag =  True
@@ -1056,9 +1055,9 @@ class InsightAtomModel(ListModel):
                 if flag:
                     if (len(self.res_key_value[key]['global_index']) > 0):
                         if (self.res_key_value[key]['type'] == 'str'):
-                            outlier = self.judge_discrete_key_value_outlier(self.res_key_value[key], timestamp)
+                            outlier = self.judge_discrete_key_value_outlier(self.res_key_value[key], mark_timestamp, mark_global_index, mark_search_index)
                         else:
-                            outlier = self.judge_consecutive_key_value_outlier(self.res_key_value[key], timestamp)
+                            outlier = self.judge_consecutive_key_value_outlier(self.res_key_value[key], mark_timestamp, mark_global_index, mark_search_index, self.res_mark[list(self.res_mark.keys())[0]])
                         self.outlier.extend(outlier)
 
             # outlier sort 
@@ -1130,7 +1129,7 @@ class InsightAtomModel(ListModel):
             # handle mark
             if len(re.findall(self.exp_mark['exp'], string, flags=re.IGNORECASE)) > 0:
                 if self.exp_mark['alias'] not in self.res_mark:
-                    self.res_mark[self.exp_mark['alias']] = {'insight_alias': self.alias, 'name':self.exp_mark['exp'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                    self.res_mark[self.exp_mark['alias']] = {'insight_alias': self.alias, 'name':self.exp_mark['alias'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
                 self.res_mark[self.exp_mark['alias']]['global_index'].append(unit[0]+self.backward_rows)
                 self.res_mark[self.exp_mark['alias']]['search_index'].append(search_index)
                 self.res_mark[self.exp_mark['alias']]['value'].append(self.exp_mark['color'])
@@ -1144,7 +1143,7 @@ class InsightAtomModel(ListModel):
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
             self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+outlier['timestamp']+' '+outlier['type']+' '+outlier['desc']+'</td>')
 
-    def judge_mark_outlier(self, res_residue_marks, timestamp):
+    def judge_mark_outlier(self, res_residue_marks, mark_timestamp, mark_global_index, mark_search_index):
         special_words = set(['timeout', 'fault', 'error', 'abn', 'shutdown'])
         filter_words = ['db', 'mamp']
 
@@ -1179,8 +1178,24 @@ class InsightAtomModel(ListModel):
                 return True
 
         res_residue_marks = pd.DataFrame(res_residue_marks)
-        res_residue_marks = res_residue_marks.loc[(res_residue_marks['timestamp'] < timestamp), :]
+        res_residue_marks = res_residue_marks.loc[(res_residue_marks['timestamp'] < mark_timestamp), :]
         res_residue_marks['is_filter'] = res_residue_marks.apply(string_filter, axis=1)
+        res_residue_marks = res_residue_marks.loc[(res_residue_marks['is_filter'] == False), :].reset_index(drop=True)
+        
+        sentences = list(set(res_residue_marks['value'].values))
+        for s in sentences:
+            _type = 'Normal'
+            y = res_residue_marks.loc[(res_residue_marks['value'] == s), :].reset_index(drop=True)
+            y = list(y['search_index'].values)
+            indcies = []
+            for v in y:
+                indcies.append(True if v > mark_search_index * 0.7 else False)
+            if (list(set(indcies))[0] == True) & (len(list(set(indcies))) == 1):
+                _type = 'Mutation'
+                
+            if _type == 'Normal':
+                res_residue_marks.loc[(res_residue_marks['value'] == s), 'is_filter'] = True
+
         res_residue_marks = res_residue_marks.loc[(res_residue_marks['is_filter'] == False), :].reset_index(drop=True)
         res_residue_marks = res_residue_marks.drop(columns=['is_filter'])
 
@@ -1188,48 +1203,73 @@ class InsightAtomModel(ListModel):
         for item in res_residue_marks.to_dict(orient='records'):
             item['name'] = 'residue'
             item['type'] = 'mark'
-            item['abnormal_type'] = 'UniquePrint'
+            item['abnormal_type'] = 'AbnormalDistrust'
             item['desc'] = item['value']
             item['origin'] = self.text_file_model.lines[item['global_index']]
             res.append(item)
          
         return res
 
-    def judge_discrete_key_value_outlier(self, key_value, timestamp):
+    def judge_discrete_key_value_outlier(self, key_value, mark_timestamp, mark_global_index, mark_search_index):
         flag = True
-        tmp = []
+        tmp_y = []
+        tmp_indcies = []
         for index, t in enumerate(key_value['timestamp']):
-            if t < timestamp:
-                tmp.append(key_value['value'][index])
+            if t < mark_timestamp:
+                tmp_y.append(key_value['value'][index])
+                tmp_indcies.append(index)
             else:
                 break
         y = []
-        for v in tmp:
+        indcies = []
+        for index, v in enumerate(tmp_y):
             if len(v) >= 2:
                 if v[0:2] == '0x':
                     y.append(v)
+                    indcies.append(tmp_indcies[index])
                 elif v[0].isdigit():
                     pass
                 else:
                     y.append(v)
+                    indcies.append(tmp_indcies[index])
         
         if len(y) < 1:
             flag = False
 
         if flag:
-            return [{'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': 'Mutation', 'global_index':key_value['global_index'][len(y)-1], 
-            'search_index':key_value['search_index'][len(y)-1], 'timestamp':key_value['timestamp'][len(y)-1], 
-            'value': '-->'.join(y), 'desc': key_value['name'] + ': ' + '-->'.join(y), 
-            'origin': self.text_file_model.lines[key_value['global_index'][len(y)-1]]}]
+            _type = 'Normal'
+            for t in set(y):
+                cindcies = []
+                judge = []
+                for index, item in enumerate(y):
+                    if t == item:
+                        cindcies.append(indcies[index])
+                        judge.append(True if key_value['search_index'][indcies[index]] > mark_search_index * 0.7 else False)
+                        
+                if (list(set(judge))[0] == True) & (len(list(set(judge))) == 1):
+                    _type = 'AbnormalMutation'
+                    break
+
+            if _type != 'Normal':
+                return [{'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': _type, 'global_index':key_value['global_index'][cindcies[0]], 
+                'search_index':key_value['search_index'][cindcies[0]], 'timestamp':key_value['timestamp'][cindcies[0]], 
+                'value': key_value['value'][cindcies[0]], 'desc': key_value['name'] + ': "' + key_value['value'][cindcies[0]] + '" is a mutated state!', 
+                'origin': self.text_file_model.lines[key_value['global_index'][cindcies[0]]]}]
+            else:
+                return []
         else:
             return []
 
-    def judge_consecutive_key_value_outlier(self, key_value, timestamp):
+    def judge_consecutive_key_value_outlier(self, key_value, mark_timestamp, mark_global_index, mark_search_index, res_mark):
         flag = True
         y = []
+        global_indcies = []
+        timestamps = []
         for index, t in enumerate(key_value['timestamp']):
-            if t < timestamp:
+            if t < mark_timestamp:
                 y.append(key_value['value'][index])
+                global_indcies.append(key_value['global_index'][index])
+                timestamps.append(key_value['timestamp'][index])
             else:
                 break
 
@@ -1242,19 +1282,87 @@ class InsightAtomModel(ListModel):
             algo = rpt.Dynp(model="l2", min_size=1, jump=1).fit(signal)
             result = algo.predict(n_bkps=2)
 
-            final = {}
-            res = pd.DataFrame(key_value).reset_index()
-            res = res.rename(columns={"index": "graph_index", "insight_alias": "search_alias"})
-            res = res.loc[0:len(y), :]
-            final[key_value['name']] = json.loads(res.to_json(orient='records'))
+            if result[0] != 1:
+                sub_data = data.loc[result[0]-1:result[1], :]
+            else:
+                sub_data = data.loc[result[0]:result[1], :]
 
-            res['type'] = 'mark'
-            res['name'] = 'abnormal'
-            final['abnormal'] = json.loads(res.loc[result, :].to_json(orient='records'))
+            _type = 'Normal'
+            if (result[0:2] == [1,2]) & (len(data) < 7):
+                if sub_data['y'].values[0] < sub_data['y'].values[1]:
+                    _type = 'AbnormalUp'
+                elif sub_data['y'].values[0] > sub_data['y'].values[1]:
+                    _type = 'AbnormalDown'
+            else:
+                upper_boundary = sub_data['y'].values[0]
+                lower_boundary = sub_data['y'].values[-1]
+                points = []
+                for v in sub_data['y'].values[1:-1]:
+                    if (v > upper_boundary) & (v >= lower_boundary):
+                        if 0.6 * (v - upper_boundary) + upper_boundary < lower_boundary:
+                            points.append('AbnormalUp')
+                        else:
+                            points.append('AbnormalUpPulse')
+                        continue
+
+                    if (v < upper_boundary) & (v <= lower_boundary):
+                        if 0.4 * (upper_boundary - v) + v > lower_boundary:
+                            points.append('AbnormalDown')
+                        else:
+                            points.append('AbnormalDownPulse')
+                        continue
+
+                    if (v > upper_boundary) & (v <= lower_boundary):
+                        points.append('AbnormalUp')
+                        continue
+
+                    if (v < upper_boundary) & (v >= lower_boundary):
+                        points.append('AbnormalDown')
+                        continue
+
+                for point in points:
+                    if 'Pulse' in point:
+                        _type = point
+                        break
+                    elif 'Abnormal' in point:
+                        _type = point
+
+            if _type == 'Normal':
+                return []
+
             
-            ret = {'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': 'Mutation', 'global_index': key_value['global_index'][result[1]], 
-                'search_index':key_value['search_index'][result[1]], 'timestamp':key_value['timestamp'][result[1]], 'value':final, 'desc':result, 'origin': ''}
+            data = pd.DataFrame(key_value)
+            data['full_name'] = 'origin'
+            mark = pd.DataFrame(res_mark)
+            mark['full_name'] = 'mark'
+            data = pd.concat([data, mark]).reset_index(drop=True)
+            data = data.sort_values('timestamp', ascending=True).reset_index(drop=True).reset_index()
+            data = data.rename(columns={"index": "graph_index", "insight_alias": "search_alias"})
+
+            abnormal = {}
+            part1 = data.loc[0:len(y), :]
+            abnormal[key_value['name']] = json.loads(part1.to_json(orient='records'))
+            part2 = data.loc[result[0:2], :].reset_index(drop=True)
+            part2['type'] = 'mark'
+            part2['name'] = 'AB'
+            part2['value'] = '#FFA500'
+            abnormal['abnormal'] = json.loads(part2.to_json(orient='records'))
+            part3 = data.loc[(data['full_name'] == 'mark'), :].reset_index(drop=True).loc[[0],:]
+            abnormal[res_mark['name']] = json.loads(part3.to_json(orient='records'))
+
+            origin = {}
+            part1 = data.loc[(data['full_name'] == 'origin'), :].reset_index(drop=True)
+            origin[key_value['name']] = json.loads(part1.to_json(orient='records'))
+            part2 = data.loc[result[0:2], :].reset_index(drop=True)
+            part2['type'] = 'mark'
+            part2['name'] = 'AB'
+            part2['value'] = '#FFA500'
+            origin['abnormal'] = json.loads(part2.to_json(orient='records'))
+            part3 = data.loc[(data['full_name'] == 'mark'), :].reset_index(drop=True)
+            origin[res_mark['name']] = json.loads(part3.to_json(orient='records'))
             
+            ret = {'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': _type, 'global_index': global_indcies[result[0]], 
+                'search_index':0, 'timestamp':timestamps[result[0]], 'value':result, 'desc':abnormal, 'origin': origin}
             
             return [ret]
         else:
@@ -1342,7 +1450,7 @@ class BatchInsightModel(BatchModel):
         res_outlier = pd.DataFrame()
         outlier = pd.DataFrame(atom.outlier)
         if self.is_include_mark:
-            mark_outlier = outlier.loc[(outlier['abnormal_type'] == 'UniquePrint'), :]
+            mark_outlier = outlier.loc[(outlier['abnormal_type'] == 'AbnormalDistrust'), :]
             mark_outlier = mark_outlier.drop_duplicates(['value']).reset_index(drop=True)
             if self.is_search_based:
                 mark_outlier['value'] = atom.alias + '_' + mark_outlier['value']
@@ -1350,9 +1458,9 @@ class BatchInsightModel(BatchModel):
             res_outlier = pd.concat([res_outlier, mark_outlier]).reset_index(drop=True)
 
         if self.is_include_discrete:
-            discrete_outlier = outlier.loc[(outlier['abnormal_type'] == 'mutation'), :]
+            discrete_outlier = outlier.loc[(outlier['abnormal_type'] == 'AbnormalMutation'), :]
             discrete_outlier = discrete_outlier.sort_values('timestamp', ascending=False).reset_index(drop=True)
-            discrete_outlier = discrete_outlier.drop_duplicates(['name']).reset_index(drop=True)
+            # discrete_outlier = discrete_outlier.drop_duplicates(['name']).reset_index(drop=True)
             discrete_outlier['value'] = discrete_outlier['name'] + '_' + discrete_outlier['value']
             if self.is_search_based:
                 discrete_outlier['value'] = atom.alias + '_' + discrete_outlier['value']
@@ -1361,7 +1469,6 @@ class BatchInsightModel(BatchModel):
 
         if self.is_include_consecutive:
             consecutive_outlier = outlier.loc[(outlier['type'] == 'float'), :]
-            consecutive_outlier = pd.concat([consecutive_outlier, outlier.loc[(outlier['type'] == 'int'), :]]).reset_index(drop=True)
             consecutive_outlier['value'] = consecutive_outlier['name'] + '_' + consecutive_outlier['abnormal_type']
             if self.is_search_based:
                 consecutive_outlier['value'] = atom.alias + '_' + consecutive_outlier['value']
@@ -1369,12 +1476,6 @@ class BatchInsightModel(BatchModel):
             res_outlier = pd.concat([res_outlier, consecutive_outlier]).reset_index(drop=True)
 
         return features, res_outlier
-
-    async def on_new(self, sid, dir_path, config):
-        await self.new(dir_path, config)
-
-    async def on_refresh(self, sid, cluster_tree):
-        await self.emit('refresh', cluster_tree, namespace=self.namespace)
 
     async def on_display_dialog(self, sid):
         await self.emit('displayDialog', namespace=self.namespace)
@@ -1388,31 +1489,31 @@ class BatchInsightModel(BatchModel):
     async def on_get_single_insight(self, sid, file_name):
         return self.single_insight(file_name)
 
-    async def new(self, dir_path, config):
+    async def exec(self, dir_path, config):
         self.dir_path = dir_path
         self.config_path = config
         self.samples = []
         self.result = pd.DataFrame()
 
-        for path in iterate_files_in_directory(self.dir_path):
-            new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+path.split('\\')[-1]
+        for index, path in enumerate(iterate_files_in_directory(self.dir_path)):
+            new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()
             
             tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
             await tmp_file.on_load_config('', self.config_path, ['insight'])
-            self.insight(tmp_file)
-            if len(self.samples) >= self.cluster_num:
+            self.insight(index, tmp_file)
+            # if len(self.samples) >= self.cluster_num:
                 # self.cluster()
-                await tmp_file.on_delete('')
+            await tmp_file.on_delete('')
             print('Finish :', tmp_file.file_name)
         self.cluster()
         if self.mode == 'normal':
             await self.on_refresh('', self.cluster_tree)
 
-    def insight(self, text_file_model):
+    def insight(self, index, text_file_model):
         insight_function_model = text_file_model.text_file_function_model.insight_function_model
         item = []
         processed_outlier = pd.DataFrame()
-        sample = {'filePath':text_file_model.path, 'configPath':self.config_path, 'fileName': text_file_model.file_name}
+        sample = {'index': index, 'filePath':text_file_model.path, 'configPath':self.config_path, 'fileName': text_file_model.file_name}
         for insight_namespace in insight_function_model.models.keys():
             atom = insight_function_model.models[insight_namespace]
             if len(atom.outlier) == 0:

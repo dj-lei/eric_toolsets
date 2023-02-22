@@ -647,6 +647,10 @@ class SearchAtomView extends ListView
     controlScroll(point){
         this.socket.emit("scroll", point)
     }
+
+    controlTextClickEvent(params){
+        this.socket.emit("text_click_event", params)
+    }
 }
 
 class ChartAtomView extends ListView
@@ -682,8 +686,12 @@ class InsightAtomView extends ListView
         this.show = new InsightAtomComponentTable(this)
     }
 
-    controlScroll(point){
-        this.socket.emit("scroll", point)
+    controlChartClickEvent(params){
+        this.socket.emit("chart_click_event", params)
+    }
+
+    controlTextClickEvent(params){
+        this.socket.emit("text_click_event", params)
     }
 }
 

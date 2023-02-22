@@ -401,7 +401,6 @@ class SequentialChart extends Chart
 	drawLines(){
 		let that = this
 		// package line
-
 		if (Object.keys(this.selectedLines).length == 0) {
 			this.option['yAxis'] = [{'type':'value'}]
 		}
@@ -503,8 +502,9 @@ class FileContainerComponentCompareGraphSequentialChart extends SequentialChart
 
 class InsightAtomComponentSequentialChart extends SequentialChart
 {
-	constructor(container){
+	constructor(container, insightAtomView){
 		super(container)
+		this.insightAtomView = insightAtomView
 	}
 
 	refresh(lines){
@@ -517,9 +517,9 @@ class InsightAtomComponentSequentialChart extends SequentialChart
 		let that = this
 
 		// bind click event and paint
-		// this.chart.on('click', function(params) {
-		// 	that.chartAtomView.controlClickEvent({'type': params.componentType, 'data': params.data})
-		// });
+		this.chart.on('click', function(params) {
+			that.insightAtomView.controlChartClickEvent({'type': params.componentType, 'data': params.data})
+		});
 	}
 }
 

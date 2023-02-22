@@ -424,7 +424,8 @@ class Component extends Element
 
     createElementTd(){
         var td = document.createElement('td')
-        td.style.fontSize = '10px'
+        td.style.textAlign = 'left'
+        td.style.fontSize = '12px'
         td.style.color = '#FFF'
         td.style.border = '1px solid #555'
         td.style.textAlign = 'left'

@@ -108,13 +108,18 @@ class SearchAtomComponentTable extends Table
     }
 
     refresh(model){
+        let that = this
         this.deleteTableAllChilds()
         this.slider.max = model.count
         this.slider.value = model.point
         this.searchAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
         model.display_lines.forEach((line) => {
             var tr = this.createElementTr()
-            tr.insertAdjacentHTML('beforeend', line)
+            tr.insertAdjacentHTML('beforeend', line['text'])
+
+            tr.addEventListener("dblclick", function() {
+                that.searchAtomView.controlTextClickEvent({'globalIndex': line['global_index']})
+            })
             this.table.appendChild(tr)
         })
     }
@@ -149,6 +154,7 @@ class InsightAtomComponentTable extends Table
     }
 
     refresh(model){
+        let that = this
         this.deleteTableAllChilds()
         this.slider.max = model.count
         this.insightAtomView.collapsible.innerHTML = '+ ' + model.desc + ` (${model.count} hits)`
@@ -163,26 +169,33 @@ class InsightAtomComponentTable extends Table
             var tdTimestamp = this.createElementTd()
             tdTimestamp.innerHTML = line['timestamp']
 
-            var tdContent = this.createElementTd()
             var tdDesc = this.createElementTd()
+            var tdOrigin = this.createElementTd()
             if (line['type'] == 'mark') {
-                tdContent.innerHTML = line['origin']
                 tdDesc.innerHTML = line['desc']
+                tdOrigin.innerHTML = line['origin']
             }else if(line['type'] == 'str') {
-                tdContent.innerHTML = line['origin']
                 tdDesc.innerHTML = line['desc']
+                tdOrigin.innerHTML = line['origin']
             }else if(line['type'] == 'float') {
-                var chart = new InsightAtomComponentSequentialChart(tdContent)
-                chart.refresh(line['value'])
-                chart.chart.resize({height:`200px`, width:`1000px`})
-                tdDesc.innerHTML = ''
+                var descChart = new InsightAtomComponentSequentialChart(tdDesc, this.insightAtomView)
+                descChart.refresh(line['desc'])
+                descChart.chart.resize({height:`200px`, width:`1000px`})
+
+                var OriginChart = new InsightAtomComponentSequentialChart(tdOrigin, this.insightAtomView)
+                OriginChart.refresh(line['origin'])
+                OriginChart.chart.resize({height:`200px`, width:`1000px`})
             }
 
             tr.appendChild(tdIndex)
             tr.appendChild(tdAbnormalType)
             tr.appendChild(tdTimestamp)
-            tr.appendChild(tdContent)
             tr.appendChild(tdDesc)
+            tr.appendChild(tdOrigin)
+
+            tr.addEventListener("dblclick", function() {
+                that.insightAtomView.controlTextClickEvent({'globalIndex': line['global_index']})
+            })
             // tr.insertAdjacentHTML('beforeend', line)
             this.table.appendChild(tr)
         })
