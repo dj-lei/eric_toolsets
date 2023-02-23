@@ -96,7 +96,7 @@ class View extends Element
     }
 
     initOn(){
-        this.socket = io(`${server}${this.namespace}`)
+        this.socket = io(`${server}${this.namespace}`, { transports: ["websocket"] , secure: false})
 
         var funcs = common.arrayExtend(Object.getOwnPropertyNames(Object.getPrototypeOf(this)), Object.getOwnPropertyNames(Object.getPrototypeOf(this.__proto__)))
         funcs = common.arrayExtend(funcs, Object.getOwnPropertyNames(View.prototype))
@@ -256,8 +256,8 @@ class BatchView extends View
         super(namespace, position)
     }
 
-    controlExec(dirPath, config){
-        this.socket.emit("exec", dirPath, config)
+    controlExec(model){
+        this.socket.emit("exec", model)
         this.show.clear()
         this.dialog.hidden()
         this.show.display()

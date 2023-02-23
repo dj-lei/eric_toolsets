@@ -239,9 +239,16 @@ class BatchInsightComponentTable extends Table
 
     refreshUniversal(display_lines){
         this.deleteTableAllChilds()
+
+        var thr = this.createElementTr()
+        var th = this.createElementTh()
+        th.innerHTML = 'Anomalous Commonality'
+        thr.appendChild(th)
+        this.table.appendChild(thr)
+
         display_lines.forEach((line) => {
-            var tr = document.createElement('tr')
-            var td = document.createElement('td')
+            var tr = this.createElementTr()
+            var td = this.createElementTd()
             td.innerHTML = line
             tr.appendChild(td)
             this.table.appendChild(tr)
@@ -271,9 +278,15 @@ class BatchInsightComponentTable extends Table
     }
 
     refresh(sample){
-        var tr = document.createElement('tr')
+        var thr = this.createElementTr()
+        var th = this.createElementTh()
+        th.innerHTML = 'Anomalous Commonality'
+        thr.appendChild(th)
+        this.table.appendChild(thr)
+
+        var tr = this.createElementTr()
         Object.keys(sample).forEach((key) => {
-            var column = document.createElement('td')
+            var column = this.createElementTd()
             column.innerHTML = sample[key]
             tr.appendChild(column)
         })

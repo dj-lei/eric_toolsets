@@ -13,7 +13,8 @@ import gzip
 # from deepdiff import DeepDiff
 # from tslearn.metrics import lcss_path
 # from sklearn.preprocessing import minmax_scale
-# from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+from sklearn.cluster import KMeans
 import ruptures as rpt
 from parse import parse
 from datetime import timedelta

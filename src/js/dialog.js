@@ -638,9 +638,9 @@ class SystemTestComponentDialog extends Dialog
 
 class BatchInsightComponentDialog extends Dialog
 {
-    constructor(fileContainerView){
-        super(fileContainerView.container)
-        this.fileContainerView = fileContainerView
+    constructor(batchInsightView){
+        super(batchInsightView.container)
+        this.batchInsightView = batchInsightView
         this.dir = ''
         this.configPath = ''
         this.init()
@@ -675,6 +675,50 @@ class BatchInsightComponentDialog extends Dialog
         this.subContainer.appendChild(this.configPath)
         this.subContainer.appendChild(browseConfig)
 
+        this.subContainer.appendChild(this.createElementHr())
+
+        var isSearchBasedContainer = this.createElementDiv()
+        isSearchBasedContainer.style.width = '100%'
+        this.isSearchBased = this.createElementCheckboxInput()
+        isSearchBasedContainer.append(this.isSearchBased)
+        isSearchBasedContainer.append(this.createElementA(' Is Based Search'))
+
+        var isIncludeMarkContainer = this.createElementDiv()
+        isIncludeMarkContainer.style.width = '100%'
+        this.isIncludeMark = this.createElementCheckboxInput()
+        isIncludeMarkContainer.append(this.isIncludeMark)
+        isIncludeMarkContainer.append(this.createElementA(' Is Include Mark'))
+
+        var isIncludeDiscreteContainer = this.createElementDiv()
+        isIncludeDiscreteContainer.style.width = '100%'
+        this.isIncludeDiscrete = this.createElementCheckboxInput()
+        isIncludeDiscreteContainer.append(this.isIncludeDiscrete)
+        isIncludeDiscreteContainer.append(this.createElementA(' Is Include Discrete'))
+
+        var isIncludeConsecutiveContainer = this.createElementDiv()
+        isIncludeConsecutiveContainer.style.width = '100%'
+        this.isIncludeConsecutive = this.createElementCheckboxInput()
+        this.isIncludeConsecutive.checked = true
+        isIncludeConsecutiveContainer.append(this.isIncludeConsecutive)
+        isIncludeConsecutiveContainer.append(this.createElementA(' Is Include Consecutive'))
+
+        var clusterSelectContainer = this.createElementDiv()
+        clusterSelectContainer.style.width = '100%'
+        var types = ['auto', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+        this.clusterSelect = this.createElementSelect()
+        types.forEach((x) => {
+            this.clusterSelect.options[this.clusterSelect.options.length] = new Option(x, x)
+        })  
+        clusterSelectContainer.append(this.clusterSelect)
+        clusterSelectContainer.append(this.createElementA(' Cluster Num'))
+
+        this.subContainer.appendChild(isSearchBasedContainer)
+        this.subContainer.appendChild(isIncludeMarkContainer)
+        this.subContainer.appendChild(isIncludeDiscreteContainer)
+        this.subContainer.appendChild(isIncludeConsecutiveContainer)
+        this.subContainer.appendChild(clusterSelectContainer)
+        this.subContainer.appendChild(this.createElementHr())
+
         // search and cancel button
         this.apply = this.createElementButton('RUN')
         this.apply.style.width = '50%'
@@ -693,15 +737,24 @@ class BatchInsightComponentDialog extends Dialog
     }
 
     run(){
-        this.fileContainerView.controlBatchInsight(this.dir.value, this.configPath.value)
+        let model = {
+            dir_path: this.dir.value,
+            config_path: this.configPath.value,
+            is_search_based: this.isSearchBased.checked ? true : false,
+            is_include_mark: this.isIncludeMark.checked ? true : false,
+            is_include_discrete: this.isIncludeDiscrete.checked ? true : false,
+            is_include_consecutive: this.isIncludeConsecutive.checked ? true : false,
+            cluster_num: this.clusterSelect.value
+        }
+        this.batchInsightView.controlExec(model)
     }
 }
 
 class BatchStatisticComponentDialog extends Dialog
 {
-    constructor(fileContainerView){
-        super(fileContainerView.container)
-        this.fileContainerView = fileContainerView
+    constructor(batchStatisticView){
+        super(batchStatisticView.container)
+        this.batchStatisticView = batchStatisticView
         this.dir = ''
         this.configPath = ''
         this.init()
@@ -754,7 +807,11 @@ class BatchStatisticComponentDialog extends Dialog
     }
 
     run(){
-        this.fileContainerView.controlExec(this.dir.value, this.configPath.value)
+        let model = {
+            dir_path: this.dir.value,
+            config_path: this.configPath.value
+        }
+        this.batchStatisticView.controlExec(model)
     }
 }
 

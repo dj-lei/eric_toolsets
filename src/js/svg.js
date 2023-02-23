@@ -56,11 +56,11 @@ class Tree extends svg
         this.draw()
     }
 
-    // clear(){
-    //     this.iterationClear([this.data])
-    //     this.svg.selectAll("*").remove()
-    //     this.draw(this.data)
-    // }
+    clear(){
+        // this.iterationClear([this.data])
+        this.svg.selectAll("*").remove()
+        // this.draw(this.data)
+    }
 
     // iterationClear(data){
     //     data.forEach((item) => {
@@ -229,6 +229,14 @@ class BatchInsightComponentSvgDialog extends Dialog
         this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
 
         this.batchInsightComponentSvg = new BatchInsightComponentSvg(this)
+    }
+
+    clear(){
+        this.batchInsightComponentSvg.clear()
+    }
+
+    refresh(data){
+        this.batchInsightComponentSvg.update(data)
     }
 }
 

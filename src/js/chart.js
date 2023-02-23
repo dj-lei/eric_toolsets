@@ -607,7 +607,6 @@ class GlobalChartComponentSequentialChart extends SequentialChart
 	drawLines(){
 		let that = this
 		// package line
-		console.log(this.selectedLines)
 		if (Object.keys(this.selectedLines).length == 0) {
 			this.option['yAxis'] = [{'type':'value'}]
 		}

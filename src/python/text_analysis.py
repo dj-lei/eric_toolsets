@@ -8,18 +8,23 @@ from engineio.payload import Payload
 from asyncio import get_event_loop
 Payload.max_decode_packets = 40000
 
-sio = socketio.AsyncServer()
+# sio = socketio.AsyncServer(engineio_logger=True, logger=True, cors_allowed_origins="*")
+sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
 sio.attach(app)
+
+import warnings
+warnings.filterwarnings("ignore")
 
 special_symbols = ['/','\*','\{','\}','\[','\]','\(','\)','#','+','-','!','=',':',',','"','\'','>','<','@','$','%','^','\&','\|',' ']
 color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
         '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
 
-sys.path.append(os.path.join(os.path.dirname(__file__)))
-ns = json_to_object(json.load(open('../config/namespace.json')))
-status = json_to_object(json.load(open('../config/status.json')))
-msg = json_to_object(json.load(open('../config/msg.json')))
+# sys.path.append(os.path.join(os.path.dirname(__file__)))
+print(os.path.dirname(__file__))
+ns = json_to_object(json.load(open(os.path.dirname(__file__) +'\\'+ '../config/namespace.json')))
+status = json_to_object(json.load(open(os.path.dirname(__file__) +'\\'+ '../config/status.json')))
+msg = json_to_object(json.load(open(os.path.dirname(__file__) +'\\'+ '../config/msg.json')))
 
 
 class PubSub(socketio.AsyncNamespace):
@@ -116,7 +121,7 @@ class Model(socketio.AsyncNamespace, AsyncObject):
     async def on_delete(self, sid):
         await self.emit('delete', namespace = self.namespace)
         await self.on_disconnect(self.sid)
-        del sio.namespace_handlers[self.namespace]
+        # del sio.namespace_handlers[self.namespace]
 
     async def send_message(self, sid, namespace, func_name, *args):
         await pub.send_message(sid, namespace, self.namespace, func_name, *args)
@@ -191,6 +196,11 @@ class ListModel(Model):
         else:
             await self.send_message(sid, self.get_file_container_model_namespace(), 'on_new_function', self.__class__.__name__.split('Atom')[0], model)
 
+    async def on_delete(self, sid):
+        await super().on_delete(sid)
+        if '/Tmp' not in self.namespace:
+            await self.parent.on_delete_single(sid, self.namespace)
+
     async def on_change(self, sid, model):
         new_namespace = '/'.join(self.namespace.split('/')[0:-1])+'/'+model['alias']
         model['namespace'] = new_namespace
@@ -222,11 +232,12 @@ class BatchModel(Model):
         self.config_path = ''
         self.config = ''
 
-    async def on_exec(self, sid, dir_path, config):
-        await self.exec(dir_path, config)
+    async def on_exec(self, sid, model):
+        await self.exec(model)
 
     async def on_refresh(self, sid, sample):
-        await self.emit('refresh', sample, namespace=self.namespace)
+        if self.mode == 'normal':
+            await self.emit('refresh', sample, namespace=self.namespace)
 
 
 class Fellow(Model):
@@ -251,10 +262,16 @@ class Fellow(Model):
         self.connected_count = 0
         self.config_count = len(models)
         self.is_load_config = True
+
+        if self.mode == 'normal':
+            for model in models:
+                model['namespace'] = self.namespace + '/' + model['alias']
+                await self.emit('new', model, namespace=self.namespace)
+
         for model in models:
             model['namespace'] = self.namespace + '/' + model['alias']
             if self.mode == 'normal':
-                await self.emit('new', model, namespace=self.namespace)
+                # await self.emit('new', model, namespace=self.namespace)
                 self.models[model['namespace']] = await self.class_name(self, model)
                 await self.send_message(sid, self.get_text_file_model_namespace(), 'on_register_alias_data', self.models[model['namespace']])
             else:
@@ -270,23 +287,19 @@ class Fellow(Model):
         await self.send_message(sid, self.get_text_file_model_namespace(), 'on_register_alias_data', self.models[new_namespace])
 
     async def on_change(self, sid, old_namespace, new_model):
-        await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_change_alias_data', self.models[old_namespace].alias, new_model['alias'])
+        await self.send_message(sid, self.get_text_file_model_namespace(), 'on_change_alias_data', self.models[old_namespace].alias, new_model['alias'])
         self.models[new_model['namespace']] = self.models[old_namespace]
         del self.models[old_namespace]
     
     async def on_delete_single(self, sid, namespace):
-        await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_logout_alias_data', self.models[namespace])
-        await self.models[namespace].on_delete(sid)
+        await self.send_message(sid, self.get_text_file_model_namespace(), 'on_logout_alias_data', self.models[namespace])
         self.models[namespace] = ''
         del self.models[namespace]
 
     async def on_delete_all(self, sid):
-        ns = set(list(self.models.keys()))
+        ns = list(set(self.models.keys()))
         for namespace in ns:
-            await self.send_message(sid, self.get_text_analysis_model_namespace(), 'on_logout_alias_data', self.models[namespace])
-            await self.models[namespace].on_delete(sid)
-            self.models[namespace] = ''
-            del self.models[namespace]
+            await self.on_delete_single(sid, namespace)
 
     async def isPublishAble(self, namespace): #notice subscriber refresh
         if self.config_count > 0:
@@ -372,8 +385,8 @@ class FileContainerModel(Model):
 
     async def on_new_file(self, sid, file_paths):
         for path in file_paths:
-            # new_file_namespace = self.namespace+'/'+path.split('\\')[-1]
-            new_file_namespace = self.namespace + '/' + createUuid4()
+            new_file_namespace = self.namespace+'/'+path.split('\\')[-1]
+            # new_file_namespace = self.namespace + '/' + createUuid4()
             
             self.text_file_models[new_file_namespace] = await TextFileModel(self, new_file_namespace, path, self.mode)
             await self.emit('newFile', self.text_file_models[new_file_namespace].model(), namespace=self.namespace)
@@ -893,8 +906,6 @@ class ChartAtomModel(ListModel):
         await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['data']['globalIndex'])
 
     async def on_clear_key_value_tree(self, sid):
-        self.alias = ''
-        self.desc = ''
         self.generate_key_value_tree()
         await self.on_update_dialog(sid)
 
@@ -1428,11 +1439,17 @@ class BatchInsightModel(BatchModel):
     async def __init__(self, text_analysis_model, mode='normal'):
         await super().__init__(text_analysis_model.namespace + ns.BATCHINSIGHT, mode)
         self.parent = text_analysis_model
-        self.cluster_num = 2
-        self.batch_insight = {}
+        self.dir_path = ''
+        self.config_path = ''
+
+        self.cluster_num = 'auto'
         self.samples = {}
         self.labels = {}
         self.cluster_tree = {}
+
+        self.files = []
+        self.files_index = 0
+        self.files_num = 0
         self.result = pd.DataFrame()
 
         self.is_include_mark = False
@@ -1443,7 +1460,7 @@ class BatchInsightModel(BatchModel):
         self.text_analysis_model = text_analysis_model
 
     def model(self):
-        return {'cluster_num': self.cluster_num, 'cluster_tree': self.cluster_tree }
+        return {'surplus': self.files_num - self.files_index, 'cluster_num': self.cluster_num, 'cluster_tree': self.cluster_tree }
 
     def preprocess(self, atom):
         features = []
@@ -1468,20 +1485,14 @@ class BatchInsightModel(BatchModel):
             res_outlier = pd.concat([res_outlier, discrete_outlier]).reset_index(drop=True)
 
         if self.is_include_consecutive:
-            consecutive_outlier = outlier.loc[(outlier['type'] == 'float'), :]
+            consecutive_outlier = outlier.loc[(outlier['type'] == 'float'), :].reset_index(drop=True)
             consecutive_outlier['value'] = consecutive_outlier['name'] + '_' + consecutive_outlier['abnormal_type']
             if self.is_search_based:
                 consecutive_outlier['value'] = atom.alias + '_' + consecutive_outlier['value']
             features.extend(list(consecutive_outlier['value'].values))
             res_outlier = pd.concat([res_outlier, consecutive_outlier]).reset_index(drop=True)
 
-        return features, res_outlier
-
-    async def on_display_dialog(self, sid):
-        await self.emit('displayDialog', namespace=self.namespace)
-
-    async def on_display_svg_dialog(self, sid):
-        await self.emit('displaySvgDialog', namespace=self.namespace)
+        return list(set(features)), res_outlier
 
     async def on_get_universal(self, sid, cluster_num):
         return self.universal(cluster_num)
@@ -1489,81 +1500,118 @@ class BatchInsightModel(BatchModel):
     async def on_get_single_insight(self, sid, file_name):
         return self.single_insight(file_name)
 
-    async def exec(self, dir_path, config):
-        self.dir_path = dir_path
-        self.config_path = config
-        self.samples = []
-        self.result = pd.DataFrame()
-
-        for index, path in enumerate(iterate_files_in_directory(self.dir_path)):
-            new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()
-            
-            tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
-            await tmp_file.on_load_config('', self.config_path, ['insight'])
-            self.insight(index, tmp_file)
-            # if len(self.samples) >= self.cluster_num:
-                # self.cluster()
-            await tmp_file.on_delete('')
-            print('Finish :', tmp_file.file_name)
+    async def on_cluster(self, sid):
         self.cluster()
-        if self.mode == 'normal':
-            await self.on_refresh('', self.cluster_tree)
+        await self.on_refresh('', self.model())
 
+    async def on_polling(self, sid):
+        if self.files_index < self.files_num:
+            await self.exec_unit(self.files_index, self.files[self.files_index - 1])
+            self.files_index = self.files_index + 1 
+    
+    async def exec(self, model):
+        self.__dict__.update(model)
+        self.samples = []
+        self.result = []
+        self.files = iterate_files_in_directory(self.dir_path)
+        self.files_index = 1
+        self.files_num = len(self.files)
+        await self.exec_unit(self.files_index, self.files[self.files_index - 1])
+
+        # for index, path in enumerate():
+        #     new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()
+            
+        #     tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
+        #     await tmp_file.on_load_config('', self.config_path, ['insight'])
+        #     self.insight(index, tmp_file)
+        #     if len(self.samples) >= self.cluster_num:
+        #         await self.on_cluster('')
+
+        #     await tmp_file.on_delete('')
+        #     print('Finish :', tmp_file.file_name)
+
+    async def exec_unit(self, index, path):
+        new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()
+        
+        tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
+        await tmp_file.on_load_config('', self.config_path, ['insight'])
+        self.insight(index, tmp_file)
+        await self.on_cluster('')
+        await tmp_file.on_delete('')
+    
     def insight(self, index, text_file_model):
         insight_function_model = text_file_model.text_file_function_model.insight_function_model
-        item = []
-        processed_outlier = pd.DataFrame()
-        sample = {'index': index, 'filePath':text_file_model.path, 'configPath':self.config_path, 'fileName': text_file_model.file_name}
+        # item = []
+        sample = []
+        item = {'index': index, 'filePath':text_file_model.path, 'configPath':self.config_path, 'fileName': text_file_model.file_name}
         for insight_namespace in insight_function_model.models.keys():
             atom = insight_function_model.models[insight_namespace]
             if len(atom.outlier) == 0:
                 continue
 
             features, res_outlier = self.preprocess(atom)
-            res_outlier['alias'] = atom.alias
-            processed_outlier = pd.concat([processed_outlier, res_outlier]).reset_index(drop=True)
-            item.extend(features)
-        processed_outlier = processed_outlier.sort_values('timestamp', ascending=False).reset_index(drop=True)
-        sample['resOutlier'] = processed_outlier
+            # res_outlier['alias'] = atom.alias
+            # processed_outlier = pd.concat([processed_outlier, res_outlier]).reset_index(drop=True)
+            sample.extend(features)
+        # processed_outlier = processed_outlier.sort_values('timestamp', ascending=False).reset_index(drop=True)
+        item['outlier'] = res_outlier
         tmp = {}
-        for key in item:
+        for key in sample:
             tmp[key] = 1
         # item = pd.DataFrame([[1 for _ in range(0, len(item))]], columns=item)
         # self.samples = pd.concat([self.samples, item]).reset_index(drop=True)
         self.samples.append(tmp)
-        self.result = self.result.append(sample, ignore_index=True)
-        return sample
+        self.result.append(item)
 
     def cluster(self):
-        # Determine the optimal value of K in K-Means Clustering
-        # cost =[]
-        # for i in range(1, 11):
-        #     KM = KMeans(n_clusters = i, max_iter = 500)
-        #     KM.fit(X)
-            
-        #     # calculates squared error
-        #     # for the clustered points
-        #     cost.append(KM.inertia_)
-        self.samples = pd.DataFrame(self.samples)
-        self.samples = self.samples.fillna(0)
-        kmeans = KMeans(init="random", n_clusters=self.cluster_num, max_iter=300)
-        self.labels = kmeans.fit(self.samples).labels_
-        self.samples['label'] = self.labels
+        samples = pd.DataFrame(self.samples)
+        samples = samples.fillna(0)
 
         self.cluster_tree = {}
         self.cluster_tree = {'namespace': 'Clustering', 'name': 'Clustering', 'check': False, 'children': []}
+
+        if len(samples) < 2:
+            return
+
+        self.best_cost(samples)
+
         for cluster in range(0, max(self.labels)+1):
             node = {'namespace': 'Cluster' + str(cluster), 'name': 'Cluster' + str(cluster), 'check': False, 'children': []}
             for index, label in enumerate(self.labels):
                 if label == cluster:
-                    file_name = self.result.loc[index, 'fileName']
+                    file_name = self.result[index]['fileName']
                     node['children'].append({'namespace': file_name, 'name': file_name, 'check': False})
 
             self.cluster_tree['children'].append(node)
 
+    def best_cost(self, samples):
+        # Determine the optimal value of K in K-Means Clustering
+        if self.cluster_num == 'auto':
+            cost =[]
+            for i in range(2, 11):
+                if i <= len(samples):
+                    kmeans  = KMeans(n_clusters = i, max_iter = 300).fit(samples)
+                    labels = kmeans.labels_
+                    if len(set(labels)) == 1:
+                        self.labels = labels
+                        return
+
+                    # calculates squared error
+                    # for the clustered points
+                    cost.append(silhouette_score(samples, labels, metric = 'euclidean'))
+            mv = max(cost)
+            index = cost.index(mv)
+            kmeans = KMeans(init="random", n_clusters=index+1, max_iter=300)
+        else:
+            kmeans = KMeans(init="random", n_clusters=int(self.cluster_num), max_iter=300)
+        self.labels = kmeans.fit(samples).labels_
+        
     def universal(self, cluster_num):
         res = []
-        cluster = self.samples.loc[(self.samples['label'] == cluster_num), :].reset_index(drop=True)
+        samples = pd.DataFrame(self.samples)
+        samples = samples.fillna(0)
+        samples['label'] = self.labels
+        cluster = samples.loc[(samples['label'] == cluster_num), :].reset_index(drop=True)
         for column in cluster.columns:
             if len(set(cluster.loc[:, column].values)) == 1:
                 res.append(column)
@@ -1590,9 +1638,9 @@ class BatchStatisticModel(BatchModel):
         self.code(code)
         await self.emit('refreshCode', self.model(), namespace=self.namespace)
 
-    async def exec(self, dir_path, config):
-        self.dir_path = dir_path
-        self.config_path = config
+    async def exec(self, model):
+        self.dir_path = model['dir_path']
+        self.config_path = model['config_path']
 
         for index, path in enumerate(iterate_files_in_directory(self.dir_path)):
             new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()

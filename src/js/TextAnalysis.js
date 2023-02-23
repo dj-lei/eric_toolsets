@@ -639,6 +639,7 @@ class SearchAtomView extends ListView
 {
     constructor(model){
         super(model.namespace, document.getElementById(model.namespace))
+
         this.model = model
         this.dialog = new SearchAtomComponentDialog(this)
         this.show = new SearchAtomComponentTable(this)
@@ -723,44 +724,31 @@ class BatchInsightView extends BatchView
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.BATCHINSIGHT}`, textAnalysisView.container)
 
-        this.batchInsightComponentDialog = new BatchInsightComponentDialog(this)
-        this.batchInsightComponentSvgDialog = new BatchInsightComponentSvgDialog(this)
+        this.dialog = new BatchInsightComponentDialog(this)
+        this.show = new BatchInsightComponentSvgDialog(this)
         this.batchInsightComponentTableDialog = new BatchInsightComponentTableDialog(this)
-    }
-
-    controlBatchInsight(dirPath, config){
-        this.socket.emit("new", dirPath, config)
-        this.batchInsightComponentDialog.hidden()
-        this.batchInsightComponentSvgDialog.display()
     }
 
     controlGetUniversal(clusterNum){
         this.socket.emit("get_universal", clusterNum, async (response) => {
-            console.log(response)
             this.batchInsightComponentTableDialog.batchInsightComponentTable.refreshUniversal(response)
             this.batchInsightComponentTableDialog.display()
         })
     }
 
     controlGetSingleInsight(namespace){
-        this.socket.emit("get_single_insight", namespace, async (response) => {
-            console.log(response)
-            this.batchInsightComponentTableDialog.batchInsightComponentTable.refreshSingleInsight(response)
-            this.batchInsightComponentTableDialog.display()
-        })
+        // this.socket.emit("get_single_insight", namespace, async (response) => {
+        //     console.log(response)
+        //     this.batchInsightComponentTableDialog.batchInsightComponentTable.refreshSingleInsight(response)
+        //     this.batchInsightComponentTableDialog.display()
+        // })
     }
 
-    onRefresh(clusterTree){
-        console.log(clusterTree)
-        this.batchInsightComponentSvgDialog.batchInsightComponentSvg.update(clusterTree)
-    }
-
-    onDisplayDialog(){
-        this.batchInsightComponentDialog.display()
-    }
-
-    onDisplaySvgDialog(){
-        this.batchInsightComponentSvgDialog.display()
+    onRefresh(model){
+        if (model.surplus > 0) {
+            this.socket.emit("polling")
+        }
+        this.show.refresh(model.cluster_tree)
     }
 }
 
