@@ -180,11 +180,11 @@ class InsightAtomComponentTable extends Table
             }else if(line['type'] == 'float') {
                 var descChart = new InsightAtomComponentSequentialChart(tdDesc, this.insightAtomView)
                 descChart.refresh(line['desc'])
-                descChart.chart.resize({height:`200px`, width:`1000px`})
+                descChart.chart.resize({height:`200px`, width:`800px`})
 
                 var OriginChart = new InsightAtomComponentSequentialChart(tdOrigin, this.insightAtomView)
                 OriginChart.refresh(line['origin'])
-                OriginChart.chart.resize({height:`200px`, width:`1000px`})
+                OriginChart.chart.resize({height:`200px`, width:`800px`})
             }
 
             tr.appendChild(tdIndex)

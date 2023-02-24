@@ -126,38 +126,38 @@ class Model(socketio.AsyncNamespace, AsyncObject):
     async def send_message(self, sid, namespace, func_name, *args):
         await pub.send_message(sid, namespace, self.namespace, func_name, *args)
 
-    def on_model(self, sid):
+    def on(self, sid):
         return self.model()
 
     def subscribe_namespace(self, namespace):
         self.subscribes.append(namespace)
         return pub.subscribe(self.listener, namespace)
 
-    def get_text_analysis_model_namespace(self):
+    def get_text_analysis_namespace(self):
         return '/'.join(self.namespace.split('/')[0:2])
 
-    def get_file_container_model_namespace(self):
+    def get_file_container_namespace(self):
         return '/'.join(self.namespace.split('/')[0:3])
 
-    def get_text_file_model_namespace(self):
+    def get_text_file_namespace(self):
         return '/'.join(self.namespace.split('/')[0:4])
 
-    def get_text_file_original_model_namespace(self):
+    def get_text_file_original_namespace(self):
         return '/'.join(self.namespace.split('/')[0:4])+ns.TEXTFILEORIGINAL
 
-    def get_text_file_function_model_namespace(self):
+    def get_text_file_function_namespace(self):
         return '/'.join(self.namespace.split('/')[0:4])+ns.TEXTFILEFUNCTION
 
-    def get_search_function_model_namespace(self):
+    def get_search_function_namespace(self):
         return '/'.join(self.namespace.split('/')[0:4])+ns.TEXTFILEFUNCTION+ns.SEARCHFUNCTION
 
-    def get_insight_function_model_namespace(self):
+    def get_insight_function_namespace(self):
         return '/'.join(self.namespace.split('/')[0:4])+ns.TEXTFILEFUNCTION+ns.INSIGHTFUNCTION
 
-    def get_chart_function_model_namespace(self):
+    def get_chart_function_namespace(self):
         return '/'.join(self.namespace.split('/')[0:4])+ns.TEXTFILEFUNCTION+ns.CHARTFUNCTION
 
-    def get_statistic_function_model_namespace(self):
+    def get_statistic_function_namespace(self):
         return '/'.join(self.namespace.split('/')[0:4])+ns.TEXTFILEFUNCTION+ns.STATISTICFUNCTION
 
     async def isBatchAble(self, namespace):
@@ -194,7 +194,7 @@ class ListModel(Model):
         if mode == 'new':
             await self.on_refresh(sid)
         else:
-            await self.send_message(sid, self.get_file_container_model_namespace(), 'on_new_function', self.__class__.__name__.split('Atom')[0], model)
+            await self.send_message(sid, self.get_file_container_namespace(), 'on_new_function', self.__class__.__name__.split('Atom')[0], model)
 
     async def on_delete(self, sid):
         await super().on_delete(sid)
@@ -250,7 +250,7 @@ class Fellow(Model):
         self.model_name = self.__class__.__name__.replace('Function', 'Atom')
         self.class_name = getattr(sys.modules[__name__], self.model_name)
 
-        self.text_analysis_model = self.subscribe_namespace(self.get_text_analysis_model_namespace())
+        self.text_analysis = self.subscribe_namespace(self.get_text_analysis_namespace())
 
     def model(self):
         return {}
@@ -273,10 +273,10 @@ class Fellow(Model):
             if self.mode == 'normal':
                 # await self.emit('new', model, namespace=self.namespace)
                 self.models[model['namespace']] = await self.class_name(self, model)
-                await self.send_message(sid, self.get_text_file_model_namespace(), 'on_register_alias_data', self.models[model['namespace']])
+                await self.send_message(sid, self.get_text_file_namespace(), 'on_register_alias_data', self.models[model['namespace']])
             else:
                 self.models[model['namespace']] = await self.class_name(self, model, self.mode)
-                await self.send_message(sid, self.get_text_file_model_namespace(), 'on_register_alias_data', self.models[model['namespace']])
+                await self.send_message(sid, self.get_text_file_namespace(), 'on_register_alias_data', self.models[model['namespace']])
                 await self.isBatchAble(model['namespace'])
 
     async def on_new(self, sid, model):
@@ -284,15 +284,15 @@ class Fellow(Model):
         model['namespace'] = new_namespace
         await self.emit('new', model, namespace=self.namespace)
         self.models[new_namespace] = await self.class_name(self, model)
-        await self.send_message(sid, self.get_text_file_model_namespace(), 'on_register_alias_data', self.models[new_namespace])
+        await self.send_message(sid, self.get_text_file_namespace(), 'on_register_alias_data', self.models[new_namespace])
 
-    async def on_change(self, sid, old_namespace, new_model):
-        await self.send_message(sid, self.get_text_file_model_namespace(), 'on_change_alias_data', self.models[old_namespace].alias, new_model['alias'])
-        self.models[new_model['namespace']] = self.models[old_namespace]
+    async def on_change(self, sid, old_namespace, new):
+        await self.send_message(sid, self.get_text_file_namespace(), 'on_change_alias_data', self.models[old_namespace].alias, new['alias'])
+        self.models[new['namespace']] = self.models[old_namespace]
         del self.models[old_namespace]
     
     async def on_delete_single(self, sid, namespace):
-        await self.send_message(sid, self.get_text_file_model_namespace(), 'on_logout_alias_data', self.models[namespace])
+        await self.send_message(sid, self.get_text_file_namespace(), 'on_logout_alias_data', self.models[namespace])
         self.models[namespace] = ''
         del self.models[namespace]
 
@@ -312,7 +312,7 @@ class Fellow(Model):
         if self.is_load_config:
             self.connected_count = self.connected_count + 1
             if self.connected_count >= self.config_count:
-                # self.text_analysis_model.parallel.parallel(self.models)
+                # self.text_analysis.parallel.parallel(self.models)
                 for namespace in self.models.keys():
                     if self.mode == 'normal':
                         await self.models[namespace].on_refresh('')
@@ -323,9 +323,9 @@ class Fellow(Model):
                 self.connected_count = 0
                 if self.__class__.__name__.split('Function')[0].lower() in ['search', 'insight']:
                     if self.mode == 'normal':
-                        await self.text_analysis_model.file_container_model.on_load_other_config('')
+                        await self.text_analysis.file_container.on_load_other_config('')
                     else:
-                        await self.send_message('', self.get_text_file_model_namespace(), 'on_load_other_config')
+                        await self.send_message('', self.get_text_file_namespace(), 'on_load_other_config')
         else:
             if self.mode == 'normal':
                 await self.models[namespace].on_refresh('')
@@ -339,32 +339,32 @@ class TextAnalysisModel(Model):
         await super().__init__(ns.TEXTANALYSIS, mode)
 
         self.parallel = parallel
-        self.file_container_model = await FileContainerModel(self, self.mode)
+        self.file_container = await FileContainerModel(self, self.mode)
 
-        self.batch_insight_model = await BatchInsightModel(self, self.mode)
-        self.batch_statistic_model = await BatchStatisticModel(self, self.mode)
-        self.global_chart_model = await GlobalChartModel(self, self.mode)
+        self.batch_insight = await BatchInsightModel(self, self.mode)
+        self.batch_statistic = await BatchStatisticModel(self, self.mode)
+        self.global_chart = await GlobalChartModel(self, self.mode)
 
     async def listener(self, publish_namespace):
         pass
 
     async def on_display_batch_insight(self, sid):
-        await self.batch_insight_model.on_display_dialog(sid)
+        await self.batch_insight.on_display_dialog(sid)
 
     async def on_display_batch_statistic(self, sid):
-        await self.batch_statistic_model.on_display_dialog(sid)
+        await self.batch_statistic.on_display_dialog(sid)
 
     async def on_display_batch_insight_show(self, sid):
-        await self.batch_insight_model.on_display_show(sid)
+        await self.batch_insight.on_display_show(sid)
 
     async def on_display_batch_statistic_show(self, sid):
-        await self.batch_statistic_model.on_display_show(sid)
+        await self.batch_statistic.on_display_show(sid)
  
     async def on_display_global_chart(self, sid):
-        await self.global_chart_model.on_display_dialog(sid)
+        await self.global_chart.on_display_dialog(sid)
 
     async def on_display_global_chart_show(self, sid):
-        await self.global_chart_model.on_display_show(sid)
+        await self.global_chart.on_display_show(sid)
 
     async def on_shutdown(self, sid):
         await app.shutdown()
@@ -373,12 +373,12 @@ class TextAnalysisModel(Model):
 
 
 class FileContainerModel(Model):
-    async def __init__(self, text_analysis_model, mode='normal'):
-        await super().__init__(text_analysis_model.namespace + ns.FILECONTAINER, mode)
-        self.parent = text_analysis_model
+    async def __init__(self, text_analysis, mode='normal'):
+        await super().__init__(text_analysis.namespace + ns.FILECONTAINER, mode)
+        self.parent = text_analysis
 
-        self.text_file_models = {}
-        self.active_text_file_model = ''
+        self.text_files = {}
+        self.active_text_file = ''
 
     async def listener(self, publish_namespace):
         await self.publish(publish_namespace)
@@ -388,50 +388,50 @@ class FileContainerModel(Model):
             new_file_namespace = self.namespace+'/'+path.split('\\')[-1]
             # new_file_namespace = self.namespace + '/' + createUuid4()
             
-            self.text_file_models[new_file_namespace] = await TextFileModel(self, new_file_namespace, path, self.mode)
-            await self.emit('newFile', self.text_file_models[new_file_namespace].model(), namespace=self.namespace)
+            self.text_files[new_file_namespace] = await TextFileModel(self, new_file_namespace, path, self.mode)
+            await self.emit('newFile', self.text_files[new_file_namespace].model(), namespace=self.namespace)
             await self.on_display_file(sid, new_file_namespace)
         
     def on_get_config(self, sid):
-        return self.text_file_models[self.active_text_file_model].on_get_config()
+        return self.text_files[self.active_text_file].on_get_config()
 
     async def on_load_config(self, sid, config):
-        await self.text_file_models[self.active_text_file_model].on_load_config(sid, config)
+        await self.text_files[self.active_text_file].on_load_config(sid, config)
 
     async def on_load_other_config(self, sid):
-        await self.text_file_models[self.active_text_file_model].on_load_other_config(sid)
+        await self.text_files[self.active_text_file].on_load_other_config(sid)
 
     async def on_new_function(self, sid, func, model):
-        await self.send_message(sid, self.active_text_file_model + ns.TEXTFILEFUNCTION, 'on_select_function', func.lower())
-        await self.send_message(sid, self.active_text_file_model, 'on_adjust_view_rate', 0.5)
+        await self.send_message(sid, self.active_text_file + ns.TEXTFILEFUNCTION, 'on_select_function', func.lower())
+        await self.send_message(sid, self.active_text_file, 'on_adjust_view_rate', 0.5)
 
-        namespace = self.active_text_file_model + ns.TEXTFILEFUNCTION + '/' + func + 'Function'
+        namespace = self.active_text_file + ns.TEXTFILEFUNCTION + '/' + func + 'Function'
         await self.send_message(sid, namespace, 'on_new', model)
 
     async def on_display_file(self, sid, namespace):
-        params = {'earlier_active_text_file_model': self.active_text_file_model, 'active_text_file_model': ''}
-        for text_file_model in self.text_file_models.keys():
-            await self.text_file_models[text_file_model].on_hidden(sid)
-        self.active_text_file_model = namespace
+        params = {'earlier_active_text_file': self.active_text_file, 'active_text_file': ''}
+        for text_file in self.text_files.keys():
+            await self.text_files[text_file].on_hidden(sid)
+        self.active_text_file = namespace
 
-        await self.text_file_models[namespace].on_display(sid)
-        params['active_text_file_model'] = self.active_text_file_model
+        await self.text_files[namespace].on_display(sid)
+        params['active_text_file'] = self.active_text_file
         await self.emit('displayFile', params, namespace=self.namespace)
 
     async def on_display_text_file_function(self, sid):
-        await self.text_file_models[self.active_text_file_model].text_file_function_model.on_display(sid)
+        await self.text_files[self.active_text_file].text_file_function.on_display(sid)
 
     async def on_display_tmp_search_atom_dialog(self, sid):
-        await self.text_file_models[self.active_text_file_model].on_display_tmp_search_atom_dialog(sid)
+        await self.text_files[self.active_text_file].on_display_tmp_search_atom_dialog(sid)
 
     async def on_display_tmp_insight_atom_dialog(self, sid):
-        await self.text_file_models[self.active_text_file_model].on_display_tmp_insight_atom_dialog(sid)
+        await self.text_files[self.active_text_file].on_display_tmp_insight_atom_dialog(sid)
 
     async def on_display_tmp_chart_atom_svg_dialog(self, sid):
-        await self.text_file_models[self.active_text_file_model].on_display_tmp_chart_atom_svg_dialog(sid)
+        await self.text_files[self.active_text_file].on_display_tmp_chart_atom_svg_dialog(sid)
 
     async def on_display_tmp_statistic_atom_dialog(self, sid):
-        await self.text_file_models[self.active_text_file_model].on_display_tmp_statistic_atom_dialog(sid)
+        await self.text_files[self.active_text_file].on_display_tmp_statistic_atom_dialog(sid)
    
     def on_dcgm_analysis(self, sid, params):
         print('Dcgm Analysis!', params)
@@ -451,9 +451,9 @@ class FileContainerModel(Model):
 
 
 class TextFileModel(Model):
-    async def __init__(self, file_container_model, namespace, path, mode='normal'):
+    async def __init__(self, file_container, namespace, path, mode='normal'):
         await super().__init__(namespace, mode)
-        self.parent = file_container_model
+        self.parent = file_container
 
         self.alias_data = {}
         self.path = path
@@ -466,14 +466,14 @@ class TextFileModel(Model):
             # self.lines = self.parent.parent.parallel.copy_to_shm(self.namespace, f.readlines())
 
         await self.new_view_object()
-        self.text_file_original_model = await TextFileOriginalModel(self, mode)
-        self.text_file_function_model = await TextFileFunctionModel(self, mode)
+        self.text_file_original = await TextFileOriginalModel(self, mode)
+        self.text_file_function = await TextFileFunctionModel(self, mode)
 
         if self.mode == 'normal':
-            self.tmp_search_atom_model = await SearchAtomModel(self, {'namespace': self.namespace + ns.TMPSEARCHATOMMODEL})
-            self.tmp_insight_atom_model = await InsightAtomModel(self, {'namespace': self.namespace + ns.TMPINSIGHATOMMODEL})
-            self.tmp_chart_atom_model = await ChartAtomModel(self, {'namespace': self.namespace + ns.TMPCHARTATOMMODEL})
-            self.tmp_statistic_atom_model = await StatisticAtomModel(self, {'namespace': self.namespace + ns.TMPSTATISTICATOMMODEL})
+            self.tmp_search_atom = await SearchAtomModel(self, {'namespace': self.namespace + ns.TMPSEARCHATOM})
+            self.tmp_insight_atom = await InsightAtomModel(self, {'namespace': self.namespace + ns.TMPINSIGHATOM})
+            self.tmp_chart_atom = await ChartAtomModel(self, {'namespace': self.namespace + ns.TMPCHARTATOM})
+            self.tmp_statistic_atom = await StatisticAtomModel(self, {'namespace': self.namespace + ns.TMPSTATISTICATOM})
 
     def model(self):
         return {'namespace': self.namespace, 'file_name':self.file_name, 'path': self.path, 'config': self.config}
@@ -488,28 +488,28 @@ class TextFileModel(Model):
         self.lines = ''
 
         if self.mode == 'normal':
-            await self.text_file_function_model.search_function_model.on_delete_all(sid)
-            await self.text_file_function_model.insight_function_model.on_delete_all(sid)
-            await self.text_file_function_model.chart_function_model.on_delete_all(sid)
-            await self.text_file_function_model.statistic_function_model.on_delete_all(sid)
+            await self.text_file_function.search_function.on_delete_all(sid)
+            await self.text_file_function.insight_function.on_delete_all(sid)
+            await self.text_file_function.chart_function.on_delete_all(sid)
+            await self.text_file_function.statistic_function.on_delete_all(sid)
 
-            await self.text_file_function_model.search_function_model.on_delete(sid)
-            await self.text_file_function_model.insight_function_model.on_delete(sid)
-            await self.text_file_function_model.chart_function_model.on_delete(sid)
-            await self.text_file_function_model.statistic_function_model.on_delete(sid)
+            await self.text_file_function.search_function.on_delete(sid)
+            await self.text_file_function.insight_function.on_delete(sid)
+            await self.text_file_function.chart_function.on_delete(sid)
+            await self.text_file_function.statistic_function.on_delete(sid)
 
-            await self.text_file_original_model.on_delete(sid)
-            await self.text_file_function_model.on_delete(sid)
+            await self.text_file_original.on_delete(sid)
+            await self.text_file_function.on_delete(sid)
 
-            await self.tmp_search_atom_model.on_delete(sid)
-            await self.tmp_insight_atom_model.on_delete(sid)
-            await self.tmp_chart_atom_model.on_delete(sid)
-            await self.tmp_statistic_atom_model.on_delete(sid)
+            await self.tmp_search_atom.on_delete(sid)
+            await self.tmp_insight_atom.on_delete(sid)
+            await self.tmp_chart_atom.on_delete(sid)
+            await self.tmp_statistic_atom.on_delete(sid)
 
             await self.emit('delete', namespace = self.namespace)
             await super().on_delete(sid)
-        self.parent.text_file_models[self.namespace] = ''
-        del self.parent.text_file_models[self.namespace]
+        self.parent.text_files[self.namespace] = ''
+        del self.parent.text_files[self.namespace]
         
     def on_get_config(self):
         self.config['search'] = []
@@ -517,25 +517,25 @@ class TextFileModel(Model):
         self.config['chart'] = []
         self.config['statistic'] = []
 
-        for search_atom_model in self.text_file_function_model.search_function_model.models.keys():
-            model = self.text_file_function_model.search_function_model.models[search_atom_model].__dict__
+        for search_atom in self.text_file_function.search_function.models.keys():
+            model = self.text_file_function.search_function.models[search_atom].__dict__
             tmp = {'alias':model['alias'], 'desc':model['desc'], 'exp_search':model['exp_search'], 'exp_extract':model['exp_extract'],
             'exp_mark':model['exp_mark'], 'is_case_sensitive':model['is_case_sensitive'], 'forward_rows':model['forward_rows'], 'backward_rows':model['backward_rows']}
             self.config['search'].append(tmp)
 
-        for insight_atom_model in self.text_file_function_model.insight_function_model.models.keys():
-            model = self.text_file_function_model.insight_function_model.models[insight_atom_model].__dict__
+        for insight_atom in self.text_file_function.insight_function.models.keys():
+            model = self.text_file_function.insight_function.models[insight_atom].__dict__
             tmp = {'alias':model['alias'], 'desc':model['desc'], 'exp_search':model['exp_search'], 'exp_extract':model['exp_extract'],
             'exp_mark':model['exp_mark'], 'is_case_sensitive':model['is_case_sensitive'], 'forward_rows':model['forward_rows'], 'backward_rows':model['backward_rows']}
             self.config['insight'].append(tmp)
 
-        for chart_atom_model in self.text_file_function_model.chart_function_model.models.keys():
-            model = self.text_file_function_model.chart_function_model.models[chart_atom_model].__dict__
+        for chart_atom in self.text_file_function.chart_function.models.keys():
+            model = self.text_file_function.chart_function.models[chart_atom].__dict__
             tmp = {'alias':model['alias'], 'desc':model['desc'], 'key_value_tree': model['key_value_tree']}
             self.config['chart'].append(tmp)
 
-        for statistic_atom_model in self.text_file_function_model.statistic_function_model.models.keys():
-            model = self.text_file_function_model.statistic_function_model.models[statistic_atom_model].__dict__
+        for statistic_atom in self.text_file_function.statistic_function.models.keys():
+            model = self.text_file_function.statistic_function.models[statistic_atom].__dict__
             tmp = {'alias':model['alias'], 'desc':model['desc'], 'code':model['code'], 'statistic_type':model['statistic_type']}
             self.config['statistic'].append(tmp)
 
@@ -549,33 +549,33 @@ class TextFileModel(Model):
         await self.on_adjust_view_rate(sid, 0.5)
 
         if len(self.config['search']) > 0:
-            await self.send_message(sid, self.text_file_function_model.namespace, 'on_select_function', 'search')
-            search_atom_models = self.config['search']
-            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION, 'on_load_config', search_atom_models)
+            await self.send_message(sid, self.text_file_function.namespace, 'on_select_function', 'search')
+            search_atoms = self.config['search']
+            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION, 'on_load_config', search_atoms)
 
         if len(self.config['insight']) > 0:
-            await self.send_message(sid, self.text_file_function_model.namespace, 'on_select_function', 'insight')
-            insight_atom_models = self.config['insight']
-            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.INSIGHTFUNCTION, 'on_load_config', insight_atom_models)
+            await self.send_message(sid, self.text_file_function.namespace, 'on_select_function', 'insight')
+            insight_atoms = self.config['insight']
+            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.INSIGHTFUNCTION, 'on_load_config', insight_atoms)
 
         # if 'chart' in self.load:
-        #     chart_atom_models = self.config['chart']
-        #     await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atom_models)
+        #     chart_atoms = self.config['chart']
+        #     await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atoms)
 
         # if 'statistic' in self.load:
-        #     statistic_atom_models = self.config['statistic']
-        #     await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
+        #     statistic_atoms = self.config['statistic']
+        #     await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atoms)
 
     async def on_load_other_config(self, sid):
         if len(self.config['chart']) > 0:
-            await self.send_message(sid, self.text_file_function_model.namespace, 'on_select_function', 'chart')
-            chart_atom_models = self.config['chart']
-            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atom_models)
+            await self.send_message(sid, self.text_file_function.namespace, 'on_select_function', 'chart')
+            chart_atoms = self.config['chart']
+            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.CHARTFUNCTION, 'on_load_config', chart_atoms)
 
         if len(self.config['statistic']) > 0:
-            await self.send_message(sid, self.text_file_function_model.namespace, 'on_select_function', 'statistic')
-            statistic_atom_models = self.config['statistic']
-            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atom_models)
+            await self.send_message(sid, self.text_file_function.namespace, 'on_select_function', 'statistic')
+            statistic_atoms = self.config['statistic']
+            await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atoms)
 
     async def on_register_alias_data(self, sid, ref):
         self.alias_data[ref.alias] = ref
@@ -589,31 +589,31 @@ class TextFileModel(Model):
         del self.alias_data[ref.alias]
 
     async def on_adjust_view_rate(self, sid, rate):
-        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_set_height', rate)
-        await self.send_message(sid, self.get_text_file_function_model_namespace(), 'on_set_height', 1 - rate)
+        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_set_height', rate)
+        await self.send_message(sid, self.get_text_file_function_namespace(), 'on_set_height', 1 - rate)
 
     async def on_display_tmp_search_atom_dialog(self, sid):
-        await self.tmp_search_atom_model.on_display_dialog(sid)
+        await self.tmp_search_atom.on_display_dialog(sid)
 
     async def on_display_tmp_insight_atom_dialog(self, sid):
-        await self.tmp_insight_atom_model.on_display_dialog(sid)
+        await self.tmp_insight_atom.on_display_dialog(sid)
 
     async def on_display_tmp_chart_atom_svg_dialog(self, sid):
-        await self.tmp_chart_atom_model.on_display_dialog(sid)
+        await self.tmp_chart_atom.on_display_dialog(sid)
 
     async def on_display_tmp_statistic_atom_dialog(self, sid):
-        await self.tmp_statistic_atom_model.on_display_dialog(sid)
+        await self.tmp_statistic_atom.on_display_dialog(sid)
 
 
 class TextFileOriginalModel(Model):
-    async def __init__(self, text_file_model, mode='normal'):
-        await super().__init__(text_file_model.namespace+ns.TEXTFILEORIGINAL, mode)
-        self.parent = text_file_model
+    async def __init__(self, text_file, mode='normal'):
+        await super().__init__(text_file.namespace+ns.TEXTFILEORIGINAL, mode)
+        self.parent = text_file
         self.rate_height = 1
         self.step = 1
         self.point = 0
-        self.range = 50
-        self.count =  len(text_file_model.lines)
+        self.range = 60
+        self.count =  len(text_file.lines)
         self.exp_mark = False
         self.display_lines = []
 
@@ -629,6 +629,10 @@ class TextFileOriginalModel(Model):
     async def on_connected(self, sid, namespace):
         await super().on_connected(sid, namespace)
         await self.on_scroll(sid, 0, self.range)
+
+    async def on_set_height(self, sid, rate):
+        self.rate_height = rate
+        await self.emit('setHeight', self.model(), namespace=self.namespace)
 
     async def on_scroll(self, sid, point, range=None):
         if range:
@@ -673,22 +677,18 @@ class TextFileOriginalModel(Model):
         #         reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.searchs[uid].cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
         #         lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
 
-    async def on_set_height(self, sid, rate):
-        self.rate_height = rate
-        await self.emit('setHeight', self.model(), namespace=self.namespace)
-
 
 class TextFileFunctionModel(Model):
-    async def __init__(self, text_file_model, mode='normal'):
-        await super().__init__(text_file_model.namespace+ns.TEXTFILEFUNCTION, mode)
-        self.parent = text_file_model
+    async def __init__(self, text_file, mode='normal'):
+        await super().__init__(text_file.namespace+ns.TEXTFILEFUNCTION, mode)
+        self.parent = text_file
         self.rate_height = 0.5
 
         await self.new_view_object()
-        self.search_function_model = await SearchFunctionModel(self, mode)
-        self.insight_function_model = await InsightFunctionModel(self, mode)
-        self.chart_function_model = await ChartFunctionModel(self, mode)
-        self.statistic_function_model = await StatisticFunctionModel(self, mode)
+        self.search_function = await SearchFunctionModel(self, mode)
+        self.insight_function = await InsightFunctionModel(self, mode)
+        self.chart_function = await ChartFunctionModel(self, mode)
+        self.statistic_function = await StatisticFunctionModel(self, mode)
 
     def model(self):
         return {'namespace': self.namespace, 'rate_height': self.rate_height}
@@ -702,62 +702,62 @@ class TextFileFunctionModel(Model):
 
     async def on_display(self, sid):
         await super().on_display(sid)
-        await self.send_message(sid, self.get_text_file_model_namespace(), 'on_adjust_view_rate', 0.5)
+        await self.send_message(sid, self.get_text_file_namespace(), 'on_adjust_view_rate', 0.5)
 
     async def on_hidden(self, sid):
         await super().on_hidden(sid)
-        await self.send_message(sid, self.get_text_file_model_namespace(), 'on_adjust_view_rate', 1)
+        await self.send_message(sid, self.get_text_file_namespace(), 'on_adjust_view_rate', 1)
 
     async def on_select_function(self, sid, function):
         await self.on_display(sid)
         if function == 'search':
-            await self.send_message(sid, self.get_search_function_model_namespace(), 'on_display')
-            await self.send_message(sid, self.get_insight_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_chart_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_statistic_function_model_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_search_function_namespace(), 'on_display')
+            await self.send_message(sid, self.get_insight_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_chart_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_statistic_function_namespace(), 'on_hidden')
         elif function == 'insight':
-            await self.send_message(sid, self.get_search_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_insight_function_model_namespace(), 'on_display')
-            await self.send_message(sid, self.get_chart_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_statistic_function_model_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_search_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_insight_function_namespace(), 'on_display')
+            await self.send_message(sid, self.get_chart_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_statistic_function_namespace(), 'on_hidden')
         elif function == 'chart':
-            await self.send_message(sid, self.get_search_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_insight_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_chart_function_model_namespace(), 'on_display')
-            await self.send_message(sid, self.get_statistic_function_model_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_search_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_insight_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_chart_function_namespace(), 'on_display')
+            await self.send_message(sid, self.get_statistic_function_namespace(), 'on_hidden')
         elif function == 'statistic':
-            await self.send_message(sid, self.get_search_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_insight_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_chart_function_model_namespace(), 'on_hidden')
-            await self.send_message(sid, self.get_statistic_function_model_namespace(), 'on_display')
+            await self.send_message(sid, self.get_search_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_insight_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_chart_function_namespace(), 'on_hidden')
+            await self.send_message(sid, self.get_statistic_function_namespace(), 'on_display')
         await self.emit('displayFunction', function, namespace=self.namespace)
 
 
 class SearchFunctionModel(Fellow):
-    async def __init__(self, text_file_function_model, mode='normal'):
-        await super().__init__(text_file_function_model.namespace+ns.SEARCHFUNCTION, mode)
-        self.parent = text_file_function_model
+    async def __init__(self, text_file_function, mode='normal'):
+        await super().__init__(text_file_function.namespace+ns.SEARCHFUNCTION, mode)
+        self.parent = text_file_function
         await self.new_view_object()
 
 
 class InsightFunctionModel(Fellow):
-    async def __init__(self, text_file_function_model, mode='normal'):
-        await super().__init__(text_file_function_model.namespace+ns.INSIGHTFUNCTION, mode)
-        self.parent = text_file_function_model
+    async def __init__(self, text_file_function, mode='normal'):
+        await super().__init__(text_file_function.namespace+ns.INSIGHTFUNCTION, mode)
+        self.parent = text_file_function
         await self.new_view_object()
 
 
 class ChartFunctionModel(Fellow):
-    async def __init__(self, text_file_function_model, mode='normal'):
-        await super().__init__(text_file_function_model.namespace+ns.CHARTFUNCTION, mode)
-        self.parent = text_file_function_model
+    async def __init__(self, text_file_function, mode='normal'):
+        await super().__init__(text_file_function.namespace+ns.CHARTFUNCTION, mode)
+        self.parent = text_file_function
         await self.new_view_object()
 
 
 class StatisticFunctionModel(Fellow):
-    async def __init__(self, text_file_function_model, mode='normal'):
-        await super().__init__(text_file_function_model.namespace+ns.STATISTICFUNCTION, mode)
-        self.parent = text_file_function_model
+    async def __init__(self, text_file_function, mode='normal'):
+        await super().__init__(text_file_function.namespace+ns.STATISTICFUNCTION, mode)
+        self.parent = text_file_function
         await self.new_view_object()
 
 
@@ -784,7 +784,7 @@ class SearchAtomModel(ListModel):
         self.res_key_value = {}
         self.res_lines = []
 
-        self.text_file_model = self.subscribe_namespace(self.get_text_file_model_namespace())
+        self.text_file = self.subscribe_namespace(self.get_text_file_namespace())
         self.__dict__.update(model)
         await self.new_view_object()
 
@@ -795,7 +795,7 @@ class SearchAtomModel(ListModel):
 
     async def listener(self, publish_namespace):
         pass
-        # if publish_namespace == self.text_file_model.namespace:
+        # if publish_namespace == self.text_file.namespace:
         #     self.search()
         #     await self.on_scroll('', 0)
 
@@ -804,13 +804,13 @@ class SearchAtomModel(ListModel):
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def on_text_click_event(self, sid, params):
-        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['globalIndex'])
+        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll', params['globalIndex'])
 
     def search(self):
         self.res_lines = []
         self.res_key_value = {}
         self.res_search_units = []
-        for index, line in enumerate(self.text_file_model.lines):
+        for index, line in enumerate(self.text_file.lines):
             if self.is_case_sensitive:
                 if len(re.findall(self.exp_search, line)) > 0:
                     self.res_search_units.append([index-self.forward_rows, index+self.backward_rows+1])
@@ -831,7 +831,7 @@ class SearchAtomModel(ListModel):
 
         self.res_key_value = {}
         for search_index, unit in enumerate(self.res_search_units):
-            string = '\n'.join(self.text_file_model.lines[unit[0]:unit[1]+1])
+            string = '\n'.join(self.text_file.lines[unit[0]:unit[1]+1])
             ts = ''
             # handle key value
             for exp in self.exp_extract:
@@ -875,7 +875,7 @@ class SearchAtomModel(ListModel):
         for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
             num = str(self.point + index)
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
-            self.display_lines.append({'text':num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file_model.lines[line]+'</td>', 'global_index': line})
+            self.display_lines.append({'text':num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
 
 
 class ChartAtomModel(ListModel):
@@ -886,8 +886,8 @@ class ChartAtomModel(ListModel):
         self.key_value_tree = {}
         self.select_lines = {}
 
-        self.search_function_model = self.subscribe_namespace(self.get_search_function_model_namespace())
-        self.text_file_model = self.search_function_model.parent.parent
+        self.search_function = self.subscribe_namespace(self.get_search_function_namespace())
+        self.text_file = self.search_function.parent.parent
         
         self.__dict__.update(model)
         await self.new_view_object()
@@ -898,12 +898,12 @@ class ChartAtomModel(ListModel):
         return {'namespace': self.namespace, 'alias': self.alias, 'desc': self.desc, 'key_value_tree': self.key_value_tree, 'select_lines':self.select_lines}
 
     async def listener(self, publish_namespace):
-        if publish_namespace == self.search_function_model.namespace:
+        if publish_namespace == self.search_function.namespace:
             self.generate_key_value_tree()
             await self.on_update_dialog('')
 
     async def on_click_event(self, sid, params):
-        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['data']['globalIndex'])
+        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll', params['data']['globalIndex'])
 
     async def on_clear_key_value_tree(self, sid):
         self.generate_key_value_tree()
@@ -912,13 +912,13 @@ class ChartAtomModel(ListModel):
     def chart(self):
         self.select_lines = {}
         selected_key = {}
-        for search_atom_model in self.key_value_tree['children']:
-            for key in search_atom_model['children']:
+        for search_atom in self.key_value_tree['children']:
+            for key in search_atom['children']:
                 if key['check'] == True:
-                    namespace = self.text_file_model.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION + '/' + search_atom_model['namespace']
-                    search_alias = self.search_function_model.models[namespace].alias
-                    if key['name'] in self.search_function_model.models[namespace].res_key_value:
-                        key_value = self.search_function_model.models[namespace].res_key_value[key['name']]
+                    namespace = self.text_file.namespace + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION + '/' + search_atom['namespace']
+                    search_alias = self.search_function.models[namespace].alias
+                    if key['name'] in self.search_function.models[namespace].res_key_value:
+                        key_value = self.search_function.models[namespace].res_key_value[key['name']]
                         if len(key_value['global_index']) > 0:
                             selected_key[search_alias+'.'+key['name']] = key_value
         final = {}
@@ -946,20 +946,20 @@ class ChartAtomModel(ListModel):
     def generate_key_value_tree(self):
         self.key_value_tree = {}
 
-        self.key_value_tree = {'namespace': self.text_file_model.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
-        for namespace in self.search_function_model.models.keys():
+        self.key_value_tree = {'namespace': self.text_file.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
+        for namespace in self.search_function.models.keys():
             keys = []
-            for key in self.search_function_model.models[namespace].res_key_value.keys():
+            for key in self.search_function.models[namespace].res_key_value.keys():
                 keys.append({'name': key, 'check': False})
-            self.key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function_model.models[namespace].alias, 'check': False, 'children': keys})
+            self.key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function.models[namespace].alias, 'check': False, 'children': keys})
 
     def reload_key_value_tree(self):
-        tmp_key_value_tree = {'namespace': self.text_file_model.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
-        for namespace in self.search_function_model.models.keys():
+        tmp_key_value_tree = {'namespace': self.text_file.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}
+        for namespace in self.search_function.models.keys():
             keys = []
-            for key in self.search_function_model.models[namespace].res_key_value.__dict__.keys():
+            for key in self.search_function.models[namespace].res_key_value.__dict__.keys():
                 keys.append({'name': key, 'check': False})
-            tmp_key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function_model.models[namespace].alias, 'check': False, 'children': keys})
+            tmp_key_value_tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function.models[namespace].alias, 'check': False, 'children': keys})
 
         diff = DeepDiff(self.key_value_tree, tmp_key_value_tree)
         print(diff)
@@ -1012,7 +1012,7 @@ class InsightAtomModel(ListModel):
         # ]
         # self.scale_max = 100
 
-        self.text_file_model = self.subscribe_namespace(self.get_text_file_model_namespace())
+        self.text_file = self.subscribe_namespace(self.get_text_file_namespace())
         self.outlier = []
         self.__dict__.update(model)
         await self.new_view_object()
@@ -1025,10 +1025,10 @@ class InsightAtomModel(ListModel):
         pass
 
     async def on_chart_click_event(self, sid, params):
-        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['data']['globalIndex'])
+        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll', params['data']['globalIndex'])
 
     async def on_text_click_event(self, sid, params):
-        await self.send_message(sid, self.get_text_file_original_model_namespace(), 'on_scroll', params['globalIndex'])
+        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll', params['globalIndex'])
 
     def insight(self):
         self.is_has_mark = False
@@ -1051,7 +1051,7 @@ class InsightAtomModel(ListModel):
                 mark_search_index = self.res_mark[mark]['search_index'][0]
                 select_mark = {'name': mark, 'type': 'mark', 'abnormal_type': 'ManualSelect', 'global_index':self.res_mark[mark]['global_index'][self.number], 
                     'search_index':self.res_mark[mark]['search_index'][self.number], 'timestamp':self.res_mark[mark]['timestamp'][self.number], 
-                    'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name'], 'origin': self.text_file_model.lines[self.res_mark[mark]['global_index'][self.number]]}
+                    'value':self.res_mark[mark]['value'][self.number], 'desc':self.res_mark[mark]['name'], 'origin': self.text_file.lines[self.res_mark[mark]['global_index'][self.number]]}
 
             self.outlier.extend(self.judge_mark_outlier(self.res_residue_marks, mark_timestamp, mark_global_index, mark_search_index))
 
@@ -1083,7 +1083,7 @@ class InsightAtomModel(ListModel):
     def search(self):
         self.res_search_units = []
 
-        for index, line in enumerate(self.text_file_model.lines):
+        for index, line in enumerate(self.text_file.lines):
             if len(re.findall(self.exp_search, line, flags= 0 if self.is_case_sensitive else re.IGNORECASE)) > 0:
                 self.res_search_units.append([index-self.forward_rows, index+self.backward_rows+1])
                 if not self.is_has_mark:
@@ -1108,7 +1108,7 @@ class InsightAtomModel(ListModel):
             return
 
         for search_index, unit in enumerate(self.res_search_units):
-            string = '\n'.join(self.text_file_model.lines[unit[0]:unit[1]])
+            string = '\n'.join(self.text_file.lines[unit[0]:unit[1]])
             ts = ''
             # handle key value
             r = parse(self.exp_extract, string)
@@ -1216,7 +1216,7 @@ class InsightAtomModel(ListModel):
             item['type'] = 'mark'
             item['abnormal_type'] = 'AbnormalDistrust'
             item['desc'] = item['value']
-            item['origin'] = self.text_file_model.lines[item['global_index']]
+            item['origin'] = self.text_file.lines[item['global_index']]
             res.append(item)
          
         return res
@@ -1265,7 +1265,7 @@ class InsightAtomModel(ListModel):
                 return [{'name':key_value['name'], 'type': key_value['type'], 'abnormal_type': _type, 'global_index':key_value['global_index'][cindcies[0]], 
                 'search_index':key_value['search_index'][cindcies[0]], 'timestamp':key_value['timestamp'][cindcies[0]], 
                 'value': key_value['value'][cindcies[0]], 'desc': key_value['name'] + ': "' + key_value['value'][cindcies[0]] + '" is a mutated state!', 
-                'origin': self.text_file_model.lines[key_value['global_index'][cindcies[0]]]}]
+                'origin': self.text_file.lines[key_value['global_index'][cindcies[0]]]}]
             else:
                 return []
         else:
@@ -1391,9 +1391,9 @@ class StatisticAtomModel(ListModel):
         self.result = ''
         self.result_type = ''
 
-        self.search_function_model = self.subscribe_namespace(self.get_search_function_model_namespace())
-        self.text_analysis_model = self.subscribe_namespace(self.get_text_analysis_model_namespace())
-        self.text_file_model = self.subscribe_namespace(self.get_text_file_model_namespace())
+        self.search_function = self.subscribe_namespace(self.get_search_function_namespace())
+        self.text_analysis = self.subscribe_namespace(self.get_text_analysis_namespace())
+        self.text_file = self.subscribe_namespace(self.get_text_file_namespace())
         self.__dict__.update(model)
         await self.new_view_object()
 
@@ -1436,9 +1436,9 @@ class StatisticAtomModel(ListModel):
 
 
 class BatchInsightModel(BatchModel):
-    async def __init__(self, text_analysis_model, mode='normal'):
-        await super().__init__(text_analysis_model.namespace + ns.BATCHINSIGHT, mode)
-        self.parent = text_analysis_model
+    async def __init__(self, text_analysis, mode='normal'):
+        await super().__init__(text_analysis.namespace + ns.BATCHINSIGHT, mode)
+        self.parent = text_analysis
         self.dir_path = ''
         self.config_path = ''
 
@@ -1457,7 +1457,7 @@ class BatchInsightModel(BatchModel):
         self.is_include_consecutive = True
         self.is_search_based = False
 
-        self.text_analysis_model = text_analysis_model
+        self.text_analysis = text_analysis
 
     def model(self):
         return {'surplus': self.files_num - self.files_index, 'cluster_num': self.cluster_num, 'cluster_tree': self.cluster_tree }
@@ -1519,9 +1519,9 @@ class BatchInsightModel(BatchModel):
         await self.exec_unit(self.files_index, self.files[self.files_index - 1])
 
         # for index, path in enumerate():
-        #     new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()
+        #     new_file_namespace = self.text_analysis.file_container.namespace+'/'+createUuid4()
             
-        #     tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
+        #     tmp_file = await TextFileModel(self.parent.file_container, new_file_namespace, self.dir_path+'\\'+path, 'batch')
         #     await tmp_file.on_load_config('', self.config_path, ['insight'])
         #     self.insight(index, tmp_file)
         #     if len(self.samples) >= self.cluster_num:
@@ -1531,21 +1531,21 @@ class BatchInsightModel(BatchModel):
         #     print('Finish :', tmp_file.file_name)
 
     async def exec_unit(self, index, path):
-        new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()
+        new_file_namespace = self.text_analysis.file_container.namespace+'/'+createUuid4()
         
-        tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
+        tmp_file = await TextFileModel(self.parent.file_container, new_file_namespace, self.dir_path+'\\'+path, 'batch')
         await tmp_file.on_load_config('', self.config_path, ['insight'])
         self.insight(index, tmp_file)
         await self.on_cluster('')
         await tmp_file.on_delete('')
     
-    def insight(self, index, text_file_model):
-        insight_function_model = text_file_model.text_file_function_model.insight_function_model
+    def insight(self, index, text_file):
+        insight_function = text_file.text_file_function.insight_function
         # item = []
         sample = []
-        item = {'index': index, 'filePath':text_file_model.path, 'configPath':self.config_path, 'fileName': text_file_model.file_name}
-        for insight_namespace in insight_function_model.models.keys():
-            atom = insight_function_model.models[insight_namespace]
+        item = {'index': index, 'filePath':text_file.path, 'configPath':self.config_path, 'fileName': text_file.file_name}
+        for insight_namespace in insight_function.models.keys():
+            atom = insight_function.models[insight_namespace]
             if len(atom.outlier) == 0:
                 continue
 
@@ -1622,14 +1622,14 @@ class BatchInsightModel(BatchModel):
 
 
 class BatchStatisticModel(BatchModel):
-    async def __init__(self, text_analysis_model, mode='normal'):
-        await super().__init__(text_analysis_model.namespace + ns.BATCHSTATISTIC, mode)
-        self.parent = text_analysis_model
+    async def __init__(self, text_analysis, mode='normal'):
+        await super().__init__(text_analysis.namespace + ns.BATCHSTATISTIC, mode)
+        self.parent = text_analysis
         self.table = pd.DataFrame()
         self.result = ''
         self.result_type = ''
 
-        self.text_analysis_model = text_analysis_model
+        self.text_analysis = text_analysis
 
     def model(self):
         return {'namespace':self.namespace, 'result': str(self.result)}
@@ -1643,9 +1643,9 @@ class BatchStatisticModel(BatchModel):
         self.config_path = model['config_path']
 
         for index, path in enumerate(iterate_files_in_directory(self.dir_path)):
-            new_file_namespace = self.text_analysis_model.file_container_model.namespace+'/'+createUuid4()
+            new_file_namespace = self.text_analysis.file_container.namespace+'/'+createUuid4()
             
-            tmp_file = await TextFileModel(self.parent.file_container_model, new_file_namespace, self.dir_path+'\\'+path, 'batch')
+            tmp_file = await TextFileModel(self.parent.file_container, new_file_namespace, self.dir_path+'\\'+path, 'batch')
             await tmp_file.on_load_config('', self.config_path, ['search', 'statistic'])
             sample = self.statistic(index, tmp_file)
             if self.mode == 'normal':
@@ -1672,25 +1672,25 @@ class BatchStatisticModel(BatchModel):
     #     await tmp_file.on_delete('')
     #     print('Finish :', tmp_file.file_name)
 
-    def statistic(self, index, text_file_model):
-        statistic_function_model = text_file_model.text_file_function_model.statistic_function_model
-        sample = {'index': index, 'filePath':text_file_model.path, 'configPath':self.config_path, 'fileName': text_file_model.file_name}
-        for statistic_namespace in statistic_function_model.models.keys():
-            atom = statistic_function_model.models[statistic_namespace]
+    def statistic(self, index, text_file):
+        statistic_function = text_file.text_file_function.statistic_function
+        sample = {'index': index, 'filePath':text_file.path, 'configPath':self.config_path, 'fileName': text_file.file_name}
+        for statistic_namespace in statistic_function.models.keys():
+            atom = statistic_function.models[statistic_namespace]
             sample[atom.alias] = atom.result
         self.table = self.table.append(sample, ignore_index=True)
         return sample
 
 
 class GlobalChartModel(Model):
-    async def __init__(self, text_analysis_model, mode='normal'):
-        await super().__init__(text_analysis_model.namespace + ns.GLOBALCHART, mode)
-        self.parent = text_analysis_model
+    async def __init__(self, text_analysis, mode='normal'):
+        await super().__init__(text_analysis.namespace + ns.GLOBALCHART, mode)
+        self.parent = text_analysis
         self.key_value_tree = {}
         self.select_lines = {}
 
-        self.file_container_model = self.subscribe_namespace(ns.TEXTANALYSIS + ns.FILECONTAINER)
-        self.text_analysis_model = text_analysis_model
+        self.file_container = self.subscribe_namespace(ns.TEXTANALYSIS + ns.FILECONTAINER)
+        self.text_analysis = text_analysis
 
     def model(self):
         return {'namespace': self.namespace, 'key_value_tree': self.key_value_tree, 'select_lines':self.select_lines}
@@ -1712,12 +1712,12 @@ class GlobalChartModel(Model):
     def chart(self):
         selected_key = {}
         for file in self.key_value_tree['children']:
-            for search_atom_model in file['children']:
-                for key in search_atom_model['children']:
+            for search_atom in file['children']:
+                for key in search_atom['children']:
                     if key['check'] == True:
-                        # namespace = file['namespace'] + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION + '/' + search_atom_model['namespace']
-                        search_alias = self.file_container_model.text_file_models[file['namespace']].text_file_function_model.search_function_model.models[search_atom_model['namespace']].alias
-                        key_value = self.file_container_model.text_file_models[file['namespace']].text_file_function_model.search_function_model.models[search_atom_model['namespace']].res_key_value[key['name']]
+                        # namespace = file['namespace'] + ns.TEXTFILEFUNCTION + ns.SEARCHFUNCTION + '/' + search_atom['namespace']
+                        search_alias = self.file_container.text_files[file['namespace']].text_file_function.search_function.models[search_atom['namespace']].alias
+                        key_value = self.file_container.text_files[file['namespace']].text_file_function.search_function.models[search_atom['namespace']].res_key_value[key['name']]
                         if len(key_value['global_index']) > 0:
                             selected_key[file['name']+'.'+search_alias+'.'+key['name']] = key_value
 
@@ -1746,17 +1746,17 @@ class GlobalChartModel(Model):
     def generate_global_key_value_tree(self):
         self.key_value_tree = {}
         self.key_value_tree = {'namespace': 'Key Value', 'name': 'Key Value', 'check': False, 'children': []}
-        for file_namespace in self.file_container_model.text_file_models.keys():
+        for file_namespace in self.file_container.text_files.keys():
 
-            text_file_model = self.file_container_model.text_file_models[file_namespace]
+            text_file = self.file_container.text_files[file_namespace]
             key_value_tree = {}
-            key_value_tree = {'namespace': text_file_model.namespace, 'name': text_file_model.file_name, 'check': False, 'children': []}
-            search_function_model = self.file_container_model.text_file_models[file_namespace].text_file_function_model.search_function_model
-            for namespace in search_function_model.models.keys():
+            key_value_tree = {'namespace': text_file.namespace, 'name': text_file.file_name, 'check': False, 'children': []}
+            search_function = self.file_container.text_files[file_namespace].text_file_function.search_function
+            for namespace in search_function.models.keys():
                 keys = []
-                for key in search_function_model.models[namespace].res_key_value.keys():
+                for key in search_function.models[namespace].res_key_value.keys():
                     keys.append({'name': key, 'check': False})
-                key_value_tree['children'].append({'namespace': namespace, 'name': search_function_model.models[namespace].alias, 'check': False, 'children': keys})
+                key_value_tree['children'].append({'namespace': namespace, 'name': search_function.models[namespace].alias, 'check': False, 'children': keys})
             self.key_value_tree['children'].append(key_value_tree)
 
 

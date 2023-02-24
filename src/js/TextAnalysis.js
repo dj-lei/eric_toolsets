@@ -510,13 +510,13 @@ class TextFileView extends View
         this.textFileFunctionView = ''
 
         var tmpSearchAtom = document.createElement('div')
-        tmpSearchAtom.id = `${namespace}${ns.TMPSEARCHATOMMODEL}`
+        tmpSearchAtom.id = `${namespace}${ns.TMPSEARCHATOM}`
         var tmpInsightAtom = document.createElement('div')
-        tmpInsightAtom.id = `${namespace}${ns.TMPINSIGHATOMMODEL}`
+        tmpInsightAtom.id = `${namespace}${ns.TMPINSIGHATOM}`
         var tmpChartAtom = document.createElement('div')
-        tmpChartAtom.id = `${namespace}${ns.TMPCHARTATOMMODEL}`
+        tmpChartAtom.id = `${namespace}${ns.TMPCHARTATOM}`
         var tmpStatisticAtom = document.createElement('div')
-        tmpStatisticAtom.id = `${namespace}${ns.TMPSTATISTICATOMMODEL}`
+        tmpStatisticAtom.id = `${namespace}${ns.TMPSTATISTICATOM}`
 
         this.container.append(tmpSearchAtom)
         this.container.append(tmpInsightAtom)

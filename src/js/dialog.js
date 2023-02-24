@@ -467,12 +467,12 @@ class StatisticAtomComponentDialog extends Dialog
     init(graphAlias){
         let that = this
         
-        var types = ['code', 'graph']
-        this.select = this.createElementSelect()
-        for (var x in types) {
-            this.select.options[this.select.options.length] = new Option(x, x)
-        }
-        this.subContainer.appendChild(this.select)
+        // var types = ['code', 'graph']
+        // this.select = this.createElementSelect()
+        // for (var x in types) {
+        //     this.select.options[this.select.options.length] = new Option(x, x)
+        // }
+        // this.subContainer.appendChild(this.select)
 
         //******************** code *******************/
         var codeContainer = this.createElementDiv()
@@ -530,15 +530,15 @@ class StatisticAtomComponentDialog extends Dialog
         // }
         // graphContainer.appendChild(graphSelect)
 
-        this.select.onchange = function() {
-            if (types[this.value] == 'code') {
-                that.type = 'code'
-                codeContainer.style.display = 'block'
-            }else if (types[this.value] == 'graph') {
-                that.type = 'graph'
-                graphContainer.style.display = 'block'
-            }
-        }
+        // this.select.onchange = function() {
+        //     if (types[this.value] == 'code') {
+        //         that.type = 'code'
+        //         codeContainer.style.display = 'block'
+        //     }else if (types[this.value] == 'graph') {
+        //         that.type = 'graph'
+        //         graphContainer.style.display = 'block'
+        //     }
+        // }
     }
 
     statistic(){
@@ -862,12 +862,12 @@ class DCGMAnalysisDialog extends Dialog
         // Filter condition
         this.telogFilter = this.createElementTextInput()
         this.telogFilter.style.width = '100%'
-        this.subContainer.appendChild(this.createElementHeader('Optional: Telog Filter Condition(Case sensitive, Comma delimited)'))
+        this.subContainer.appendChild(this.createElementHeader('Optional: Telog Filter Express(Python regular)'))
         this.subContainer.appendChild(this.telogFilter)
 
         this.elogFilter = this.createElementTextInput()
         this.elogFilter.style.width = '100%'
-        this.subContainer.appendChild(this.createElementHeader('Optional: Elog Filter Condition(Case sensitive, Comma delimited)'))
+        this.subContainer.appendChild(this.createElementHeader('Optional: Elog Filter Express(Python regular)'))
         this.subContainer.appendChild(this.elogFilter)
 
         // search and cancel button
