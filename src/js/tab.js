@@ -76,10 +76,10 @@ class FileContainerComponentTab extends Tab
 
     displayFile(params)
     {
-        if((params.earlier_active_text_file_model != '') & (params.earlier_active_text_file_model in this.tabs)){
-            this.tabs[params.earlier_active_text_file_model].title.style.backgroundColor = "#555"
+        if((params.earlier_active_text_file != '') & (params.earlier_active_text_file in this.tabs)){
+            this.tabs[params.earlier_active_text_file].title.style.backgroundColor = "#555"
         }
-        this.tabs[params.active_text_file_model].title.style.backgroundColor = "#333"
+        this.tabs[params.active_text_file].title.style.backgroundColor = "#333"
     }
 }
 

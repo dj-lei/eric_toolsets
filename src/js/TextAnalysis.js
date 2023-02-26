@@ -491,7 +491,7 @@ class FileContainerView extends View
     }
 
     onDisplayFile(params){
-        this.activeTextFileView = params.active_text_file_model
+        this.activeTextFileView = params.active_text_file
         this.show.displayFile(params)
     }
 }

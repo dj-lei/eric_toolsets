@@ -411,6 +411,23 @@ class Component extends Element
     createElementTr(){
         var tr = document.createElement('tr')
         tr.style.borderBottom = '1px solid #ddd'
+        tr.flag = false
+        tr.addEventListener("mouseover", function() {
+            tr.style.backgroundColor = '#555'
+        })
+        tr.addEventListener("mouseleave", function() {
+            if (tr.flag == false) {
+                tr.style.backgroundColor = '#000'
+            }
+        })
+        tr.addEventListener("click", function() {
+            for (const child of tr.parentNode.children) {
+                child.style.backgroundColor = '#000'
+                child.flag = false
+            }
+            tr.style.backgroundColor = '#555'
+            tr.flag = true
+        })
         return tr
     }
 

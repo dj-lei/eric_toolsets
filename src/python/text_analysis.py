@@ -83,9 +83,9 @@ class Model(socketio.AsyncNamespace, AsyncObject):
         self.sid = ''
         self.subscribes = []
 
-    async def emit(self, event, *args, namespace):
+    async def emit(self, event, *args, namespace, callback=None):
         if self.mode == 'normal':
-           await super().emit(event=event, data=args, namespace=namespace)
+           await super().emit(event=event, data=args, namespace=namespace, callback=callback)
         else:
             pass
             
