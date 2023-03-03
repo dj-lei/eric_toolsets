@@ -436,7 +436,7 @@ class FileContainerModel(Model):
     def on_dcgm_analysis(self, sid, params):
         print('Dcgm Analysis!', params)
         try:
-            take_apart_dcgm(params['dcgm_dir'] + '\\', params['save_dir'] + '\\', params['telog_filter'], params['elog_filter'])
+            take_apart_dcgm(params['dcgm_dir'] + '\\', params['save_dir'] + '\\', params['telog_filter'], params['elog_filter'], params['is_into_one_file'])
             return Response(status.SUCCESS, msg.NONE, '').__dict__
         except Exception as e:
             return Response(status.ERROR, str(e), '').__dict__
@@ -838,7 +838,10 @@ class SearchAtomModel(ListModel):
                 r = parse(exp, string)
 
                 if r is not None:
-                    ts = str(dp(r.named['timestamp'], yearfirst=True))
+                    if 'timestamp' in r.named:
+                        ts = str(dp(r.named['timestamp'], yearfirst=True))
+                    else:
+                        ts = str(datetime.datetime.now())
                     for key in r.named.keys():
                         if key == 'timestamp':
                             continue
@@ -1641,6 +1644,10 @@ class BatchStatisticModel(BatchModel):
     async def exec(self, model):
         self.dir_path = model['dir_path']
         self.config_path = model['config_path']
+
+        self.table = pd.DataFrame()
+        self.result = ''
+        self.result_type = ''
 
         for index, path in enumerate(iterate_files_in_directory(self.dir_path)):
             new_file_namespace = self.text_analysis.file_container.namespace+'/'+createUuid4()

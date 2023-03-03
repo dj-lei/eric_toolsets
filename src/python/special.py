@@ -94,7 +94,7 @@ def analysis_mlog(lines):
                     data[res[0][1]] = dict(zip(title[0], res[0]))
     return data
 
-def take_apart_dcgm(dcgm_dir_path, save_path, telog_filters, elog_filters):
+def take_apart_dcgm(dcgm_dir_path, save_path, telog_filters, elog_filters, is_into_one_file):
     for num, filename in enumerate(iterate_files_in_directory(dcgm_dir_path)):
         print(num, filename)
         dcgm_path = dcgm_dir_path + filename
@@ -156,17 +156,25 @@ def take_apart_dcgm(dcgm_dir_path, save_path, telog_filters, elog_filters):
                 for dev in set(telog_data.keys()).intersection(set(elog_data.keys())):
                     dev_name = clean_special_symbols(dev,'_')
                     if dev in mlog_data:
-                        with open(save_path+mlog_data[dev]['SERIAL']+'_'+telog.replace('_logfiles.zip', '')+'_'+dev_name+'_telog.log', 'w', encoding='utf-8') as f:
-                            f.write(''.join(telog_data[dev]))
-                            
-                        with open(save_path+mlog_data[dev]['SERIAL']+'_'+elog.replace('_dcg_e2.log.gz', '')+'_'+dev_name+'_elog.log', 'w', encoding='utf-8') as f:
-                            f.write(''.join(elog_data[dev]))
+                        if is_into_one_file:
+                            with open(save_path+mlog_data[dev]['SERIAL']+'_'+telog.replace('_logfiles.zip', '')+'_'+dev_name+'.log', 'w', encoding='utf-8') as f:
+                                f.write(''.join(telog_data[dev]) + ''.join(elog_data[dev]))
+                        else:
+                            with open(save_path+mlog_data[dev]['SERIAL']+'_'+telog.replace('_logfiles.zip', '')+'_'+dev_name+'_telog.log', 'w', encoding='utf-8') as f:
+                                f.write(''.join(telog_data[dev]))
+                                
+                            with open(save_path+mlog_data[dev]['SERIAL']+'_'+elog.replace('_dcg_e2.log.gz', '')+'_'+dev_name+'_elog.log', 'w', encoding='utf-8') as f:
+                                f.write(''.join(elog_data[dev]))
                     else:
-                        with open(save_path+telog.replace('_logfiles.zip', '')+'_'+dev_name+'_telog.log', 'w', encoding='utf-8') as f:
-                            f.write(''.join(telog_data[dev]))
-                            
-                        with open(save_path+elog.replace('_dcg_e2.log.gz', '')+'_'+dev_name+'_elog.log', 'w', encoding='utf-8') as f:
-                            f.write(''.join(elog_data[dev]))
+                        if is_into_one_file:
+                            with open(save_path+telog.replace('_logfiles.zip', '')+'_'+dev_name+'.log', 'w', encoding='utf-8') as f:
+                                f.write(''.join(telog_data[dev]) + ''.join(elog_data[dev]))
+                        else:
+                            with open(save_path+telog.replace('_logfiles.zip', '')+'_'+dev_name+'_telog.log', 'w', encoding='utf-8') as f:
+                                f.write(''.join(telog_data[dev]))
+                                
+                            with open(save_path+elog.replace('_dcg_e2.log.gz', '')+'_'+dev_name+'_elog.log', 'w', encoding='utf-8') as f:
+                                f.write(''.join(elog_data[dev]))
 
 def take_apart_telog(telog_dir_path, save_path, telog_filters):
     for num, filename in enumerate(iterate_files_in_directory(telog_dir_path)):

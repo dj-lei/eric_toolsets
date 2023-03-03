@@ -831,6 +831,7 @@ class DCGMAnalysisDialog extends Dialog
     init(){
         let that = this
 
+        this.subContainer.appendChild(this.createElementHr())
         // DCGM Directory
         this.dcgmDir = this.createElementTextInput()
         this.dcgmDir.style.width = '85%'
@@ -859,6 +860,7 @@ class DCGMAnalysisDialog extends Dialog
         this.subContainer.appendChild(this.saveDir)
         this.subContainer.appendChild(browseSaveDir)
 
+        this.subContainer.appendChild(this.createElementHr())
         // Filter condition
         this.telogFilter = this.createElementTextInput()
         this.telogFilter.style.width = '100%'
@@ -870,6 +872,14 @@ class DCGMAnalysisDialog extends Dialog
         this.subContainer.appendChild(this.createElementHeader('Optional: Elog Filter Express(Python regular)'))
         this.subContainer.appendChild(this.elogFilter)
 
+        var isIntoOneFileContainer = this.createElementDiv()
+        isIntoOneFileContainer.style.width = '100%'
+        this.isIntoOneFile = this.createElementCheckboxInput()
+        isIntoOneFileContainer.append(this.isIntoOneFile)
+        isIntoOneFileContainer.append(this.createElementA(' Is Into One File'))
+        this.subContainer.appendChild(isIntoOneFileContainer)
+
+        this.subContainer.appendChild(this.createElementHr())
         // search and cancel button
         this.apply = document.createElement('button')
         this.apply.innerHTML = 'RUN'
@@ -888,7 +898,8 @@ class DCGMAnalysisDialog extends Dialog
             dcgm_dir: this.dcgmDir.value,
             save_dir: this.saveDir.value,
             telog_filter: this.telogFilter.value,
-            elog_filter: this.elogFilter.value
+            elog_filter: this.elogFilter.value,
+            is_into_one_file: this.isIntoOneFile.checked ? true : false,
         }
 
         this.fileContainerView.controlDCGMAnalysis(params)
