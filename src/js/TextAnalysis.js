@@ -7,7 +7,7 @@ import { SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightC
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
 import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable, BatchInsightComponentTableDialog, BatchStatisticComponentTableDialog } from './table'
 import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
-import { BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog } from './svg'
+import { TextFileOriginalComponentSvg, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog } from './svg'
 import { GlobalChartComponentSequentialChartDialog, ChartAtomComponentSequentialChart } from './chart'
 import { StatisticAtomComponentTextarea } from './textarea'
 // import { TextLogicFlow } from './flow'
@@ -87,30 +87,30 @@ class SystemTestView extends View
         })
 
         config['search'].forEach((model, index) => {
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].collapsible.click", model)
             let wheelEvent = new WheelEvent('wheel', {
                 deltaY: 1,
                 deltaMode: 1
             })
             for(var i=0; i < 10; i++){
-                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].view.table.dispatchEvent", model, wheelEvent)
+                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].view.table.dispatchEvent", model, wheelEvent)
             }
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].collapsible.click", model)
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].edit.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].edit.click", model)
             
             var newModel = JSON.parse(JSON.stringify(config['search'][config['search'].length - 1 - index]))
-            newModel['alias'] = newModel['alias']+'_TEST'
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].onUpdateDialog", model, newModel)
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].dialog.apply.click", model)
+            newModel['name'] = newModel['name']+'_TEST'
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].onUpdateDialog", model, newModel)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].dialog.apply.click", model)
 
             model = newModel
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].collapsible.click", model)
             for(i=0; i < 10; i++){
-                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].view.table.dispatchEvent", model, wheelEvent)
+                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].view.table.dispatchEvent", model, wheelEvent)
             }
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].collapsible.click", model)
 
-            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.alias].del.click", model)
+            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.searchFunctionView.namespace + '/' + model.name].del.click", model)
         })
     }
 
@@ -124,29 +124,29 @@ class SystemTestView extends View
         })
 
         config['insight'].forEach((model, index) => {
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].collapsible.click", model)
             let wheelEvent = new WheelEvent('wheel', {
                 deltaY: 1,
                 deltaMode: 1
             })
             for(var i=0; i < 10; i++){
-                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].view.table.dispatchEvent", model, wheelEvent)
+                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].view.table.dispatchEvent", model, wheelEvent)
             }
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].collapsible.click", model)
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].edit.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].edit.click", model)
 
             var newModel = JSON.parse(JSON.stringify(config['insight'][config['insight'].length - 1 - index]))
-            newModel['alias'] = newModel['alias']+'_TEST'
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].onUpdateDialog", model, newModel)
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].dialog.apply.click", model)
+            newModel['name'] = newModel['name']+'_TEST'
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].onUpdateDialog", model, newModel)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].dialog.apply.click", model)
             
             model = newModel
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].collapsible.click", model)
             for(i=0; i < 10; i++){
-                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].view.table.dispatchEvent", model, wheelEvent)
+                this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].view.table.dispatchEvent", model, wheelEvent)
             }
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].collapsible.click", model)
-            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.alias].del.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].collapsible.click", model)
+            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.insightFunctionView.namespace + '/' + model.name].del.click", model)
         })
     }
 
@@ -168,16 +168,16 @@ class SystemTestView extends View
         })
 
         config['chart'].forEach((model, index) => {
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].collapsible.click", model)
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].edit.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.name].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.name].edit.click", model)
             
             var newModel = JSON.parse(JSON.stringify(config['chart'][config['chart'].length - 1 - index]))
-            newModel['alias'] = newModel['alias']+'_TEST'
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].onUpdateDialog", model, newModel)
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].dialog.chartAtomComponentSvg.apply.click", model)
+            newModel['name'] = newModel['name']+'_TEST'
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.name].onUpdateDialog", model, newModel)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.name].dialog.chartAtomComponentSvg.apply.click", model)
             model = newModel
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].collapsible.click", model)
-            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.alias].del.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.name].collapsible.click", model)
+            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.namespace + '/' + model.name].del.click", model)
         })
     }
 
@@ -199,17 +199,17 @@ class SystemTestView extends View
         })
 
         config['statistic'].forEach((model, index) => {
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].collapsible.click", model)
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].edit.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.name].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.name].edit.click", model)
 
             var newModel = JSON.parse(JSON.stringify(config['statistic'][config['statistic'].length - 1 - index]))
-            newModel['alias'] = newModel['alias']+'_TEST'
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].onUpdateDialog", model, newModel)
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].dialog.apply.click", model)
+            newModel['name'] = newModel['name']+'_TEST'
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.name].onUpdateDialog", model, newModel)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.name].dialog.apply.click", model)
             model = newModel
-            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].collapsible.click", model)
+            this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.name].collapsible.click", model)
 
-            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.alias].del.click", model)
+            // this.forDelayedExec("that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.views[that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].textFileFunctionView.statisticFunctionView.namespace + '/' + model.name].del.click", model)
         })
     }
 }
@@ -529,8 +529,12 @@ class TextFileOriginalView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
-        this.show = new TextFileOriginalComponentTable(this)
+        this.tableShow = new TextFileOriginalComponentTable(this)
+        this.svgShow = new TextFileOriginalComponentSvg(this)
+        this.svgShow.container.style.height = `${parseInt((document.body.offsetHeight - 30) * 0.8)}px`
         
+        // this.tableShow.hidden()
+        this.svgShow.hidden()
         this.container.style.border = '1px solid #ddd'
     }
 
@@ -540,14 +544,19 @@ class TextFileOriginalView extends View
     }
 
     onSetHeight(model){
-        this.show.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
-        this.show.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
-        this.show.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.tableShow.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.tableShow.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.tableShow.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
     }
 
     onRefresh(model){
-        this.show.refresh(model)
+        this.tableShow.refresh(model)
     }
+
+    onRefreshStoryLines(tree){
+        // this.svgShow.update(tree)
+    }
+
 }
 
 class TextFileFunctionView extends View
@@ -709,8 +718,8 @@ class StatisticAtomView extends ListView
         this.socket.emit("statistic_test", model)
     }
 
-    controlGetCompareGraph(alias){
-        this.socket.emit("get_compare_graph", alias)
+    controlGetCompareGraph(name){
+        this.socket.emit("get_compare_graph", name)
     }
 
     onRefreshTest(model){

@@ -3,9 +3,12 @@ import common from '@/plugins/common'
 import { Component } from './element'
 import { Dialog } from './dialog'
 
+const color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
+'#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
+
 class svg extends Component
 {
-    constructor(position, scaleMin, scaleMax){
+    constructor(position, scaleMin=0.2, scaleMax=3){
         super(position)
         this.svg = ''
         this.bottomNav = ''
@@ -40,14 +43,6 @@ class svg extends Component
             d3.select(svg).select("#canvas").attr("transform", transform)
         }
     }
-}
-
-class Tree extends svg
-{
-    constructor(container){
-        super(container)
-        this.data = {}
-    }
 
     update(data){
         this.data = data
@@ -57,8 +52,27 @@ class Tree extends svg
     }
 
     clear(){
-        // this.iterationClear([this.data])
         this.svg.selectAll("*").remove()
+    }
+}
+
+class svgElement
+{
+    constructor(svg){
+        this.svg = svg.append("g")
+    }
+}
+
+class Tree extends svg
+{
+    constructor(container){
+        super(container)
+        this.data = {}
+    }
+
+    clear(){
+        super.clear()
+        // this.iterationClear([this.data])
         // this.draw(this.data)
     }
 
@@ -220,48 +234,272 @@ class Tree extends svg
     }
 }
 
-class BatchInsightComponentSvgDialog extends Dialog
+class IndentedTree extends svgElement
 {
-    constructor(batchInsightView){
-        super(batchInsightView.container)
-        this.batchInsightView = batchInsightView
-        this.subContainer.style.width = '90%' 
-        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+    constructor(svg, d){
+        super(svg)
 
-        this.batchInsightComponentSvg = new BatchInsightComponentSvg(this)
-    }
+        this.d = d
+        const nodes = this.d.descendants()
+        const link = this.svg.append("g")
+            .attr("fill", "none")
+            .attr("stroke", "#999")
+            .selectAll("path")
+            .data(this.d.links())
+            .join("path")
+            .attr("d", d => `
+                M${d.source.sx},${d.source.sy}
+                V${d.target.sy}
+                h${d.target.sx-d.source.sx}
+            `);
 
-    clear(){
-        this.batchInsightComponentSvg.clear()
-    }
+        const node = this.svg.append("g")
+            .selectAll("g")
+            .data(nodes)
+            .join("g")
+            .attr("id", d => d.id)
+            .attr("transform", d => `translate(${d.sx},${d.sy})`);
 
-    refresh(data){
-        this.batchInsightComponentSvg.update(data)
+        node.append("circle")
+            // .attr("cx", d => d.depth * nodeSize)
+            .attr("r", 2.5)
+            .attr("fill", d => d.children ? null : "#999");
+
+        const text = node.append("text")
+            .attr("dy", "-0.2em")
+            // .attr("x", d => d.depth * nodeSize + 6)
+            .text(d => d.data.name)
+            .attr("stroke", "white")
+            .attr("fill", "white")
+            .on("click", function(event, d) {
+                console.log(d)
+            })
+            .style("cursor", "pointer")
+
+        text.each(function() {
+            var textWidth = this.getComputedTextLength(); // 获取文本宽度
+            d3.select(this)
+                .attr("transform", "translate(" + -1 * textWidth + ", 0)");
+        })
     }
 }
 
-class BatchInsightComponentSvg extends Tree
+class LineChart extends svgElement
 {
-    constructor(batchInsightComponentSvgDialog){
-        super(batchInsightComponentSvgDialog.subContainer)
-        this.batchInsightComponentSvgDialog = batchInsightComponentSvgDialog
+    constructor(svg, d){
+        super(svg)
+
+        this.d = d
+
+        Object.keys(d.data.data.select_lines).forEach((name, index) =>{
+            if (d.data.data.select_lines[name][0].type == 'mark') {
+                this.addMark(d.data.data.select_lines[name], d.height)
+            }else{
+                this.addLine(d.data.data.select_lines[name], name, d.height, index)
+            }
+        })
+    }
+
+    addLine(line, name, height, index){
+        var y = d3.scaleLinear().range([height, 0])
+        y.domain(d3.extent(line, function (d) { return d.value }))
+
+        var lineF = d3.line()
+        .x(function (d) { return d.x })
+        .y(function (d) { return y(d.value) })
+        .curve(d3.curveLinear)
+
+        // add x axis
+        // this.svg.append("g")
+        // .attr("transform", "translate(0," + height + ")")
+        // .call(d3.axisBottom(x))
+        // .select(".domain")
+        // .remove()
+
+        // add y axis
+        this.svg.append("g")
+            .attr("transform", `translate(${(index * -50) - 20},0)`)
+            .call(d3.axisLeft(y))
+            .append("text")
+            .attr("fill", "#000")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", "0.4em")
+            .attr("text-anchor", "end")
+            .text(name)
+            .attr("stroke", color[index])
+            .attr("fill", color[index])
+
+        const node = this.svg.append("g")
+
+        // add path elm
+        const path = node.append("path")
+                        .datum(line)
+                        .attr("fill", "none")
+                        .attr("stroke", color[index])
+                        .attr("stroke-linejoin", "round")
+                        .attr("stroke-linecap", "round")
+                        .attr("stroke-width", 2)
+                        .attr("stroke-dasharray", "10 10")
+                        .attr("d", lineF);
+
+        const points = node.selectAll("circle")
+                        .data(line)
+                        
+        points.enter()
+            .append("circle")
+            .attr("r", 3)
+            .attr("fill", color[index])
+            .attr("cx", d => d.x)
+            .attr("cy", d => y(d.value))
+            .on("click", function(event, d) {
+                console.log(d)
+            })
+            .style("cursor", "pointer")
+    }
+
+    addMark(mark, height){
+        const node = this.svg.append("g")
+                    .selectAll("g")
+                    .data(mark)
+                    .join("g")
+
+        node.append("line")
+            .attr("x1", d => d.x)
+            .attr("y1", 0)
+            .attr("x2", d => d.x)
+            .attr("y2", height)
+            .attr("stroke", d => d.value)
+            .attr("stroke-width", 3)
+
+        node.append("text")
+            .attr("x", d => d.x)
+            .attr("y", 0)
+            .attr("stroke", d => d.value)
+            .attr("fill", d => d.value)
+            .text(d => d.name)
+            .on("click", function(event, d) {
+                console.log(d)
+            })
+            .style("cursor", "pointer")
+    }
+}
+
+class LineStory extends svgElement
+{
+    constructor(svg, d){
+        super(svg)
+
+        this.d = d
+        console.log(d)
+        this.svg.append("rect")
+            .attr("x", 0)
+            .attr("height", d.height)
+            .attr("width", d.ex - d.sx)
+            .attr("fill", "#FFFFFF")
+    }
+}
+
+class TextFileOriginalComponentSvg extends svg
+{
+    constructor(textFileOriginalView){
+        super(textFileOriginalView.container)
+        this.viewMode = 'global'
+        this.startPosition = 0
+        this.endPosition = 0
+        this.viewWidth = 5000
+        this.currentHeight = 0
+        this.lineChartHeight = 200
+        this.lineStoryHeight = 20
+        this.intervalHeight = 10
+    }
+
+    update(data){
+        this.clear()
+        this.currentHeight = 0
+        this.data = data
+        this.svg.style("overflow", "visible")
         
-        let that = this
-        var cancelBtn = this.createElementButton('CANCEL')
-        cancelBtn.style.backgroundColor = 'red'
-        cancelBtn.style.float = 'right'
-        cancelBtn.onclick = function(){that.batchInsightComponentSvgDialog.hidden()}
-        this.bottomBtnSets.appendChild(cancelBtn)
-    }
+        // get boundary
+        var starts = []
+        var ends = []
+        d3.hierarchy(this.data).eachBefore(d => {
+            if (d.data.data != null) {
+                if (this.viewMode == 'timestamp') {
+                    starts.push(d.data.data.start_timestamp)
+                    ends.push(d.data.data.end_timestamp)
+                }else{
+                    starts.push(d.data.data.start_global_index)
+                    ends.push(d.data.data.end_global_index)
+                }
+            }
+        })
 
-    clickEvent(event, d){
-        if (d.depth == 1) {
-            this.batchInsightComponentSvgDialog.batchInsightView.controlGetUniversal(parseInt(d.data.name[d.data.name.length - 1]) )
-        }else if(d.depth == 2){
-            this.batchInsightComponentSvgDialog.batchInsightView.controlGetSingleInsight(d.data.namespace)
-        }
-    }
+        var x = d3.scaleLinear().range([0, this.viewWidth])
+        x.domain(d3.extent(starts.concat(ends)))
+        this.svg.append("g")
+        .attr("transform", "translate(0,0)")
+        .call(d3.axisBottom(x))
+        // .select(".domain")
+        // .remove()
 
+        // map x y
+        var i = 0
+        var root = d3.hierarchy(this.data).eachBefore(d => {
+            d.id = d.data.name
+            d.index = i++
+            d.sy = this.currentHeight
+
+            if (d.data.data == null) {
+                d.sx = 0
+                d.height = this.lineStoryHeight
+                this.currentHeight = this.currentHeight + this.lineStoryHeight + this.intervalHeight
+            }else{
+                if (this.viewMode == 'timestamp') {
+                    d.sx = x(d.data.data.start_timestamp)
+                    d.ex = x(d.data.data.end_timestamp)
+                }else{
+                    d.sx = x(d.data.data.start_global_index)
+                    d.ex = x(d.data.data.end_global_index)
+                }
+
+                if (d.data.data.type == 'chart') {
+                    var chartX = d3.scaleLinear().range([0, d.ex - d.sx])
+                    chartX.domain([d.sx, d.ex])
+
+                    // convert timestamp or global_index to x
+                    Object.keys(d.data.data.select_lines).forEach((name) =>{
+                        d.data.data.select_lines[name].forEach(dot => {
+                            if (this.viewMode == 'timestamp') {
+                                dot.x = chartX(x(dot.timestamp))
+                            }else{
+                                dot.x = chartX(x(dot.global_index))
+                            }
+                        })
+                    })
+                    d.height = this.lineChartHeight
+                    this.currentHeight = this.currentHeight + this.lineChartHeight + this.intervalHeight
+                }else if(d.data.data.type == 'search'){
+                    d.height = this.lineStoryHeight
+                    this.currentHeight = this.currentHeight + this.lineStoryHeight + this.intervalHeight
+                }
+            }
+        
+        })
+
+        const nodes = root.descendants()
+        new IndentedTree(this.svg, root)
+        nodes.forEach(d => {
+            if (d.data.data != null){
+                if (d.data.data.type == 'chart') {
+                    new LineChart(this.svg.select(`#${d.id}`), d)
+                }else if(d.data.data.type == 'search'){
+                    new LineStory(this.svg.select(`#${d.id}`), d)
+                }
+            }
+        })
+        console.log(this.svg.node())
+    }
 }
 
 class ChartAtomComponentSvgDialog extends Dialog
@@ -272,19 +510,23 @@ class ChartAtomComponentSvgDialog extends Dialog
         this.subContainer.style.width = '90%' 
         this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
 
-        this.alias = ''
-        this.desc = ''
         this.subContainer.appendChild(this.createElementHr())
-        // alias
-        this.alias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
-        this.subContainer.appendChild(this.alias)
+        // identifier
+        this.identifier = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementHeader('Identifier(Global Unique)'))
+        this.subContainer.appendChild(this.identifier)
         this.subContainer.appendChild(this.createElementHr())
 
         // search description
         this.desc = this.createElementTextInput()
         this.subContainer.appendChild(this.createElementHeader('Graph Description'))
         this.subContainer.appendChild(this.desc)
+        this.subContainer.appendChild(this.createElementHr())
+
+        // name
+        this.parentRole = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
+        this.subContainer.appendChild(this.parentRole)
         this.subContainer.appendChild(this.createElementHr())
 
         this.subContainer.appendChild(this.createElementHeader('Key Value Tree'))
@@ -294,15 +536,16 @@ class ChartAtomComponentSvgDialog extends Dialog
     apply(){
         let model = {
             namespace: this.chartAtomView.namespace,
-            alias: this.alias.value,
+            identifier: this.identifier.value,
             desc: this.desc.value,
             key_value_tree: this.chartAtomComponentSvg.data,
+            parent_role: this.parentRole.value,
         }
         this.chartAtomView.controlExec(model)
     }
 
     update(model){
-        this.alias.value = model.alias
+        this.identifier.value = model.identifier
         this.desc.value = model.desc
         this.chartAtomComponentSvg.update(model.key_value_tree)
     }
@@ -355,6 +598,50 @@ class ChartAtomComponentSvg extends Tree
     }
 }
 
+class BatchInsightComponentSvgDialog extends Dialog
+{
+    constructor(batchInsightView){
+        super(batchInsightView.container)
+        this.batchInsightView = batchInsightView
+        this.subContainer.style.width = '90%' 
+        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+
+        this.batchInsightComponentSvg = new BatchInsightComponentSvg(this)
+    }
+
+    clear(){
+        this.batchInsightComponentSvg.clear()
+    }
+
+    refresh(data){
+        this.batchInsightComponentSvg.update(data)
+    }
+}
+
+class BatchInsightComponentSvg extends Tree
+{
+    constructor(batchInsightComponentSvgDialog){
+        super(batchInsightComponentSvgDialog.subContainer)
+        this.batchInsightComponentSvgDialog = batchInsightComponentSvgDialog
+        
+        let that = this
+        var cancelBtn = this.createElementButton('CANCEL')
+        cancelBtn.style.backgroundColor = 'red'
+        cancelBtn.style.float = 'right'
+        cancelBtn.onclick = function(){that.batchInsightComponentSvgDialog.hidden()}
+        this.bottomBtnSets.appendChild(cancelBtn)
+    }
+
+    clickEvent(event, d){
+        if (d.depth == 1) {
+            this.batchInsightComponentSvgDialog.batchInsightView.controlGetUniversal(parseInt(d.data.name[d.data.name.length - 1]) )
+        }else if(d.depth == 2){
+            this.batchInsightComponentSvgDialog.batchInsightView.controlGetSingleInsight(d.data.namespace)
+        }
+    }
+
+}
+
 class GlobalChartComponentSvgDialog extends Dialog
 {
     constructor(globalChartView){
@@ -370,7 +657,7 @@ class GlobalChartComponentSvgDialog extends Dialog
     apply(){
         let model = {
             namespace: this.globalChartView.namespace,
-            alias: "global",
+            name: "global",
             key_value_tree: this.globalChartView.model.key_value_tree,
         }
         this.globalChartView.controlExec(model)
@@ -429,4 +716,4 @@ class GlobalChartComponentSvg extends Tree
     }
 }
 
-export {BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog}
+export {TextFileOriginalComponentSvg, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog}

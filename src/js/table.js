@@ -260,8 +260,8 @@ class BatchInsightComponentTable extends Table
         data.forEach((outlier) => {
             console.log(outlier)
             var tr = document.createElement('tr')
-            var alias = document.createElement('td')
-            alias.innerHTML = outlier.alias
+            var name = document.createElement('td')
+            name.innerHTML = outlier.name
             var timestamp = document.createElement('td')
             timestamp.innerHTML = outlier.timestamp
             var abnormalType = document.createElement('td')
@@ -269,7 +269,7 @@ class BatchInsightComponentTable extends Table
             var desc = document.createElement('td')
             desc.innerHTML = outlier.desc
 
-            tr.appendChild(alias)
+            tr.appendChild(name)
             tr.appendChild(timestamp)
             tr.appendChild(abnormalType)
             tr.appendChild(desc)
@@ -415,14 +415,14 @@ class BatchStatisticComponentTable extends Table
                 tr.appendChild(td)
             }
             // model.result[file].forEach((statisticAtom) => {
-            //     var alias = document.createElement('td')
-            //     alias.innerHTML = statisticAtom.alias
+            //     var name = document.createElement('td')
+            //     name.innerHTML = statisticAtom.name
             //     var resultType = document.createElement('td')
             //     resultType.innerHTML = statisticAtom.resultType
             //     var result = document.createElement('td')
             //     result.innerHTML = statisticAtom.result
 
-            //     tr.appendChild(alias)
+            //     tr.appendChild(name)
             //     tr.appendChild(resultType)
             //     tr.appendChild(result)
             // })

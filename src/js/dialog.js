@@ -34,73 +34,13 @@ class Dialog extends Component
     }
 }
 
-class TextFileComponentRegisterCompareGraphDialog extends Dialog
-{
-    constructor(textFileView){
-        super(textFileView.container)
-        this.textFileView = textFileView
-        this.textFileComponentCompareGraphSequentialChart = ''
-
-        this.desc = ''
-        this.markAlias = ''
-        this.markTimestampForwardSecond = 0
-        this.markTimestampBackwardSecond = 0
-
-        this.init()
-    }
-
-    init(){
-        this.desc = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Description'))
-        this.subContainer.appendChild(this.desc)
-
-        this.markAlias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Mark Alias'))
-        this.subContainer.appendChild(this.markAlias)
-
-        this.markTimestampForwardSecond = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Mark Timestamp Forward Second'))
-        this.subContainer.appendChild(this.markTimestampForwardSecond)
-
-        this.markTimestampBackwardSecond = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Mark Timestamp Backward Second'))
-        this.subContainer.appendChild(this.markTimestampBackwardSecond)
-
-        // this.textFileComponentCompareGraphSequentialChart = new FileContainerComponentCompareGraphSequentialChart(this, this.subContainer)
-        // search and cancel button
-        var register = this.createElementButton('REGISTER')
-        register.style.width = '50%'
-        register.onclick = function(){that.register()}
-        var cancel = this.createElementButton('CANCEL')
-        cancel.style.backgroundColor = 'red'
-        cancel.style.width = '50%'
-        cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(register)
-        this.subContainer.appendChild(cancel)
-    }
-
-    register(){
-        compareGraph = {
-            desc: this.desc,
-            markAlias: this.markAlias,
-            markTimestampForwardSecond: this.markTimestampForwardSecond,
-            markTimestampBackwardSecond: this.markTimestampBackwardSecond
-        }
-        this.fileContainerView.registerCompareGraph()
-    }
-
-    update(chartAtomModel){
-
-    }
-}
-
 class SearchAtomComponentDialog extends Dialog
 {
     constructor(searchAtomView){
         super(searchAtomView.container)
         this.searchAtomView = searchAtomView
 
-        this.alias = ''
+        this.identifier = ''
         this.desc = ''
         this.expSearch = ''
         this.expExtract = ''
@@ -108,17 +48,17 @@ class SearchAtomComponentDialog extends Dialog
         this.expMarkColor = ''
         this.expExtractUl = ''
         this.expMarkUl = ''
-
+        this.parentRole = ''
         this.init()
     }
 
     init(){
         let that = this
         this.subContainer.appendChild(this.createElementHr())
-        // alias
-        this.alias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
-        this.subContainer.appendChild(this.alias)
+        // identifier
+        this.identifier = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementHeader('Identifier(Global Unique)'))
+        this.subContainer.appendChild(this.identifier)
         this.subContainer.appendChild(this.createElementHr())
 
         // search description
@@ -196,6 +136,12 @@ class SearchAtomComponentDialog extends Dialog
         this.subContainer.appendChild(this.expMarkColor)
         this.subContainer.appendChild(addExpMark)
         this.subContainer.appendChild(this.expMarkUl)
+        this.subContainer.appendChild(this.createElementHr())
+
+        this.parentRole = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
+        this.subContainer.appendChild(this.parentRole)
+        this.subContainer.appendChild(this.createElementHr())
 
         // search and cancel button
         this.apply = this.createElementButton('SEARCH')
@@ -212,7 +158,7 @@ class SearchAtomComponentDialog extends Dialog
     search(){
         let model = {
             namespace: this.searchAtomView.namespace,
-            alias: this.alias.value,
+            identifier: this.identifier.value,
             desc: this.desc.value,
             exp_search: this.expSearch.value,
             is_case_sensitive: this.isCaseSensitive.checked ? true : false,
@@ -220,6 +166,7 @@ class SearchAtomComponentDialog extends Dialog
             backward_rows: parseInt(this.backwardRows.value),
             exp_extract: this.getExpExtractList(),
             exp_mark: this.getExpMarkList(),
+            parent_role: this.parentRole.value,
         }
         this.searchAtomView.controlExec(model)
     }
@@ -227,7 +174,7 @@ class SearchAtomComponentDialog extends Dialog
     update(model){
         common.removeAllChild(this.expExtractUl)
         common.removeAllChild(this.expMarkUl)
-        this.alias.value = model.alias
+        this.identifier.value = model.identifier
         this.desc.value = model.desc
         this.expSearch.value = model.exp_search
         this.isCaseSensitive.checked = model.is_case_sensitive
@@ -238,11 +185,12 @@ class SearchAtomComponentDialog extends Dialog
             this.addExpExtractItem()
         })
         model.exp_mark.forEach((mark) => {
-            this.expMarkAlias.value = mark.alias
+            this.expMarkAlias.value = mark.abbr
             this.expMark.value = mark.exp
             this.expMarkColor.value = mark.color
             this.addExpMarkItem()
         })
+        this.parentRole.value = model.parent_role
     }
 
     addExpExtractItem(){
@@ -300,7 +248,7 @@ class SearchAtomComponentDialog extends Dialog
 
     getExpMarkList(){
         var expMarks = []
-        var keys = ['alias', 'exp', 'color']
+        var keys = ['abbr', 'exp', 'color']
         for (const li of this.expMarkUl.children) {
             var item = {}
             var count = 0
@@ -326,7 +274,7 @@ class InsightAtomComponentDialog extends Dialog
         super(insightAtomView.container)
         this.insightAtomView = insightAtomView
 
-        this.alias = ''
+        this.identifier = ''
         this.desc = ''
         this.expSearch = ''
         this.expExtract = ''
@@ -339,10 +287,10 @@ class InsightAtomComponentDialog extends Dialog
     init(){
         let that = this
         this.subContainer.appendChild(this.createElementHr())
-        // alias
-        this.alias = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
-        this.subContainer.appendChild(this.alias)
+        // identifier
+        this.identifier = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementHeader('Identifier(Global Unique)'))
+        this.subContainer.appendChild(this.identifier)
         this.subContainer.appendChild(this.createElementHr())
 
         // search description
@@ -423,30 +371,30 @@ class InsightAtomComponentDialog extends Dialog
     insight(){
         let model = {
             namespace: this.insightAtomView.namespace,
-            alias: this.alias.value,
+            identifier: this.identifier.value,
             desc: this.desc.value,
             exp_search: this.expSearch.value,
             is_case_sensitive: this.isCaseSensitive.checked ? true : false,
             forward_rows: parseInt(this.forwardRows.value),
             backward_rows: parseInt(this.backwardRows.value),
             exp_extract: this.expExtract.value,
-            exp_mark: {'alias':this.expMarkAlias.value, 'exp':this.expMark.value, 'color': this.expMarkColor.value},
+            exp_mark: {'abbr':this.expMarkAlias.value, 'exp':this.expMark.value, 'color': this.expMarkColor.value},
         }
         this.insightAtomView.controlExec(model)
     }
 
     update(model){
-        this.alias.value = model.alias
+        this.identifier.value = model.identifier
         this.desc.value = model.desc
         this.expSearch.value = model.exp_search
         this.isCaseSensitive.checked = model.is_case_sensitive
         this.forwardRows.value = model.forward_rows
         this.backwardRows.value = model.backward_rows
         this.expExtract.value = model.exp_extract
-        this.expMarkAlias.value = model.exp_mark.alias
+        this.expMarkAlias.value = model.exp_mark.abbr
         this.expMark.value = model.exp_mark.exp
         this.expMarkColor.value = model.exp_mark.color
-
+        this.parentRole.value = model.parent_role
     }
 }
 
@@ -456,11 +404,11 @@ class StatisticAtomComponentDialog extends Dialog
         super(statisticAtomView.container)
         this.statisticAtomView = statisticAtomView
 
-        this.alias = ''
+        this.identifier = ''
         this.desc = ''
         this.code = ''
         this.type = 'code'
-
+        this.parentRole = ''
         this.init()
     }
 
@@ -477,10 +425,10 @@ class StatisticAtomComponentDialog extends Dialog
         //******************** code *******************/
         var codeContainer = this.createElementDiv()
         codeContainer.appendChild(this.createElementHr())
-        // alias
-        this.alias = this.createElementTextInput()
-        codeContainer.appendChild(this.createElementHeader('Alias(Global Unique)'))
-        codeContainer.appendChild(this.alias)
+        // identifier
+        this.identifier = this.createElementTextInput()
+        codeContainer.appendChild(this.createElementHeader('Identifier(Global Unique)'))
+        codeContainer.appendChild(this.identifier)
         codeContainer.appendChild(this.createElementHr())
 
         // search description
@@ -499,6 +447,12 @@ class StatisticAtomComponentDialog extends Dialog
         this.result = this.createElementTextarea()
         codeContainer.appendChild(this.createElementHeader('Code Test Result'))
         codeContainer.appendChild(this.result)
+        this.subContainer.appendChild(this.createElementHr())
+
+        this.parentRole = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
+        this.subContainer.appendChild(this.parentRole)
+        this.subContainer.appendChild(this.createElementHr())
 
         // search and cancel button
         this.apply = this.createElementButton('STATISTIC')
@@ -544,9 +498,10 @@ class StatisticAtomComponentDialog extends Dialog
     statistic(){
         let model = {
             namespace: this.statisticAtomView.namespace,
-            alias: this.alias.value,
+            identifier: this.identifier.value,
             desc: this.desc.value,
             code: this.code.value,
+            parent_role: this.parentRole.value,
         }
         this.statisticAtomView.controlExec(model)
     }
@@ -554,7 +509,7 @@ class StatisticAtomComponentDialog extends Dialog
     statisticTest(){
         let model = {
             namespace: this.statisticAtomView.namespace,
-            alias: this.alias.value,
+            identifier: this.identifier.value,
             desc: this.desc.value,
             code: this.code.value,
         }
@@ -563,9 +518,10 @@ class StatisticAtomComponentDialog extends Dialog
 
     update(model){
         if (this.type == 'code') {
-            this.alias.value = model.alias
+            this.identifier.value = model.identifier
             this.desc.value = model.desc
             this.code.value = model.code
+            this.parentRole.value = model.parent_role
         }else if (this.type == 'graph') {
             this.graph.draw(model.compareGraph)
         }

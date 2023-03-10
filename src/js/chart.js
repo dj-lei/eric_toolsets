@@ -305,7 +305,7 @@ class SequentialChart extends Chart
 
 		// package xaxis data
 		line.forEach((dot) => {
-			d.push({'value': [dot.graph_index, dot.value], 'globalIndex':dot.global_index, 'searchIndex':dot.search_index, 'origin':dot.value, 'timestamp':dot.timestamp})
+			d.push({'value': [dot.global_index, dot.value], 'globalIndex':dot.global_index, 'searchIndex':dot.search_index, 'origin':dot.value, 'timestamp':dot.timestamp})
 		})
 
 		this.option['series'].push(

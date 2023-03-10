@@ -13,19 +13,20 @@ import gzip
 # from deepdiff import DeepDiff
 # from tslearn.metrics import lcss_path
 # from sklearn.preprocessing import minmax_scale
-from sklearn.metrics import silhouette_score
-from sklearn.cluster import KMeans
-import ruptures as rpt
+from treelib import Node, Tree
+# from sklearn.metrics import silhouette_score
+# from sklearn.cluster import KMeans
+# import ruptures as rpt
 from parse import parse
 from datetime import timedelta
 from dateutil.parser import parse as dp
 from types import SimpleNamespace
 
-import spacy
-nlp = spacy.load("en_core_web_sm")
+# import spacy
+# nlp = spacy.load("en_core_web_sm")
 
-import en_core_web_sm
-nlp = en_core_web_sm.load()
+# import en_core_web_sm
+# nlp = en_core_web_sm.load()
 
 def createUuid4():
     return str(uuid.uuid4()).replace('-','')
@@ -118,3 +119,22 @@ def is_int(string):
         return True
     except ValueError:
         return False
+    
+def convert_dict_format(data):
+    res = {'name': '','data': ''}
+    for key in data.keys():
+        res['name'] = key
+        
+    res['data'] = data[res['name']]['data']
+        
+    if 'children' in data[res['name']]:
+        res['children'] = []
+        for child in data[res['name']]['children']:
+            res['children'].append(convert_dict_format(child))
+    else:
+        return res
+    return res
+
+def convert_datetime_timestamp(date_time):
+    date_time = dp(date_time, yearfirst=True)
+    return time.mktime(date_time.timetuple()) + (date_time.microsecond / 1000000)

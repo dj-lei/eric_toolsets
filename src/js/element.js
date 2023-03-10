@@ -211,8 +211,8 @@ class ListView extends View
             this.socket.emit("exec", model, 'tmp')
         }else{
             this.socket.emit("exec", model)
-            if (model.alias != this.model.alias) {
-                this.onReconnect(this.namespace.split('/').slice(0, this.namespace.split('/').length - 1).join('/')+'/'+model.alias)
+            if (model.name != this.model.name) {
+                this.onReconnect(this.namespace.split('/').slice(0, this.namespace.split('/').length - 1).join('/')+'/'+model.name)
             }
         }
         this.dialog.hidden()
