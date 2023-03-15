@@ -13,6 +13,7 @@
   "TMPSTATISTICATOM": "/TmpStatisticAtom",
   "BATCHINSIGHT": "/BatchInsight",
   "BATCHSTATISTIC": "/BatchStatistic",
+  "TEXTFILECOMPARE": "/TextFileCompare",
   "GLOBALCHART": "/GlobalChart",
   "SYSTEMTEST": "/SystemTest"
 }

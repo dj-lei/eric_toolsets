@@ -2,6 +2,10 @@ import * as d3 from "d3"
 import common from '@/plugins/common'
 import { Component } from './element'
 import { Dialog } from './dialog'
+import { TextFileOriginalComponentSvgNavigate, TextFileCompareComponentSvgDialogNavigate } from './navigate'
+
+const { remote } = require('electron')
+const win = remote.getCurrentWindow()
 
 const color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
 '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
@@ -11,36 +15,30 @@ class svg extends Component
     constructor(position, scaleMin=0.2, scaleMax=3){
         super(position)
         this.svg = ''
-        this.bottomNav = ''
 
         this.container.style.width = "100%"
         this.container.style.height = '100%'
-        this.container.style.backgroundColor = '#555'
+        this.container.style.backgroundColor = '#000'
         this.container.style.border = '1px solid #888'
 
-        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        svg.setAttribute('width', '100%')
-        svg.setAttribute('height', '100%')
-        this.container.append(svg)
-
-        this.bottomBtnSets = this.createElementDiv()
-        this.bottomBtnSets.style.position = 'fixed'
-        this.bottomBtnSets.style.bottom = 0
-        this.bottomBtnSets.style.width = '50%'
-        this.container.append(this.bottomBtnSets)
+        this.svgElm = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        this.svgElm.setAttribute('width', '100%')
+        this.svgElm.setAttribute('height', '100%')
+        this.container.append(this.svgElm)
 
         var zoom = d3.zoom().scaleExtent([scaleMin, scaleMax]).on("zoom", zoomed)
-        d3.select(svg).call(zoom).on("dblclick.zoom", null)
+        d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
 
-        this.svg = d3.select(svg).append("g")
+        this.svg = d3.select(this.svgElm).append("g")
                     .attr("id", "canvas")
                     .style("font", "12px sans-serif")
                     .append("g")
                         .attr("transform", `translate(${document.body.offsetWidth / 3},${document.body.offsetHeight / 4})`)
     
+        let that = this
         function zoomed(event) {
             const {transform} = event
-            d3.select(svg).select("#canvas").attr("transform", transform)
+            d3.select(that.svgElm).select("#canvas").attr("transform", transform)
         }
     }
 
@@ -286,10 +284,12 @@ class IndentedTree extends svgElement
 
 class LineChart extends svgElement
 {
-    constructor(svg, d){
+    constructor(svg, d, lineType){
         super(svg)
 
         this.d = d
+        this.lineType = lineType
+        this.points = []
 
         Object.keys(d.data.data.select_lines).forEach((name, index) =>{
             if (d.data.data.select_lines[name][0].type == 'mark') {
@@ -317,45 +317,57 @@ class LineChart extends svgElement
         // .remove()
 
         // add y axis
-        this.svg.append("g")
-            .attr("transform", `translate(${(index * -50) - 20},0)`)
-            .call(d3.axisLeft(y))
+        const yAxis = this.svg.append("g")
+                        .attr("transform", `translate(${(index * -50) - 20},0)`)
+        yAxis.call(d3.axisLeft(y).tickSize(0))
+            .style('stroke', color[index])
             .append("text")
-            .attr("fill", "#000")
-            .attr("transform", "rotate(-90)")
-            .attr("y", 6)
-            .attr("dy", "0.4em")
-            .attr("text-anchor", "end")
-            .text(name)
-            .attr("stroke", color[index])
-            .attr("fill", color[index])
+                .attr("fill", "#000")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", "0.4em")
+                .attr("text-anchor", "end")
+                .text(name)
+                .attr("stroke", color[index])
+                .attr("fill", color[index])
+        yAxis.select(".domain")
+            .style('stroke', color[index])
 
         const node = this.svg.append("g")
 
         // add path elm
-        const path = node.append("path")
-                        .datum(line)
-                        .attr("fill", "none")
-                        .attr("stroke", color[index])
-                        .attr("stroke-linejoin", "round")
-                        .attr("stroke-linecap", "round")
-                        .attr("stroke-width", 2)
-                        .attr("stroke-dasharray", "10 10")
-                        .attr("d", lineF);
+        if (this.lineType == 'dash') {
+            const path = node.append("path")
+                .datum(line)
+                .attr("fill", "none")
+                .attr("stroke", color[index])
+                .attr("stroke-linejoin", "round")
+                .attr("stroke-linecap", "round")
+                .attr("stroke-width", 2)
+                .attr("d", lineF)
+                .attr("stroke-dasharray", "10 10")
+        }else if(this.lineType == 'solid'){
+            const path = node.append("path")
+                .datum(line)
+                .attr("fill", "none")
+                .attr("stroke", color[index])
+                .attr("stroke-linejoin", "round")
+                .attr("stroke-linecap", "round")
+                .attr("stroke-width", 2)
+                .attr("d", lineF)
+        }else if(this.lineType == 'dot'){
+            const path = ''
+        }
 
-        const points = node.selectAll("circle")
-                        .data(line)
-                        
-        points.enter()
-            .append("circle")
-            .attr("r", 3)
-            .attr("fill", color[index])
-            .attr("cx", d => d.x)
-            .attr("cy", d => y(d.value))
-            .on("click", function(event, d) {
-                console.log(d)
-            })
-            .style("cursor", "pointer")
+        node.selectAll("circle")
+            .data(line)
+            .enter()
+                .append("circle")
+                .attr("r", 4)
+                .attr("fill", color[index])
+                .attr("cx", d => d.x)
+                .attr("cy", d => y(d.value))
+                .style("cursor", "pointer")
     }
 
     addMark(mark, height){
@@ -364,13 +376,24 @@ class LineChart extends svgElement
                     .data(mark)
                     .join("g")
 
-        node.append("line")
-            .attr("x1", d => d.x)
-            .attr("y1", 0)
-            .attr("x2", d => d.x)
-            .attr("y2", height)
-            .attr("stroke", d => d.value)
-            .attr("stroke-width", 3)
+        if (['dash','dot'].includes(this.lineType)) {
+            node.append("line")
+                .attr("x1", d => d.x)
+                .attr("y1", 0)
+                .attr("x2", d => d.x)
+                .attr("y2", height)
+                .attr("stroke", d => d.value)
+                .attr("stroke-width", 3)
+        }else if(this.lineType == 'solid'){
+            node.append("line")
+                .attr("x1", d => d.x)
+                .attr("y1", 0)
+                .attr("x2", d => d.x)
+                .attr("y2", height)
+                .attr("stroke", d => d.value)
+                .attr("stroke-width", 3)
+                .attr("stroke-dasharray", "10 10")
+        }
 
         node.append("text")
             .attr("x", d => d.x)
@@ -391,20 +414,34 @@ class LineStory extends svgElement
         super(svg)
 
         this.d = d
-        console.log(d)
+        this.marks = ''
         this.svg.append("rect")
             .attr("x", 0)
             .attr("height", d.height)
             .attr("width", d.ex - d.sx)
             .attr("fill", "#FFFFFF")
+
+        if (d.data.data.res_compare_special_lines.length > 0) {
+            this.marks = this.svg.append("g")
+                            .selectAll("path")
+                            .data(d.data.data.res_compare_special_lines)
+                            .enter()
+                                .append("path")
+                                .attr("d", d3.symbol().type(d3.symbolTriangle).size(15))
+                                .style("cursor", "pointer")
+                                .style("fill", "#FFD700")
+        }
     }
 }
 
 class TextFileOriginalComponentSvg extends svg
 {
-    constructor(textFileOriginalView){
-        super(textFileOriginalView.container)
-        this.viewMode = 'global'
+    constructor(textFileOriginalView, container){
+        super(container)
+        this.textFileOriginalView = textFileOriginalView
+
+        this.alignType = 'timestamp'
+        this.lineType = 'dash'
         this.startPosition = 0
         this.endPosition = 0
         this.viewWidth = 5000
@@ -412,20 +449,37 @@ class TextFileOriginalComponentSvg extends svg
         this.lineChartHeight = 200
         this.lineStoryHeight = 20
         this.intervalHeight = 10
+
+        this.tooltip = d3.select(this.container).append("div")
+                            .style("display", 'none')
+                            .style("position", "absolute")
+                            .style("background-color", "#fff")
+                            .style("border", "1px solid #aaa")
+                            .style("border-radius", "5px")
+                            .style("box-shadow", "2px 2px 2px #ccc")
+                            .style("font-size", "12px")
+                            .style("padding", "5px")
+
+        // this.container.style.backgroundColor = '#000'
+        this.textFileOriginalComponentSvgNavigate = new TextFileOriginalComponentSvgNavigate(this)
+        this.container.insertBefore(this.textFileOriginalComponentSvgNavigate.container, this.svgElm);
     }
 
     update(data){
         this.clear()
+        let that = this
         this.currentHeight = 0
-        this.data = data
+        if (data) {
+            this.data = data
+        }
         this.svg.style("overflow", "visible")
-        
+
         // get boundary
         var starts = []
         var ends = []
         d3.hierarchy(this.data).eachBefore(d => {
             if (d.data.data != null) {
-                if (this.viewMode == 'timestamp') {
+                if (this.alignType == 'timestamp') {
                     starts.push(d.data.data.start_timestamp)
                     ends.push(d.data.data.end_timestamp)
                 }else{
@@ -435,13 +489,26 @@ class TextFileOriginalComponentSvg extends svg
             }
         })
 
+        // add x axis
         var x = d3.scaleLinear().range([0, this.viewWidth])
         x.domain(d3.extent(starts.concat(ends)))
-        this.svg.append("g")
-        .attr("transform", "translate(0,0)")
-        .call(d3.axisBottom(x))
-        // .select(".domain")
-        // .remove()
+        var xA = d3.axisBottom(x)
+        var domain = x.domain()
+        var tickValues = xA.scale().ticks().concat(domain[0], domain[1])
+        xA.tickValues(tickValues)
+        const xAxis = this.svg.append("g")
+                        .attr("transform", "translate(0,0)")
+        xAxis.call(xA.tickFormat(function(d) {
+                if (that.alignType == 'timestamp') {
+                    return common.formatTimestamp(d) 
+                }else{
+                    return d
+                }
+            }))
+        .style('stroke', "#FFF")
+        .select(".domain")
+        .style('stroke', "#FFF")
+        xAxis.selectAll('.tick line').style('stroke', "#FFF")
 
         // map x y
         var i = 0
@@ -455,7 +522,7 @@ class TextFileOriginalComponentSvg extends svg
                 d.height = this.lineStoryHeight
                 this.currentHeight = this.currentHeight + this.lineStoryHeight + this.intervalHeight
             }else{
-                if (this.viewMode == 'timestamp') {
+                if (this.alignType == 'timestamp') {
                     d.sx = x(d.data.data.start_timestamp)
                     d.ex = x(d.data.data.end_timestamp)
                 }else{
@@ -463,14 +530,13 @@ class TextFileOriginalComponentSvg extends svg
                     d.ex = x(d.data.data.end_global_index)
                 }
 
+                var chartX = d3.scaleLinear().range([0, d.ex - d.sx])
+                chartX.domain([d.sx, d.ex])
                 if (d.data.data.type == 'chart') {
-                    var chartX = d3.scaleLinear().range([0, d.ex - d.sx])
-                    chartX.domain([d.sx, d.ex])
-
                     // convert timestamp or global_index to x
                     Object.keys(d.data.data.select_lines).forEach((name) =>{
                         d.data.data.select_lines[name].forEach(dot => {
-                            if (this.viewMode == 'timestamp') {
+                            if (this.alignType == 'timestamp') {
                                 dot.x = chartX(x(dot.timestamp))
                             }else{
                                 dot.x = chartX(x(dot.global_index))
@@ -480,6 +546,16 @@ class TextFileOriginalComponentSvg extends svg
                     d.height = this.lineChartHeight
                     this.currentHeight = this.currentHeight + this.lineChartHeight + this.intervalHeight
                 }else if(d.data.data.type == 'search'){
+                    if (d.data.data.res_compare_special_lines.length > 0) {
+                        // convert timestamp or global_index to x
+                        Object.keys(d.data.data.res_compare_special_lines).forEach((dot) =>{
+                            if (this.alignType == 'timestamp') {
+                                dot.x = chartX(x(dot.timestamp))
+                            }else{
+                                dot.x = chartX(x(dot.global_index))
+                            }
+                        })
+                    }
                     d.height = this.lineStoryHeight
                     this.currentHeight = this.currentHeight + this.lineStoryHeight + this.intervalHeight
                 }
@@ -487,18 +563,46 @@ class TextFileOriginalComponentSvg extends svg
         
         })
 
+        function getTooltipContent(d) {
+            var res = `
+                <b style="color:#000">Key&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.full_name}</b><br/>
+                <b style="color:#000">Timestamp: ${common.formatTimestamp(d.timestamp)}</b><br/>
+                <b style="color:#000">Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.value}</b><br/>
+            `
+            return res
+        }
+
         const nodes = root.descendants()
         new IndentedTree(this.svg, root)
         nodes.forEach(d => {
             if (d.data.data != null){
                 if (d.data.data.type == 'chart') {
-                    new LineChart(this.svg.select(`#${d.id}`), d)
+                    var lc = new LineChart(this.svg.select(`#${d.id}`), d, this.lineType)
+                    lc.svg.selectAll("circle")
+                    .on("click", function(event, d) {
+                        that.textFileOriginalView.controlJump(d)
+                    })
+                    .on("mouseover", function(event, d) {
+                        that.tooltip.html(getTooltipContent(d))
+                            .style("left", (event.pageX) + "px")
+                            .style("top", (event.offsetY) + "px")
+                            .style("display", 'block')
+                      })
+                    .on("mouseout", function(d) {
+                        that.tooltip
+                            .style("display", 'none')
+                    })
                 }else if(d.data.data.type == 'search'){
-                    new LineStory(this.svg.select(`#${d.id}`), d)
+                    var ls = new LineStory(this.svg.select(`#${d.id}`), d)
+                    if (ls.marks != '') {
+                        ls.marks.on("click", function(event, d) {
+                            that.textFileOriginalView.controlJump(d)
+                        })
+                    }
                 }
             }
         })
-        console.log(this.svg.node())
+        // console.log(this.svg.node())
     }
 }
 
@@ -573,9 +677,9 @@ class ChartAtomComponentSvg extends Tree
         this.apply.style.backgroundColor = 'green'
         this.apply.style.float = 'right'
         this.apply.onclick = function(){dialog.apply()}
-        this.bottomBtnSets.appendChild(this.cancel)
-        this.bottomBtnSets.appendChild(this.clear)
-        this.bottomBtnSets.appendChild(this.apply)
+        // this.bottomBtnSets.appendChild(this.cancel)
+        // this.bottomBtnSets.appendChild(this.clear)
+        // this.bottomBtnSets.appendChild(this.apply)
     }
 
     clickEvent(event, d){
@@ -625,11 +729,11 @@ class BatchInsightComponentSvg extends Tree
         this.batchInsightComponentSvgDialog = batchInsightComponentSvgDialog
         
         let that = this
-        var cancelBtn = this.createElementButton('CANCEL')
-        cancelBtn.style.backgroundColor = 'red'
-        cancelBtn.style.float = 'right'
-        cancelBtn.onclick = function(){that.batchInsightComponentSvgDialog.hidden()}
-        this.bottomBtnSets.appendChild(cancelBtn)
+        // var cancelBtn = this.createElementButton('CANCEL')
+        // cancelBtn.style.backgroundColor = 'red'
+        // cancelBtn.style.float = 'right'
+        // cancelBtn.onclick = function(){that.batchInsightComponentSvgDialog.hidden()}
+        // this.bottomBtnSets.appendChild(cancelBtn)
     }
 
     clickEvent(event, d){
@@ -640,6 +744,52 @@ class BatchInsightComponentSvg extends Tree
         }
     }
 
+}
+
+class TextFileCompareComponentSvgDialog extends Dialog
+{
+    constructor(textFileCompareView){
+        super(textFileCompareView.container)
+        this.textFileCompareView = textFileCompareView
+
+        this.subContainer.style.display = 'flex'
+        this.subContainer.style.flexDirection = 'column'
+        this.subContainer.style.border = '1px solid #808080'
+        this.subContainer.style.width = '98%' 
+        this.subContainer.style.height = '100%'
+        this.subContainer.style.margin = '2% auto 2% auto'
+
+        this.textFileCompareComponentSvgDialogNavigate = new TextFileCompareComponentSvgDialogNavigate(this)
+        this.subContainer.append(this.textFileCompareComponentSvgDialogNavigate.container)
+    
+        this.firstDiv = this.createElementDiv()
+        this.firstDiv.style.width = '100%'
+        this.firstDiv.style.height = '50%'
+
+        this.secondDiv = this.createElementDiv()
+        this.secondDiv.style.width = '100%'
+        this.secondDiv.style.height = '50%'
+        this.subContainer.append(this.firstDiv)
+        this.subContainer.append(this.secondDiv)
+
+        this.firstSvg = new TextFileOriginalComponentSvg('', this.firstDiv)
+        this.firstSvg.container.style.flex = 1
+        this.secondSvg = new TextFileOriginalComponentSvg('', this.secondDiv)
+        this.secondSvg.container.style.flex = 1
+    }
+
+    clear(){
+        this.firstSvg.clear()
+        this.secondSvg.clear()
+    }
+
+    refresh(first, second){
+        this.firstSvg.textFileOriginalView = first
+        this.firstSvg.update(first.model.data_tree)
+
+        this.secondSvg.textFileOriginalView = second
+        this.secondSvg.update(second.model.data_tree)
+    }
 }
 
 class GlobalChartComponentSvgDialog extends Dialog
@@ -690,9 +840,9 @@ class GlobalChartComponentSvg extends Tree
         applyBtn.style.backgroundColor = 'green'
         applyBtn.style.float = 'right'
         applyBtn.onclick = function(){dialog.apply()}
-        this.bottomBtnSets.appendChild(cancelBtn)
-        this.bottomBtnSets.appendChild(clearBtn)
-        this.bottomBtnSets.appendChild(applyBtn)
+        // this.bottomBtnSets.appendChild(cancelBtn)
+        // this.bottomBtnSets.appendChild(clearBtn)
+        // this.bottomBtnSets.appendChild(applyBtn)
     }
 
     clickEvent(event, d){
@@ -716,4 +866,4 @@ class GlobalChartComponentSvg extends Tree
     }
 }
 
-export {TextFileOriginalComponentSvg, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog}
+export {TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog}

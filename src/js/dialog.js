@@ -34,6 +34,65 @@ class Dialog extends Component
     }
 }
 
+class SystemTestComponentDialog extends Dialog
+{
+    constructor(systemTestView){
+        super(systemTestView.container)
+        this.systemTestView = systemTestView
+        this.dir = ''
+        this.configPath = ''
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // Files Directory
+        this.dir = this.createElementTextInput()
+        this.dir.style.width = '85%'
+        var browseDir = this.createElementButton('BROWSE')
+        browseDir.style.width = '15%'
+        browseDir.onclick = function(){
+            that.browseFilesDirectory(function(path) {
+                that.dir.value = path
+            })
+        }
+        this.subContainer.appendChild(this.createElementHeader('Files Directory'))
+        this.subContainer.appendChild(this.dir)
+        this.subContainer.appendChild(browseDir)
+
+        // Config path
+        this.configPath = this.createElementTextInput()
+        this.configPath.style.width = '85%'
+        var browseConfig = this.createElementButton('BROWSE')
+        browseConfig.style.width = '15%'
+        browseConfig.onclick = function(){that.browseConfig()}
+        this.subContainer.appendChild(this.createElementHeader('Config Path'))
+        this.subContainer.appendChild(this.configPath)
+        this.subContainer.appendChild(browseConfig)
+
+        // search and cancel button
+        this.apply = this.createElementButton('TEST')
+        this.apply.style.width = '50%'
+        this.apply.onclick = function(){that.test()}
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '50%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
+    }
+
+    async browseConfig(){
+        let content = await ipcRenderer.invoke('import-config')
+        this.configPath.value = content[0]
+    }
+
+    test(){
+        this.systemTestView.basicTest(this.dir.value, this.configPath.value)
+    }
+}
+
 class SearchAtomComponentDialog extends Dialog
 {
     constructor(searchAtomView){
@@ -533,65 +592,6 @@ class StatisticAtomComponentDialog extends Dialog
     }
 }
 
-class SystemTestComponentDialog extends Dialog
-{
-    constructor(systemTestView){
-        super(systemTestView.container)
-        this.systemTestView = systemTestView
-        this.dir = ''
-        this.configPath = ''
-        this.init()
-    }
-
-    init(){
-        let that = this
-
-        // Files Directory
-        this.dir = this.createElementTextInput()
-        this.dir.style.width = '85%'
-        var browseDir = this.createElementButton('BROWSE')
-        browseDir.style.width = '15%'
-        browseDir.onclick = function(){
-            that.browseFilesDirectory(function(path) {
-                that.dir.value = path
-            })
-        }
-        this.subContainer.appendChild(this.createElementHeader('Files Directory'))
-        this.subContainer.appendChild(this.dir)
-        this.subContainer.appendChild(browseDir)
-
-        // Config path
-        this.configPath = this.createElementTextInput()
-        this.configPath.style.width = '85%'
-        var browseConfig = this.createElementButton('BROWSE')
-        browseConfig.style.width = '15%'
-        browseConfig.onclick = function(){that.browseConfig()}
-        this.subContainer.appendChild(this.createElementHeader('Config Path'))
-        this.subContainer.appendChild(this.configPath)
-        this.subContainer.appendChild(browseConfig)
-
-        // search and cancel button
-        this.apply = this.createElementButton('TEST')
-        this.apply.style.width = '50%'
-        this.apply.onclick = function(){that.test()}
-        this.cancel = this.createElementButton('CANCEL')
-        this.cancel.style.backgroundColor = 'red'
-        this.cancel.style.width = '50%'
-        this.cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(this.apply)
-        this.subContainer.appendChild(this.cancel)
-    }
-
-    async browseConfig(){
-        let content = await ipcRenderer.invoke('import-config')
-        this.configPath.value = content[0]
-    }
-
-    test(){
-        this.systemTestView.basicTest(this.dir.value, this.configPath.value)
-    }
-}
-
 class BatchInsightComponentDialog extends Dialog
 {
     constructor(batchInsightView){
@@ -768,6 +768,74 @@ class BatchStatisticComponentDialog extends Dialog
             config_path: this.configPath.value
         }
         this.batchStatisticView.controlExec(model)
+    }
+}
+
+class TextFileCompareComponentDialog extends Dialog
+{
+    constructor(textFileCompareView){
+        super(textFileCompareView.container)
+        this.textFileCompareView = textFileCompareView
+        this.firstFileNamespace = ''
+        this.secondFileNamespace = ''
+        this.files = []
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        this.subContainer.appendChild(this.createElementHr())
+
+        var firstFilesSelectContainer = this.createElementDiv()
+        firstFilesSelectContainer.style.width = '100%'
+        this.firstFilesSelect = this.createElementSelect()
+        this.files.forEach((x) => {
+            this.firstFilesSelect.options[this.firstFilesSelect.options.length] = new Option(x, x)
+        })  
+        firstFilesSelectContainer.append(this.firstFilesSelect)
+        firstFilesSelectContainer.append(this.createElementA(' First File Select'))
+
+        var secondFilesSelectContainer = this.createElementDiv()
+        secondFilesSelectContainer.style.width = '100%'
+        this.secondFilesSelect = this.createElementSelect()
+        this.files.forEach((x) => {
+            this.secondFilesSelect.options[this.secondFilesSelect.options.length] = new Option(x, x)
+        })  
+        secondFilesSelectContainer.append(this.secondFilesSelect)
+        secondFilesSelectContainer.append(this.createElementA(' Second File Select'))
+
+        this.subContainer.appendChild(firstFilesSelectContainer)
+        this.subContainer.appendChild(secondFilesSelectContainer)
+
+        // search and cancel button
+        this.apply = this.createElementButton('COMPARE')
+        this.apply.style.width = '50%'
+        this.apply.onclick = function(){that.run()}
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '50%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
+    }
+
+    update(model){
+        this.files = model.files
+        this.firstFilesSelect.innerHTML = ""
+        this.secondFilesSelect.innerHTML = ""
+        this.files.forEach((x) => {
+            this.firstFilesSelect.options[this.firstFilesSelect.options.length] = new Option(x, x)
+            this.secondFilesSelect.options[this.secondFilesSelect.options.length] = new Option(x, x)
+        })
+    }
+
+    run(){
+        let model = {
+            first_file_namespace: this.firstFilesSelect.value,
+            second_file_namespace: this.secondFilesSelect.value
+        }
+        this.textFileCompareView.controlExec(model)
     }
 }
 
@@ -1028,4 +1096,4 @@ class ShareDownloadDialog extends Dialog
     }
 }
 
-export {Dialog, SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog}
+export {Dialog, SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog}

@@ -440,66 +440,6 @@ class SequentialChart extends Chart
 	}
 }
 
-class FileContainerComponentCompareGraphSequentialChart extends SequentialChart
-{
-	constructor(fileContainerComponentRegisterCompareGraphDialog, container){
-		super(container)
-		this.fileContainerComponentRegisterCompareGraphDialog = fileContainerComponentRegisterCompareGraphDialog
-	}
-
-	refresh(lines){
-		super.refresh(lines)
-		this.bindChartClickEvent()
-	}
-
-	bindChartDataZoomEvent(){
-		let that = this
-		var res = []
-		// bind click event and paint
-		this.chart.on('dataZoom', function(params) {
-			console.log(params)
-			if (this.fileContainerComponentRegisterCompareGraphDialog.markAlias != '') {
-				var startDot = 0
-				var endDot = 0
-				if ('batch' in params) {
-					startDot = params.batch.start
-					endDot = params.batch.end
-				}else{
-					startDot = params.start
-					endDot = params.end
-				}
-				that.option['series'].forEach(line => {
-					if((line.type == 'line') & (line.name in that.selectedLegend))
-					{
-						res.push(line.name)
-					}
-				})
-			}
-
-			that.fileContainerComponentRegisterCompareGraphDialog.update()
-		});
-	}
-
-	bindChartClickEvent(){
-		let that = this
-
-		// bind click event and paint
-		this.chart.on('click', function(params) { 
-			console.log(params)
-			// var startRateDot = 0
-			// var endRateDot = 0
-			// if ('batch' in params) {
-			// 	startRateDot = params.batch.start
-			// 	endRateDot = params.batch.end
-			// }else{
-			// 	startRateDot = params.batch.start
-			// 	endRateDot = params.batch.end
-			// }
-			that.fileContainerComponentRegisterCompareGraphDialog.update()
-		});
-	}
-}
-
 class InsightAtomComponentSequentialChart extends SequentialChart
 {
 	constructor(container, insightAtomView){

@@ -318,7 +318,7 @@ class Fellow(Model):
                     else:
                         self.text_file.roles.create_node(role, role, parent=roles[index-1], data = self.models[namespace].model() if index == len(roles) - 1 else None)
 
-        self.text_file.roles.show()
+        # self.text_file.roles.show()
         data_tree = convert_dict_format(self.text_file.roles.to_dict(sort=False, with_data=True))
         await self.text_file.text_file_original.on_refresh_story_lines(sid, data_tree)
 
@@ -365,6 +365,7 @@ class TextAnalysisModel(Model):
 
         self.batch_insight = await BatchInsightModel(self, self.mode)
         self.batch_statistic = await BatchStatisticModel(self, self.mode)
+        self.text_file_compare = await TextFileCompareModel(self, self.mode)
         self.global_chart = await GlobalChartModel(self, self.mode)
 
     async def listener(self, publish_namespace):
@@ -387,6 +388,12 @@ class TextAnalysisModel(Model):
 
     async def on_display_global_chart_show(self, sid):
         await self.global_chart.on_display_show(sid)
+
+    async def on_display_text_file_compare(self, sid):
+        await self.text_file_compare.on_display_dialog(sid)
+
+    async def on_display_text_file_compare_show(self, sid):
+        await self.text_file_compare.on_display_show(sid)
 
     async def on_shutdown(self, sid):
         await app.shutdown()
@@ -431,14 +438,15 @@ class FileContainerModel(Model):
         await self.send_message(sid, namespace, 'on_new', model)
 
     async def on_display_file(self, sid, namespace):
-        params = {'earlier_active_text_file': self.active_text_file, 'active_text_file': ''}
-        for text_file in self.text_files.keys():
-            await self.text_files[text_file].on_hidden(sid)
-        self.active_text_file = namespace
+        if self.active_text_file != namespace:
+            params = {'earlier_active_text_file': self.active_text_file, 'active_text_file': ''}
+            for text_file in self.text_files.keys():
+                await self.text_files[text_file].on_hidden(sid)
+            self.active_text_file = namespace
 
-        await self.text_files[namespace].on_display(sid)
-        params['active_text_file'] = self.active_text_file
-        await self.emit('displayFile', params, namespace=self.namespace)
+            await self.text_files[namespace].on_display(sid)
+            params['active_text_file'] = self.active_text_file
+            await self.emit('displayFile', params, namespace=self.namespace)
 
     async def on_display_text_file_function(self, sid):
         await self.text_files[self.active_text_file].text_file_function.on_display(sid)
@@ -546,7 +554,7 @@ class TextFileModel(Model):
         for search_atom in self.text_file_function.search_function.models.keys():
             model = self.text_file_function.search_function.models[search_atom].__dict__
             tmp = {'role_path':model['role_path'], 'identifier':model['identifier'], 'desc':model['desc'], 'exp_search':model['exp_search'], 'exp_extract':model['exp_extract'],
-            'exp_mark':model['exp_mark'], 'is_case_sensitive':model['is_case_sensitive'], 'forward_rows':model['forward_rows'], 'backward_rows':model['backward_rows']}
+            'exp_mark':model['exp_mark'], 'is_active':model['is_active'], 'is_case_sensitive':model['is_case_sensitive'], 'forward_rows':model['forward_rows'], 'backward_rows':model['backward_rows']}
             self.config['search'].append(tmp)
 
         for insight_atom in self.text_file_function.insight_function.models.keys():
@@ -594,7 +602,6 @@ class TextFileModel(Model):
             statistic_atoms = self.config['statistic']
             await self.send_message(sid, self.namespace + ns.TEXTFILEFUNCTION + ns.STATISTICFUNCTION, 'on_load_config', statistic_atoms)
 
-        
     async def on_load_config(self, sid, path, load=['search', 'chart', 'insight', 'statistic']):
         self.path = path
         self.load = load
@@ -674,13 +681,18 @@ class TextFileOriginalModel(Model):
         self.point = 0
         self.range = 60
         self.count =  len(text_file.lines)
-        self.exp_mark = False
         self.display_lines = []
+
+        self.words = []
+        self.marks = []
+
+        self.data_tree = {}
 
         await self.new_view_object()
         
     def model(self):
-        return {'namespace': self.namespace, 'point': self.point, 'rate_height': self.rate_height, 'point': self.point, 'range': self.range, 'count': self.count, 'display_lines': self.display_lines}
+        return {'namespace': self.namespace, 'point': self.point, 'rate_height': self.rate_height, 'point': self.point, 
+                'range': self.range, 'count': self.count, 'display_lines': self.display_lines, 'data_tree': self.data_tree}
 
     async def listener(self, publish_namespace):
         await self.on_set_height('', 1)
@@ -694,19 +706,43 @@ class TextFileOriginalModel(Model):
         self.rate_height = rate
         await self.emit('setHeight', self.model(), namespace=self.namespace)
 
-    async def on_scroll(self, sid, point, range=None):
-        if range:
-            self.scroll(point, range)
-        else:
+    async def on_scroll(self, sid, point=None, range=None):
+        if (point is None) & (range is None):
+            self.scroll(self.point, self.range)
+        elif (point is not None) & (range is None):
             self.scroll(point, self.range)
+        else:
+            self.scroll(point, range)
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
+    async def on_jump(self, sid, d):
+        namespace = self.parent.text_file_function.search_function.namespace + '/' + d['identifier']
+        await self.parent.text_file_function.search_function.models[namespace].on_active(sid)
+        await self.parent.text_file_function.search_function.models[namespace].on_scroll(sid, d['search_index'])
+
+        self.parent.text_file_function.search_function.active_search_atom = self.parent.text_file_function.search_function.models[namespace]
+        await self.on_refresh_acitve(sid)
+        await self.on_scroll(sid, d['global_index'])
+        await self.send_message(sid, self.get_file_container_namespace(), 'on_display_file', self.get_text_file_namespace())
+
+    async def on_refresh_acitve(self, sid):
+        res_key_value = self.parent.text_file_function.search_function.active_search_atom.res_key_value
+        self.words = []
+        self.marks = []
+        for key in res_key_value.keys():
+            if res_key_value[key]['type'] == 'mark':
+                self.marks.append(res_key_value[key])
+            else:
+                self.words.append(key)
+        
     async def on_refresh_story_lines(self, sid, data_tree):
-        await self.emit('refreshStoryLines', data_tree, namespace=self.namespace)
+        self.data_tree = data_tree
+        await self.emit('refreshStoryLines', self.model(), namespace=self.namespace)
 
     def scroll(self, point, range):
-        # def word_color_replace(word):
-        #     return word.group(0).replace(word.group(1), '<span style="color:'+color[self.searchs[uid].cmd_words.index(word.group(1))]+'">'+word.group(1)+'</span>')
+        def word_color_replace(word):
+            return word.group(0).replace(word.group(1), '<span style="color:'+color[self.words.index(word.group(1))]+'">'+word.group(1)+'</span>')
+        
         if point in [1, -1]:
             self.point = self.point + point
         else:
@@ -715,30 +751,28 @@ class TextFileOriginalModel(Model):
             self.point = 0
         self.range = range
         self.display_lines = []
-        if not self.exp_mark:
-            if (self.point + self.range) > len(self.parent.lines):
-                self.point = len(self.parent.lines) - self.range
+        if (self.point + self.range) > len(self.parent.lines):
+            self.point = len(self.parent.lines) - self.range
 
+        if len(self.words) == 0:
             for index, line in enumerate(self.parent.lines[self.point:self.point+self.range]):
                 num = str(self.point + index)
                 num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
                 self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
-        # else:
-        #     highlights = pd.DataFrame()
-        #     for highlight in self.searchs[uid].res_highlights.keys():
-        #         highlights = pd.concat([highlights, pd.DataFrame(self.searchs[uid].res_highlights[highlight])])
-
-        #     for index, line in enumerate(self.lines[point:point+range]):
-        #         num = str(point + index)
-        #         num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
-        #         if len(highlights) > 0:
-        #             is_exsit = highlights.loc[(highlights['global_index'] == point + index), :]
-        #             if len(is_exsit) > 0:
-        #                 lines.append(num+'<td style="color:'+is_exsit['value'].values[0]+';white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
-        #                 continue
-
-        #         reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.searchs[uid].cmd_words)+')'+ '['+'|'.join(special_symbols)+']'
-        #         lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
+        else:
+            reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
+            for index, line in enumerate(self.parent.lines[self.point:self.point+self.range]):
+                num = str(self.point + index)
+                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
+                
+                flag = True
+                for mark in self.marks:
+                    if self.point + index in mark['global_index']:
+                        flag = False
+                        self.display_lines.append(num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+                        break
+                if flag:
+                    self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
 
 
 class TextFileFunctionModel(Model):
@@ -800,6 +834,7 @@ class SearchFunctionModel(Fellow):
     async def __init__(self, text_file_function, mode='normal'):
         await super().__init__(text_file_function.namespace+ns.SEARCHFUNCTION, mode)
         self.parent = text_file_function
+        self.active_search_atom = None
         await self.new_view_object()
 
 
@@ -828,6 +863,9 @@ class SearchAtomModel(ListModel):
     async def __init__(self, parent, model, mode='normal'):
         await super().__init__(model['namespace'], mode)
         self.parent = parent
+        self.is_active = False
+        self.words = []
+        self.marks = []
 
         self.exp_search = ''
         self.exp_extract = []
@@ -846,6 +884,7 @@ class SearchAtomModel(ListModel):
         self.res_search_units = []
         self.res_key_value = {}
         self.res_lines = []
+        self.res_compare_special_lines = []
 
         self.start_global_index = 0
         self.end_global_index = 0
@@ -857,7 +896,7 @@ class SearchAtomModel(ListModel):
 
     def model(self):
         return {'role_path': self.role_path, 'type': 'search', 'count': self.count, 'point': self.point, 'namespace': self.namespace, 'identifier': self.identifier, 'desc':self.desc, 'exp_search': self.exp_search, 
-        'is_case_sensitive':self.is_case_sensitive, 'forward_rows':self.forward_rows, 'backward_rows':self.backward_rows, 'exp_extract': self.exp_extract, 
+        'is_active': self.is_active, 'is_case_sensitive':self.is_case_sensitive, 'forward_rows':self.forward_rows, 'backward_rows':self.backward_rows, 'exp_extract': self.exp_extract, 'res_compare_special_lines': self.res_compare_special_lines,
         'exp_mark': self.exp_mark, 'display_lines': self.display_lines, 'start_global_index':self.start_global_index, 'end_global_index': self.end_global_index, 'start_timestamp':self.start_timestamp, 'end_timestamp': self.end_timestamp}
 
     async def listener(self, publish_namespace):
@@ -865,6 +904,25 @@ class SearchAtomModel(ListModel):
         # if publish_namespace == self.text_file.namespace:
         #     self.search()
         #     await self.on_scroll('', 0)
+
+    async def on_refresh(self, sid):
+        await super().on_refresh(sid)
+        if self.is_active == True:
+            await self.on_active(sid)
+
+    async def on_active(self, sid):
+        if self.parent.active_search_atom is not None:
+            await self.parent.active_search_atom.on_deactive(sid)
+
+        self.is_active = True
+        self.parent.active_search_atom = self
+        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_refresh_acitve')
+        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll')
+        await self.emit('active', namespace=self.namespace)
+
+    async def on_deactive(self, sid):
+        self.is_active = False
+        await self.emit('deactive', namespace=self.namespace)
 
     async def on_scroll(self, sid, point):
         self.scroll(point)
@@ -880,19 +938,28 @@ class SearchAtomModel(ListModel):
         for index, line in enumerate(self.text_file.lines):
             if self.is_case_sensitive:
                 if len(re.findall(self.exp_search, line)) > 0:
-                    self.res_search_units.append([index-self.forward_rows, index+self.backward_rows+1])
+                    self.res_search_units.append({'range': [index-self.forward_rows, index+self.backward_rows+1], 'timestamp':0})
             else:
                 if len(re.findall(self.exp_search, line, flags=re.IGNORECASE)) > 0:
-                    self.res_search_units.append([index-self.forward_rows, index+self.backward_rows+1])
+                    self.res_search_units.append({'range': [index-self.forward_rows, index+self.backward_rows+1], 'timestamp':0})
 
         self.extract()
         for unit in self.res_search_units:
-            self.res_lines.extend(range(unit[0], unit[1]))
+            self.res_lines.extend(range(unit['range'][0], unit['range'][1]))
         self.res_lines = sorted(set(self.res_lines))
         self.start_global_index = min(self.res_lines)
         self.end_global_index = max(self.res_lines)
         self.count = len(self.res_lines)
-        self.scroll(0)     
+
+        self.words = []
+        self.marks = []
+        for key in self.res_key_value.keys():
+            if self.res_key_value[key]['type'] == 'mark':
+                self.marks.append(self.res_key_value[key])
+            else:
+                self.words.append(key)
+
+        self.scroll(0) 
 
     def extract(self):
         if len(self.exp_extract) == 0:
@@ -901,7 +968,7 @@ class SearchAtomModel(ListModel):
         self.res_key_value = {}
         tmp_timestamps = []
         for search_index, unit in enumerate(self.res_search_units):
-            string = '\n'.join(self.text_file.lines[unit[0]:unit[1]+1])
+            string = '\n'.join(self.text_file.lines[unit['range'][0]:unit['range'][1]+1])
             ts = ''
             # handle key value
             for exp in self.exp_extract:
@@ -911,13 +978,13 @@ class SearchAtomModel(ListModel):
                     if 'timestamp' in r.named:
                         ts = convert_datetime_timestamp(r.named['timestamp'])
                     else:
-                        ts = unit[0]
+                        ts = unit['range'][0]
                     for key in r.named.keys():
                         if key == 'timestamp':
                             continue
                         if key not in self.res_key_value:
                             self.res_key_value[key] = {'identifier': self.identifier, 'name':key, 'type': type(r.named[key]).__name__, 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
-                        self.res_key_value[key]['global_index'].append(unit[0]+self.backward_rows)
+                        self.res_key_value[key]['global_index'].append(unit['range'][0]+self.backward_rows)
                         self.res_key_value[key]['search_index'].append(search_index)
                         self.res_key_value[key]['value'].append(r.named[key])
                         self.res_key_value[key]['timestamp'].append(ts)
@@ -928,16 +995,20 @@ class SearchAtomModel(ListModel):
                 if len(re.findall(exp['exp'], string, flags=re.IGNORECASE)) > 0:
                     if exp['abbr'] not in self.res_key_value:
                         self.res_key_value[exp['abbr']] = {'identifier': self.identifier, 'name':exp['abbr'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
-                    self.res_key_value[exp['abbr']]['global_index'].append(unit[0]+self.backward_rows)
+                    self.res_key_value[exp['abbr']]['global_index'].append(unit['range'][0]+self.backward_rows)
                     self.res_key_value[exp['abbr']]['search_index'].append(search_index)
                     self.res_key_value[exp['abbr']]['value'].append(exp['color'])
                     self.res_key_value[exp['abbr']]['timestamp'].append(ts)
 
+            self.res_search_units[search_index]['timestamp'] = ts
             tmp_timestamps.append(ts)
         self.start_timestamp = min(tmp_timestamps)
         self.end_timestamp = max(tmp_timestamps)
 
     def scroll(self, point):
+        def word_color_replace(word):
+            return word.group(0).replace(word.group(1), '<span style="color:'+color[self.words.index(word.group(1))]+'">'+word.group(1)+'</span>')
+
         if point in [1, -1]:
             self.point = self.point + point
         else:
@@ -949,10 +1020,25 @@ class SearchAtomModel(ListModel):
         if (self.point + self.range) > len(self.res_lines):
             self.point = len(self.res_lines) - self.range
 
-        for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
-            num = str(self.point + index)
-            num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
-            self.display_lines.append({'text':num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
+        if len(self.words) == 0:
+            for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
+                num = str(self.point + index)
+                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
+                self.display_lines.append({'text':num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
+        else:
+            reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
+            for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
+                num = str(self.point + index)
+                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
+                
+                flag = True
+                for mark in self.marks:
+                    if self.point + index in mark['search_index']:
+                        flag = False
+                        self.display_lines.append({'text': num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
+                        break
+                if flag:
+                    self.display_lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, self.text_file.lines[line])+'</td>', 'global_index': line})
 
 
 class ChartAtomModel(ListModel):
@@ -1774,6 +1860,85 @@ class BatchStatisticModel(BatchModel):
             sample[atom.identifier] = atom.result
         self.table = self.table.append(sample, ignore_index=True)
         return sample
+
+
+class TextFileCompareModel(Model):
+    async def __init__(self, text_analysis, mode='normal'):
+        await super().__init__(text_analysis.namespace + ns.TEXTFILECOMPARE, mode)
+        self.parent = text_analysis
+        self.first_file_namespace = ''
+        self.second_file_namespace = ''
+
+        self.file_container = self.subscribe_namespace(ns.TEXTANALYSIS + ns.FILECONTAINER)
+        self.text_analysis = text_analysis
+
+    def model(self):
+        return {'namespace': self.namespace, 'first': self.file_container.text_files[self.first_file_namespace].text_file_original.namespace if self.first_file_namespace != '' else '', 
+                'second': self.file_container.text_files[self.second_file_namespace].text_file_original.namespace if self.first_file_namespace != '' else '',
+                'files': list(self.file_container.text_files.keys())}
+
+    async def listener(self, subscribe_namespace):
+        await self.on_update_dialog('')
+
+    async def on_exec(self, sid, model):
+        self.__dict__.update(model)
+
+        first_file, second_file = self.compare()
+        await first_file.text_file_function.search_function.on_refresh_roles(sid)
+        await second_file.text_file_function.search_function.on_refresh_roles(sid)
+        await self.emit('refresh', self.model(), namespace=self.namespace)
+
+    def compare(self):
+        def self_clean_special_symbols(text, symbol):
+            for ch in ['::', '/','{','}','[',']','(',')','#','+','!',';',',','"','\'','@','`','$','^','&','|','\n']:
+                if ch in text:
+                    text = text.replace(ch,symbol)
+            text = re.sub(symbol+"+", symbol, text)
+            return re.sub("\d+", '', text)
+
+        first_file = self.file_container.text_files[self.first_file_namespace]
+        second_file = self.file_container.text_files[self.second_file_namespace]
+
+        # compare search
+        for search_namespace in first_file.text_file_function.search_function.models.keys():
+            first_search_namespace = first_file.text_file_function.search_function.namespace + '/' + search_namespace.split('/')[-1]
+            second_search_namespace = second_file.text_file_function.search_function.namespace + '/' + search_namespace.split('/')[-1]
+            first_search_atom = first_file.text_file_function.search_function.models[first_search_namespace]
+            second_search_atom = second_file.text_file_function.search_function.models[second_search_namespace]
+
+            first_clean_lines = []
+            for unit in first_search_atom.res_search_units:
+                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]+1])
+                first_clean_lines.append(self_clean_special_symbols(string, ' '))
+            first_clean_lines = list(set(first_clean_lines))
+
+            second_clean_lines = []
+            for unit in second_search_atom.res_search_units:
+                string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]+1])
+                second_clean_lines.append(self_clean_special_symbols(string, ' '))
+            second_clean_lines = list(set(second_clean_lines))
+
+            first_special = []
+            for unit in first_search_atom.res_search_units:
+                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]+1])
+                if self_clean_special_symbols(string, ' ') not in second_clean_lines:
+                    first_special.append({'timestamp': unit['timestamp'], 'global_index':unit['range'][0]})
+
+            second_special = []
+            for unit in second_search_atom.res_search_units:
+                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]+1])
+                if self_clean_special_symbols(string, ' ') not in first_clean_lines:
+                    second_special.append({'timestamp': unit['timestamp'], 'global_index':unit['range'][0]})
+
+            first_search_atom.res_compare_special_lines = first_special
+            second_search_atom.res_compare_special_lines = second_special
+
+        return first_file, second_file
+
+        # compare chart
+        # for identifier in first_file.text_file_function.chart_function.models.keys():
+        #     first_chart_atom = first_file.text_file_function.chart_function.models[identifier]
+        #     second_chart_atom = second_file.text_file_function.chart_function.models[identifier]
 
 
 class GlobalChartModel(Model):

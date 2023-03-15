@@ -172,6 +172,10 @@ class View extends Element
     onStopLoader(){
         this.stopLoader()
     }
+
+    getTextFileViewNamespace(namespace){
+        return namespace.split('/').slice(0,4).join('/')
+    }
 }
 
 class ListView extends View
@@ -318,6 +322,19 @@ class Component extends Element
         return a
     }
 
+    createElementForm(){
+        var form = document.createElement('form')
+        form.style.display = 'inline-block'
+        return form
+    }
+
+    createElementLabel(text, id){
+        var label = document.createElement('label')
+        label.for = id
+        label.innerHTML = text
+        return label
+    }
+
     createElementTextInput(){
         var textInput = document.createElement('input')
         textInput.style.width = '100%'
@@ -330,6 +347,12 @@ class Component extends Element
         textInput.type = 'text'
 
         return textInput
+    }
+
+    createElementRadioInput(){
+        var radioInput = document.createElement('input')
+        radioInput.type = 'radio'
+        return radioInput
     }
 
     createElementCheckboxInput(){

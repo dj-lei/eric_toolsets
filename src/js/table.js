@@ -75,14 +75,8 @@ class SearchAtomComponentTable extends Table
 
         this.searchAtomView.collapsible.innerHTML = '+ ' + this.searchAtomView.model.desc + ` (unknow hits)`
         this.searchAtomView.collapsible.addEventListener("click", function() {
-            if (that.table.style.display === "inline-block") {
-                that.container.style.display = "none"
-                that.table.style.display = "none"
-                that.slider.style.display = "none"
-            } else {
-                that.container.style.display = "block"
-                that.table.style.display = "inline-block"
-                that.slider.style.display = "inline-block"
+            if (that.table.style.display === "none") {
+                that.searchAtomView.controlActive()
             }
         })
 
@@ -105,6 +99,18 @@ class SearchAtomComponentTable extends Table
 
         this.container.append(this.table)
         this.container.append(this.slider)
+    }
+
+    hidden(){
+        this.container.style.display = "none"
+        this.table.style.display = "none"
+        this.slider.style.display = "none"
+    }
+
+    display(){
+        this.container.style.display = "block"
+        this.table.style.display = "inline-block"
+        this.slider.style.display = "inline-block"
     }
 
     refresh(model){
@@ -306,7 +312,7 @@ class BatchStatisticComponentTableDialog extends Dialog
         let that = this
         var topBtnSets = this.createElementDiv()
         this.cancel = this.createElementButton('CANCEL')
-        this.cancel.style.widht = '10%'
+        this.cancel.style.width = '10%'
         this.cancel.style.backgroundColor = 'red'
         this.cancel.style.float = 'right'
         this.cancel.onclick = function(){that.hidden()}

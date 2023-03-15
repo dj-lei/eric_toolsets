@@ -3,13 +3,14 @@ import ns from '@/config/namespace.json'
 
 import { ipcRenderer } from 'electron'
 import { View, ListView, BatchView} from './element'
-import { SystemTestComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog } from './dialog'
+import { SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
 import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable, BatchInsightComponentTableDialog, BatchStatisticComponentTableDialog } from './table'
 import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
-import { TextFileOriginalComponentSvg, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog } from './svg'
+import { TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog } from './svg'
 import { GlobalChartComponentSequentialChartDialog, ChartAtomComponentSequentialChart } from './chart'
 import { StatisticAtomComponentTextarea } from './textarea'
+import { TextFileOriginalComponentNavigate } from './navigate'
 // import { TextLogicFlow } from './flow'
 
 import common from '@/plugins/common'
@@ -218,13 +219,13 @@ class TextAnalysisView extends View
 {
     constructor(position){
         super(ns.TEXTANALYSIS, position)
-        this.initMenu()
 
         this.fileContainerView = new FileContainerView(this)
         this.systemTest = new SystemTestView(this)
 
         this.batchInsightView = new BatchInsightView(this)
         this.batchStatisticView = new BatchStatisticView(this)
+        this.textFileCompareView = new TextFileCompareView(this)
         this.globalChartView = new GlobalChartView(this)
 
         let that = this
@@ -248,6 +249,12 @@ class TextAnalysisView extends View
         })
         ipcRenderer.on('open-global-chart-show', () => {
             that.socket.emit("display_global_chart_show")
+        })
+        ipcRenderer.on('new-text-file-compare', () => {
+            that.socket.emit("display_text_file_compare")
+        })
+        ipcRenderer.on('open-text-file-compare-show', () => {
+            that.socket.emit("display_text_file_compare_show")
         })
     }
 
@@ -316,21 +323,6 @@ class TextAnalysisView extends View
             delete this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.old_namespace)].textFileFunctionView.statisticFunctionView.views[args.old_namespace]
         }
     }
-
-    getTextFileViewNamespace(namespace){
-        return namespace.split('/').slice(0,4).join('/')
-    }
-
-    initMenu(){
-        let that = this
-        // ipcRenderer.on('share-download', async () => {
-        //     // await ipcRenderer.invoke('downloadURL', {url:'http://localhost:8001/download_theme/config.txt'})
-        //     that.openShareDownloadDialog()
-        // })
-        // ipcRenderer.on('dcgm-analysis', async () => {
-        //     that.openDcgmAnalysis()
-        // })
-    }
 }
 
 class FileContainerView extends View
@@ -346,6 +338,32 @@ class FileContainerView extends View
         this.shareDownloadDialog = new ShareDownloadDialog(this)
 
         let that = this
+        document.addEventListener('drop', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+        
+            var filePaths = []
+            var configPath = ''
+            for (const f of event.dataTransfer.files) {
+                // Using the path attribute to get absolute file path
+                if (f.path.includes('.ecfg')) {
+                    configPath = f.path
+                }else{
+                    filePaths.push(f.path)
+                }
+            }
+            if (filePaths.length > 0) {
+                that.controlNewFile(filePaths)
+            }
+            if (configPath != '') {
+                that.controlLoadConfig(configPath)
+            }
+        })
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
         ipcRenderer.on('open-file', async function () {
             let file = await ipcRenderer.invoke('open-file')
             if(!file.canceled){
@@ -365,7 +383,7 @@ class FileContainerView extends View
         })
         ipcRenderer.on('import-config', async () => {
             let config = await ipcRenderer.invoke('import-config')
-            if (config[0] != '') {
+            if (config != '') {
                 that.controlLoadConfig(config)
             }
         })
@@ -436,7 +454,7 @@ class FileContainerView extends View
     }
 
     controlLoadConfig(config){
-        this.socket.emit("load_config", config[0])
+        this.socket.emit("load_config", config)
     }
 
     controlSearch(model){
@@ -529,13 +547,11 @@ class TextFileOriginalView extends View
 {
     constructor(namespace){
         super(namespace, common.getParentContainer(namespace))
-        this.tableShow = new TextFileOriginalComponentTable(this)
-        this.svgShow = new TextFileOriginalComponentSvg(this)
-        this.svgShow.container.style.height = `${parseInt((document.body.offsetHeight - 30) * 0.8)}px`
-        
-        // this.tableShow.hidden()
-        this.svgShow.hidden()
         this.container.style.border = '1px solid #ddd'
+        this.navigate = new TextFileOriginalComponentNavigate(this)
+        this.tableShow = new TextFileOriginalComponentTable(this)
+        this.svgShow = new TextFileOriginalComponentSvg(this, this.container)
+        this.svgShow.hidden()
     }
 
     controlScroll(point){
@@ -543,18 +559,25 @@ class TextFileOriginalView extends View
         this.socket.emit("scroll", point, range)
     }
 
+    controlJump(d){
+        this.socket.emit("jump", d)
+    }
+
     onSetHeight(model){
         this.tableShow.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
         this.tableShow.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
         this.tableShow.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.svgShow.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
     }
 
     onRefresh(model){
+        this.model = model
         this.tableShow.refresh(model)
     }
 
-    onRefreshStoryLines(tree){
-        // this.svgShow.update(tree)
+    onRefreshStoryLines(model){
+        this.model = model
+        this.svgShow.update(model.data_tree)
     }
 
 }
@@ -658,8 +681,20 @@ class SearchAtomView extends ListView
         this.socket.emit("scroll", point)
     }
 
+    controlActive(){
+        this.socket.emit("active")
+    }
+
     controlTextClickEvent(params){
         this.socket.emit("text_click_event", params)
+    }
+
+    onDeactive(){
+        this.show.hidden()
+    }
+
+    onActive(){
+        this.show.display()
     }
 }
 
@@ -776,6 +811,31 @@ class BatchStatisticView extends BatchView
 
     onRefreshCode(sample){
         this.show.refreshCode(sample)
+    }
+}
+
+class TextFileCompareView extends BatchView
+{
+    constructor(textAnalysisView){
+        super(`${textAnalysisView.namespace}${ns.TEXTFILECOMPARE}`, textAnalysisView.container)
+        this.textAnalysisView = textAnalysisView
+        this.dialog = new TextFileCompareComponentDialog(this)
+        this.show = new TextFileCompareComponentSvgDialog(this)
+    }
+
+    onUpdateDialog(model){
+        this.model = model
+        this.dialog.update(this.model)
+    }
+
+    onRefresh(model){
+        this.model = model
+        console.log(model)
+        console.log(this.getTextFileViewNamespace(model.first))
+        console.log(this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView)
+        var first = this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView
+        var second = this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.second)].textFileOriginalView
+        this.show.refresh(first, second)
     }
 }
 

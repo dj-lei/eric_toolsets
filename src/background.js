@@ -18,20 +18,23 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } }
 ])
 
+let win = null
 async function createWindow() {
   // Create the browser window.
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: 800,
     height: 600,
+    // show: false,
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
       nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
       contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION,
-      webSecurity: false
+      webSecurity: false,
+      enableRemoteModule: true
     }
   })
-
+  win.maximize()
   // auto update
   if (!process.env.WEBPACK_DEV_SERVER_URL) {
     autoUpdater.autoDownload = false
@@ -172,6 +175,13 @@ async function createWindow() {
               win.webContents.send('new-statistic')
             }
           },
+          { type: 'separator' },
+          {
+            label: 'New Compare',
+            click: () => {
+              win.webContents.send('new-text-file-compare')
+            }
+          },
           {
             label: 'New Global Chart',
             click: () => {
@@ -184,6 +194,12 @@ async function createWindow() {
             accelerator: 'CommandOrControl+O',
             click: () => {
               win.webContents.send('open-func-area')
+            }
+          },
+          {
+            label: 'Open Compare Show',
+            click: () => {
+              win.webContents.send('open-text-file-compare-show')
             }
           },
           {
@@ -322,7 +338,7 @@ async function createWindow() {
     }else{
         content = ['', '']
     }
-    return content
+    return content[0]
   })
 
   ipcMain.handle('export-config', async (event, config) => {

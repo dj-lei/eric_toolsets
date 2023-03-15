@@ -1,4 +1,19 @@
 export default {
+    formatTimestamp(timestamp){
+      const dateObj = new Date(timestamp * 1000);
+
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const hour = String(dateObj.getHours()).padStart(2, '0');
+      const minute = String(dateObj.getMinutes()).padStart(2, '0');
+      const second = String(dateObj.getSeconds()).padStart(2, '0');
+      const microsecond = String(timestamp.toFixed(6)).slice(10);
+      
+      const formattedDate = `${year}-${month}-${day} ${hour}:${minute}:${second}${microsecond}`
+      return formattedDate
+    },
+
     uuidv4(){
       return ([1e7]+1e3+4e3+8e3+1e11).replace(/[018]/g, c =>
         (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
@@ -66,16 +81,6 @@ export default {
       a.href = URL.createObjectURL(file);
       a.download = fileName;
       a.click();
-    },
-
-    startLoading(){
-      var loadingOverlay = document.querySelector('.loading');
-      loadingOverlay.classList.remove('hidden');
-    },
-    
-    stopLoading(){
-      var loadingOverlay = document.querySelector('.loading');
-      loadingOverlay.classList.add('hidden');
     },
 }
 
