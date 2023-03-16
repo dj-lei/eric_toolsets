@@ -947,8 +947,8 @@ class SearchAtomModel(ListModel):
         for unit in self.res_search_units:
             self.res_lines.extend(range(unit['range'][0], unit['range'][1]))
         self.res_lines = sorted(set(self.res_lines))
-        self.start_global_index = min(self.res_lines)
-        self.end_global_index = max(self.res_lines)
+        self.start_global_index = min(self.res_lines) if len(self.res_lines) != 0 else 0
+        self.end_global_index = max(self.res_lines) if len(self.res_lines) != 0 else 0
         self.count = len(self.res_lines)
 
         self.words = []
@@ -1002,8 +1002,8 @@ class SearchAtomModel(ListModel):
 
             self.res_search_units[search_index]['timestamp'] = ts
             tmp_timestamps.append(ts)
-        self.start_timestamp = min(tmp_timestamps)
-        self.end_timestamp = max(tmp_timestamps)
+        self.start_timestamp = min(tmp_timestamps) if len(tmp_timestamps) != 0 else 0
+        self.end_timestamp = max(tmp_timestamps) if len(tmp_timestamps) != 0 else 0
 
     def scroll(self, point):
         def word_color_replace(word):

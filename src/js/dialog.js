@@ -249,7 +249,7 @@ class SearchAtomComponentDialog extends Dialog
             this.expMarkColor.value = mark.color
             this.addExpMarkItem()
         })
-        this.parentRole.value = model.parent_role
+        this.parentRole.value = model.role_path
     }
 
     addExpExtractItem(){

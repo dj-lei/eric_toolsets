@@ -293,6 +293,7 @@ class LineChart extends svgElement
 
         Object.keys(d.data.data.select_lines).forEach((name, index) =>{
             if (d.data.data.select_lines[name][0].type == 'mark') {
+                console.log(d.data.data.select_lines[name])
                 this.addMark(d.data.data.select_lines[name], d.height)
             }else{
                 this.addLine(d.data.data.select_lines[name], name, d.height, index)
