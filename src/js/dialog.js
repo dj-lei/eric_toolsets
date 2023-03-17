@@ -759,7 +759,7 @@ class BatchStatisticComponentDialog extends Dialog
 
     async browseConfig(){
         let content = await ipcRenderer.invoke('import-config')
-        this.configPath.value = content[0]
+        this.configPath.value = content
     }
 
     run(){

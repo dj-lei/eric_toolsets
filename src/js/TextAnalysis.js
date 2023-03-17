@@ -830,9 +830,6 @@ class TextFileCompareView extends BatchView
 
     onRefresh(model){
         this.model = model
-        console.log(model)
-        console.log(this.getTextFileViewNamespace(model.first))
-        console.log(this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView)
         var first = this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView
         var second = this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.second)].textFileOriginalView
         this.show.refresh(first, second)

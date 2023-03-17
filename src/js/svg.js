@@ -413,13 +413,12 @@ class LineStory extends svgElement
 {
     constructor(svg, d){
         super(svg)
-
         this.d = d
         this.marks = ''
         this.svg.append("rect")
             .attr("x", 0)
             .attr("height", d.height)
-            .attr("width", d.ex - d.sx)
+            .attr("width", ((d.ex - d.sx < 1) & (d.ex - d.sx > 0)) ? 1 : d.ex - d.sx)
             .attr("fill", "#FFFFFF")
 
         if (d.data.data.res_compare_special_lines.length > 0) {
@@ -428,7 +427,8 @@ class LineStory extends svgElement
                             .data(d.data.data.res_compare_special_lines)
                             .enter()
                                 .append("path")
-                                .attr("d", d3.symbol().type(d3.symbolTriangle).size(15))
+                                .attr("transform", d => `translate(${d.x},0) rotate(60)`)
+                                .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
                                 .style("cursor", "pointer")
                                 .style("fill", "#FFD700")
         }
@@ -481,8 +481,10 @@ class TextFileOriginalComponentSvg extends svg
         d3.hierarchy(this.data).eachBefore(d => {
             if (d.data.data != null) {
                 if (this.alignType == 'timestamp') {
-                    starts.push(d.data.data.start_timestamp)
-                    ends.push(d.data.data.end_timestamp)
+                    if ((d.data.data.start_timestamp != 0) & (d.data.data.end_timestamp != 0)) {
+                        starts.push(d.data.data.start_timestamp)
+                        ends.push(d.data.data.end_timestamp)
+                    }
                 }else{
                     starts.push(d.data.data.start_global_index)
                     ends.push(d.data.data.end_global_index)
@@ -524,8 +526,13 @@ class TextFileOriginalComponentSvg extends svg
                 this.currentHeight = this.currentHeight + this.lineStoryHeight + this.intervalHeight
             }else{
                 if (this.alignType == 'timestamp') {
-                    d.sx = x(d.data.data.start_timestamp)
-                    d.ex = x(d.data.data.end_timestamp)
+                    if ((d.data.data.start_timestamp != 0) & (d.data.data.end_timestamp != 0)){
+                        d.sx = x(d.data.data.start_timestamp)
+                        d.ex = x(d.data.data.end_timestamp)
+                    }else{
+                        d.sx = x(starts[0])
+                        d.ex = x(starts[0])
+                    }
                 }else{
                     d.sx = x(d.data.data.start_global_index)
                     d.ex = x(d.data.data.end_global_index)
@@ -549,7 +556,8 @@ class TextFileOriginalComponentSvg extends svg
                 }else if(d.data.data.type == 'search'){
                     if (d.data.data.res_compare_special_lines.length > 0) {
                         // convert timestamp or global_index to x
-                        Object.keys(d.data.data.res_compare_special_lines).forEach((dot) =>{
+                        // console.log(d)
+                        d.data.data.res_compare_special_lines.forEach((dot) =>{
                             if (this.alignType == 'timestamp') {
                                 dot.x = chartX(x(dot.timestamp))
                             }else{
