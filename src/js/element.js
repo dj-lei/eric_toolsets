@@ -264,10 +264,10 @@ class BatchView extends View
         this.socket.emit("exec", model)
         this.show.clear()
         this.dialog.hidden()
-        this.show.display()
     }
 
     onRefresh(sample){
+        this.show.display()
         this.show.refresh(sample)
     }
 }

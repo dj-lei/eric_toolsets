@@ -118,6 +118,10 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
         LineTypeDot.value = 'dot'
         LineTypeForm.append(LineTypeDot)
         LineTypeForm.append(this.createElementLabel('Dot', 'dot'))
+
+        // var title = this.createElementLabel('Dot', 'dot')
+        // title.
+        // this.topNavigate.appendChild(title)
         this.topNavigate.appendChild(LineTypeForm)
 
         let that = this

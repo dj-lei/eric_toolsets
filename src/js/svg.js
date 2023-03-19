@@ -414,20 +414,34 @@ class LineStory extends svgElement
     constructor(svg, d){
         super(svg)
         this.d = d
-        this.marks = ''
+        this.marks = {}
+        this.specials = ''
         this.svg.append("rect")
             .attr("x", 0)
             .attr("height", d.height)
-            .attr("width", ((d.ex - d.sx < 1) & (d.ex - d.sx > 0)) ? 1 : d.ex - d.sx)
-            .attr("fill", "#FFFFFF")
+            .attr("width", (((d.ex - d.sx < 1) & (d.ex - d.sx > 0)) | (d.data.data.count == 1)) ? 1 : d.ex - d.sx)
+            .attr("fill", "#808080")
+        // console.log(d)
+
+        Object.keys(d.data.data.res_marks).forEach((key) => {
+            this.marks[key] = this.svg.append("g")
+                                .selectAll("path")
+                                .data(d.data.data.res_marks[key])
+                                .enter()
+                                    .append("path")
+                                    .attr("transform", d => `translate(${d.x},0) rotate(60)`)
+                                    .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
+                                    .style("cursor", "pointer")
+                                    .style("fill", d => d.value)
+        })
 
         if (d.data.data.res_compare_special_lines.length > 0) {
-            this.marks = this.svg.append("g")
+            this.specials = this.svg.append("g")
                             .selectAll("path")
                             .data(d.data.data.res_compare_special_lines)
                             .enter()
                                 .append("path")
-                                .attr("transform", d => `translate(${d.x},0) rotate(60)`)
+                                .attr("transform", s => `translate(${s.x},${d.height})`)
                                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
                                 .style("cursor", "pointer")
                                 .style("fill", "#FFD700")
@@ -440,6 +454,7 @@ class TextFileOriginalComponentSvg extends svg
     constructor(textFileOriginalView, container){
         super(container)
         this.textFileOriginalView = textFileOriginalView
+        console.log(this.textFileOriginalView)
 
         this.alignType = 'timestamp'
         this.lineType = 'dash'
@@ -554,9 +569,17 @@ class TextFileOriginalComponentSvg extends svg
                     d.height = this.lineChartHeight
                     this.currentHeight = this.currentHeight + this.lineChartHeight + this.intervalHeight
                 }else if(d.data.data.type == 'search'){
+                    Object.keys(d.data.data.res_marks).forEach((key) =>{
+                        d.data.data.res_marks[key].forEach(dot => {
+                            if (this.alignType == 'timestamp') {
+                                dot.x = chartX(x(dot.timestamp))
+                            }else{
+                                dot.x = chartX(x(dot.global_index))
+                            }
+                        })
+                    })
+
                     if (d.data.data.res_compare_special_lines.length > 0) {
-                        // convert timestamp or global_index to x
-                        // console.log(d)
                         d.data.data.res_compare_special_lines.forEach((dot) =>{
                             if (this.alignType == 'timestamp') {
                                 dot.x = chartX(x(dot.timestamp))
@@ -603,14 +626,35 @@ class TextFileOriginalComponentSvg extends svg
                     })
                 }else if(d.data.data.type == 'search'){
                     var ls = new LineStory(this.svg.select(`#${d.id}`), d)
-                    if (ls.marks != '') {
-                        ls.marks.on("click", function(event, d) {
+                    if (ls.specials != '') {
+                        ls.specials.on("click", function(event, d) {
                             that.textFileOriginalView.controlJump(d)
                         })
                     }
+
+                    Object.keys(ls.marks).forEach((key) => {
+                        ls.marks[key].on("click", function(event, d) {
+                            that.textFileOriginalView.controlJump(d)
+                        })
+                    })
                 }
             }
         })
+
+        // Bookmark line
+        function dragged(event) {
+            d3.select(this).attr("transform", `translate(${event.x} 0)`)
+        }
+        this.drag = d3.drag().on("drag", dragged)
+
+        const line = this.svg.append("line").attr("transform", `translate(0 0)`)
+                        .attr("y1", 0)
+                        .attr("y2", this.currentHeight)
+                        .attr("stroke", "#FF3300FF")
+                        .attr("stroke-width", 4)
+                        .style("cursor", "pointer")
+                        .call(this.drag)
+
         // console.log(this.svg.node())
     }
 }

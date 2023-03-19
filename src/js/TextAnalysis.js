@@ -560,6 +560,7 @@ class TextFileOriginalView extends View
     }
 
     controlJump(d){
+        console.log(d)
         this.socket.emit("jump", d)
     }
 
@@ -829,6 +830,8 @@ class TextFileCompareView extends BatchView
     }
 
     onRefresh(model){
+        this.show.display()
+        
         this.model = model
         var first = this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView
         var second = this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.second)].textFileOriginalView

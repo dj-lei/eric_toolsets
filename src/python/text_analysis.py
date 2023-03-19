@@ -127,7 +127,7 @@ class Model(socketio.AsyncNamespace, AsyncObject):
     async def send_message(self, sid, namespace, func_name, *args):
         await pub.send_message(sid, namespace, self.namespace, func_name, *args)
 
-    def on(self, sid):
+    def on_model(self, sid):
         return self.model()
 
     def subscribe_namespace(self, namespace):
@@ -685,6 +685,7 @@ class TextFileOriginalModel(Model):
 
         self.words = []
         self.marks = []
+        self.specials = []
 
         self.data_tree = {}
 
@@ -727,6 +728,7 @@ class TextFileOriginalModel(Model):
 
     async def on_refresh_acitve(self, sid):
         res_key_value = self.parent.text_file_function.search_function.active_search_atom.res_key_value
+        self.specials = self.parent.text_file_function.search_function.active_search_atom.specials
         self.words = []
         self.marks = []
         for key in res_key_value.keys():
@@ -754,25 +756,27 @@ class TextFileOriginalModel(Model):
         if (self.point + self.range) > len(self.parent.lines):
             self.point = len(self.parent.lines) - self.range
 
-        if len(self.words) == 0:
-            for index, line in enumerate(self.parent.lines[self.point:self.point+self.range]):
-                num = str(self.point + index)
-                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
-                self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
-        else:
-            reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
-            for index, line in enumerate(self.parent.lines[self.point:self.point+self.range]):
-                num = str(self.point + index)
-                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
-                
-                flag = True
-                for mark in self.marks:
-                    if self.point + index in mark['global_index']:
-                        flag = False
-                        self.display_lines.append(num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
-                        break
-                if flag:
+        reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
+        for index, line in enumerate(self.parent.lines[self.point:self.point+self.range]):
+            num = str(self.point + index)
+            num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
+
+            flag = True
+            for mark in self.marks:
+                if self.point + index in mark['global_index']:
+                    flag = False
+                    self.display_lines.append(num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+                    break
+
+            if flag:
+                if index in self.specials:
+                    self.display_lines.append(num+'<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+                    continue
+        
+                if len(self.words) > 0:
                     self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
+                else:
+                    self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
 
 
 class TextFileFunctionModel(Model):
@@ -866,6 +870,7 @@ class SearchAtomModel(ListModel):
         self.is_active = False
         self.words = []
         self.marks = []
+        self.specials = []
 
         self.exp_search = ''
         self.exp_extract = []
@@ -883,8 +888,10 @@ class SearchAtomModel(ListModel):
 
         self.res_search_units = []
         self.res_key_value = {}
+        self.res_marks = {}
         self.res_lines = []
         self.res_compare_special_lines = []
+        self.res_clean_lines = []
 
         self.start_global_index = 0
         self.end_global_index = 0
@@ -895,8 +902,8 @@ class SearchAtomModel(ListModel):
         await self.new_view_object()
 
     def model(self):
-        return {'role_path': self.role_path, 'type': 'search', 'count': self.count, 'point': self.point, 'namespace': self.namespace, 'identifier': self.identifier, 'desc':self.desc, 'exp_search': self.exp_search, 
-        'is_active': self.is_active, 'is_case_sensitive':self.is_case_sensitive, 'forward_rows':self.forward_rows, 'backward_rows':self.backward_rows, 'exp_extract': self.exp_extract, 'res_compare_special_lines': self.res_compare_special_lines,
+        return {'role_path': self.role_path, 'type': 'search', 'count': self.count, 'point': self.point, 'namespace': self.namespace, 'identifier': self.identifier, 'desc':self.desc, 'exp_search': self.exp_search, 'res_marks': self.res_marks,
+        'is_active': self.is_active, 'is_case_sensitive':self.is_case_sensitive, 'forward_rows':self.forward_rows, 'backward_rows':self.backward_rows, 'exp_extract': self.exp_extract, 'res_compare_special_lines': self.res_compare_special_lines, 'res_clean_lines': self.res_clean_lines,
         'exp_mark': self.exp_mark, 'display_lines': self.display_lines, 'start_global_index':self.start_global_index, 'end_global_index': self.end_global_index, 'start_timestamp':self.start_timestamp, 'end_timestamp': self.end_timestamp}
 
     async def listener(self, publish_namespace):
@@ -953,9 +960,11 @@ class SearchAtomModel(ListModel):
 
         self.words = []
         self.marks = []
+        self.res_marks = {}
         for key in self.res_key_value.keys():
             if self.res_key_value[key]['type'] == 'mark':
                 self.marks.append(self.res_key_value[key])
+                self.res_marks[key] = json.loads(pd.DataFrame(self.res_key_value[key]).to_json(orient='records'))
             else:
                 self.words.append(key)
 
@@ -968,7 +977,7 @@ class SearchAtomModel(ListModel):
         self.res_key_value = {}
         tmp_timestamps = []
         for search_index, unit in enumerate(self.res_search_units):
-            string = '\n'.join(self.text_file.lines[unit['range'][0]:unit['range'][1]+1])
+            string = '\n'.join(self.text_file.lines[unit['range'][0]:unit['range'][1]])
             ts = ''
             # handle key value
             for exp in self.exp_extract:
@@ -1002,6 +1011,7 @@ class SearchAtomModel(ListModel):
 
             self.res_search_units[search_index]['timestamp'] = ts
             tmp_timestamps.append(ts)
+        
         self.start_timestamp = min(tmp_timestamps) if len(tmp_timestamps) != 0 else 0
         self.end_timestamp = max(tmp_timestamps) if len(tmp_timestamps) != 0 else 0
 
@@ -1020,25 +1030,27 @@ class SearchAtomModel(ListModel):
         if (self.point + self.range) > len(self.res_lines):
             self.point = len(self.res_lines) - self.range
 
-        if len(self.words) == 0:
-            for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
-                num = str(self.point + index)
-                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
-                self.display_lines.append({'text':num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
-        else:
-            reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
-            for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
-                num = str(self.point + index)
-                num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
-                
-                flag = True
-                for mark in self.marks:
-                    if self.point + index in mark['search_index']:
-                        flag = False
-                        self.display_lines.append({'text': num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
-                        break
-                if flag:
+        reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
+        for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
+            num = str(self.point + index)
+            num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
+
+            flag = True
+            for mark in self.marks:
+                if self.point + index in mark['search_index']:
+                    flag = False
+                    self.display_lines.append({'text': num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
+                    break
+
+            if flag:
+                if line in self.specials:
+                    self.display_lines.append({'text': num+'<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
+                    continue
+        
+                if len(self.words) > 0:
                     self.display_lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, self.text_file.lines[line])+'</td>', 'global_index': line})
+                else:
+                    self.display_lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
 
 
 class ChartAtomModel(ListModel):
@@ -1890,11 +1902,11 @@ class TextFileCompareModel(Model):
 
     def compare(self):
         def self_clean_special_symbols(text, symbol):
-            for ch in ['::', '/','{','}','[',']','(',')','#','+','!',';',',','"','\'','@','`','$','^','&','|','\n']:
+            for ch in [':', '/','{','}','[',']','(',')','#','+','!',';',',','"','\'','@','`','$','^','&','|','-','.','=','\n']:
                 if ch in text:
                     text = text.replace(ch,symbol)
-            text = re.sub(symbol+"+", symbol, text)
-            return re.sub("\d+", '', text)
+            text = re.sub("\d+", '', text)
+            return re.sub(symbol+"+", symbol, text).strip()
 
         first_file = self.file_container.text_files[self.first_file_namespace]
         second_file = self.file_container.text_files[self.second_file_namespace]
@@ -1908,31 +1920,34 @@ class TextFileCompareModel(Model):
 
             first_clean_lines = []
             for unit in first_search_atom.res_search_units:
-                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]+1])
+                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]])
                 first_clean_lines.append(self_clean_special_symbols(string, ' '))
             first_clean_lines = list(set(first_clean_lines))
+            first_search_atom.res_clean_lines = first_clean_lines
 
             second_clean_lines = []
             for unit in second_search_atom.res_search_units:
-                string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]+1])
+                string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]])
                 second_clean_lines.append(self_clean_special_symbols(string, ' '))
             second_clean_lines = list(set(second_clean_lines))
+            second_search_atom.res_clean_lines = second_clean_lines
 
             first_special = []
-            for unit in first_search_atom.res_search_units:
-                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]+1])
+            for search_index, unit in enumerate(first_search_atom.res_search_units):
+                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]])
                 if self_clean_special_symbols(string, ' ') not in second_clean_lines:
-                    first_special.append({'timestamp': unit['timestamp'], 'global_index':unit['range'][0]})
+                    first_special.append({'identifier': first_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp']})
 
             second_special = []
-            for unit in second_search_atom.res_search_units:
-                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]+1])
+            for search_index, unit in enumerate(second_search_atom.res_search_units):
+                string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]])
                 if self_clean_special_symbols(string, ' ') not in first_clean_lines:
-                    second_special.append({'timestamp': unit['timestamp'], 'global_index':unit['range'][0]})
+                    second_special.append({'identifier': second_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp']})
 
             first_search_atom.res_compare_special_lines = first_special
+            first_search_atom.specials = list(pd.DataFrame(first_special)['global_index'].values) if len(first_special) > 0 else []
             second_search_atom.res_compare_special_lines = second_special
-
+            second_search_atom.specials = list(pd.DataFrame(second_special)['global_index'].values) if len(second_special) > 0 else []
         return first_file, second_file
 
         # compare chart
