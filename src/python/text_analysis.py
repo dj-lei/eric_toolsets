@@ -366,7 +366,7 @@ class TextAnalysisModel(Model):
         self.batch_insight = await BatchInsightModel(self, self.mode)
         self.batch_statistic = await BatchStatisticModel(self, self.mode)
         self.text_file_compare = await TextFileCompareModel(self, self.mode)
-        self.global_chart = await GlobalChartModel(self, self.mode)
+        # self.global_chart = await GlobalChartModel(self, self.mode)
 
     async def listener(self, publish_namespace):
         pass
@@ -1130,10 +1130,10 @@ class ChartAtomModel(ListModel):
             tmp_end_timestamps.append(res['timestamp'].values[-1])
             final[key] = json.loads(res.to_json(orient='records'))
 
-        self.start_global_index = int(min(tmp_start_global_indices))
-        self.end_global_index = int(max(tmp_end_global_indices))
-        self.start_timestamp = float(min(tmp_start_timestamps))
-        self.end_timestamp = float(max(tmp_end_timestamps))
+        self.start_global_index = int(min(tmp_start_global_indices)) if len(tmp_start_global_indices) != 0 else 0
+        self.end_global_index = int(max(tmp_end_global_indices)) if len(tmp_end_global_indices) != 0 else 0
+        self.start_timestamp = float(min(tmp_start_timestamps)) if len(tmp_start_timestamps) != 0 else 0
+        self.end_timestamp = float(max(tmp_end_timestamps)) if len(tmp_end_timestamps) != 0 else 0
         self.select_lines = final
 
     def generate_key_value_tree(self):

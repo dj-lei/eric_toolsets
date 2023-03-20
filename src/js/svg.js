@@ -58,17 +58,23 @@ class svgElement
     }
 }
 
-class Tree extends svg
+class Tree extends svgElement
 {
-    constructor(container){
-        super(container)
-        this.data = {}
+    constructor(svg){
+        super(svg)
+        this.nodeEnter = ''
     }
 
     clear(){
-        super.clear()
+        this.svg.selectAll("*").remove()
         // this.iterationClear([this.data])
         // this.draw(this.data)
+    }
+
+    update(data){
+        this.clear()
+        this.data = data
+        this.draw()
     }
 
     // iterationClear(data){
@@ -111,47 +117,42 @@ class Tree extends svg
             .attr("pointer-events", "all");
       
         function update(source) {
-          // const duration = d3.event && d3.event.altKey ? 2500 : 250;
-          const duration = 250;
-          const nodes = root.descendants().reverse();
-          const links = root.links();
-          // Compute the new tree layout.
-          tree(root);
-          
-          let left = root;
-          let right = root;
-          root.eachBefore(node => {
+            // const duration = d3.event && d3.event.altKey ? 2500 : 250;
+            const duration = 250;
+            const nodes = root.descendants().reverse();
+            const links = root.links();
+            // Compute the new tree layout.
+            tree(root);
+            
+            let left = root;
+            let right = root;
+            root.eachBefore(node => {
             if (node.x < left.x) left = node;
             if (node.x > right.x) right = node;
-          });
-      
-          const height = right.x - left.x + margin.top + margin.bottom;
-      
-          const transition = that.svg.transition()
-              .duration(duration)
-              .attr("viewBox", [-margin.left, left.x - margin.top, width, height])
-              .tween("resize", window.ResizeObserver ? null : () => () => that.svg.dispatch("toggle"));
-      
-          // Update the nodes…
-          const node = gNode.selectAll("g")
+            });
+        
+            const height = right.x - left.x + margin.top + margin.bottom;
+        
+            const transition = that.svg.transition()
+                .duration(duration)
+                .attr("viewBox", [-margin.left, left.x - margin.top, width, height])
+                .tween("resize", window.ResizeObserver ? null : () => () => that.svg.dispatch("toggle"));
+        
+            // Update the nodes…
+            const node = gNode.selectAll("g")
             .data(nodes, d => d.id);
       
           // Enter any new nodes at the parent's previous position.
-          const nodeEnter = node.enter().append("g")
-              .attr("transform", `translate(${source.y0},${source.x0})`)
+            that.nodeEnter = node.enter().append("g")
+                .attr("transform", `translate(${source.y0},${source.x0})`)
             //   .attr("transform", d => `translate(${source.y0},${source.x0})`)
-              .attr("fill-opacity", 0)
-              .attr("stroke-opacity", 0)
-              .on("click", (event, d) => {
-                that.clickEvent(event, d)
-                // update(d);
-                // console.log(that.data)
-              });
+                .attr("fill-opacity", 0)
+                .attr("stroke-opacity", 0)
       
-          nodeEnter.append("circle")
-              .attr("r", 2.5)
-              .attr("id", d => "circle"+String(d.data.id))
-              .attr("fill", d => {
+            that.nodeEnter.append("circle")
+                .attr("r", 2.5)
+                .attr("id", d => "circle"+String(d.data.id))
+                .attr("fill", d => {
                     if (d.data.check == true){
                         return "#33CC00"
                     }
@@ -161,23 +162,23 @@ class Tree extends svg
                         return "#999"
                     }
                 })
-              .attr("stroke-width", 10);
+                .attr("stroke-width", 10);
       
-          nodeEnter.append("text")
-              .attr("id", d => "text"+String(d.data.id))
-              .attr("dy", "0.31em")
-              .attr("x", d => d._children ? -6 : 6)
-              .attr("text-anchor", d => d._children ? "end" : "start")
-              .text(d => d.data.name)
-              .attr("stroke-width", 0.5)
-              .attr("stroke", d => {
+            that.nodeEnter.append("text")
+                .attr("id", d => "text"+String(d.data.id))
+                .attr("dy", "0.31em")
+                .attr("x", d => d._children ? -6 : 6)
+                .attr("text-anchor", d => d._children ? "end" : "start")
+                .text(d => d.data.name)
+                .attr("stroke-width", 0.5)
+                .attr("stroke", d => {
                     if (d.data.check == true){
                         return "#33CC00"
                     }else{
                         return "white"
                     }
                 })
-              .attr("fill", d => {
+                .attr("fill", d => {
                     if (d.data.check == true){
                         return "#33CC00"
                     }else{
@@ -185,45 +186,45 @@ class Tree extends svg
                     }
                 });
       
-          // Transition nodes to their new position.
-          node.merge(nodeEnter).transition(transition)
-              .attr("transform", d => `translate(${d.y},${d.x})`)
-              .attr("fill-opacity", 1)
-              .attr("stroke-opacity", 1);
-      
-          // Transition exiting nodes to the parent's new position.
-          node.exit().transition(transition).remove()
-              .attr("transform", `translate(${source.y},${source.x})`)
-              .attr("fill-opacity", 0)
-              .attr("stroke-opacity", 0);
-      
-          // Update the links…
-          const link = gLink.selectAll("path")
-            .data(links, d => d.target.id);
-      
-          // Enter any new links at the parent's previous position.
-          const linkEnter = link.enter().append("path")
-              .attr("d", function () {
-                const o = {x: source.x0, y: source.y0};
-                return diagonal({source: o, target: o});
-              });
-      
-          // Transition links to their new position.
-          link.merge(linkEnter).transition(transition)
-              .attr("d", diagonal);
-      
-          // Transition exiting nodes to the parent's new position.
-          link.exit().transition(transition).remove()
-              .attr("d", function () {
-                const o = {x: source.x, y: source.y};
-                return diagonal({source: o, target: o});
-              });
-      
-          // Stash the old positions for transition.
-          root.eachBefore(d => {
-            d.x0 = d.x;
-            d.y0 = d.y;
-          });
+            // Transition nodes to their new position.
+            node.merge(that.nodeEnter).transition(transition)
+                .attr("transform", d => `translate(${d.y},${d.x})`)
+                .attr("fill-opacity", 1)
+                .attr("stroke-opacity", 1);
+        
+            // Transition exiting nodes to the parent's new position.
+            node.exit().transition(transition).remove()
+                .attr("transform", `translate(${source.y},${source.x})`)
+                .attr("fill-opacity", 0)
+                .attr("stroke-opacity", 0);
+        
+            // Update the links…
+            const link = gLink.selectAll("path")
+                            .data(links, d => d.target.id);
+        
+            // Enter any new links at the parent's previous position.
+            const linkEnter = link.enter().append("path")
+                                .attr("d", function () {
+                                    const o = {x: source.x0, y: source.y0};
+                                    return diagonal({source: o, target: o});
+                                });
+        
+            // Transition links to their new position.
+            link.merge(linkEnter).transition(transition)
+                .attr("d", diagonal);
+        
+            // Transition exiting nodes to the parent's new position.
+            link.exit().transition(transition).remove()
+                .attr("d", function () {
+                    const o = {x: source.x, y: source.y};
+                    return diagonal({source: o, target: o});
+                });
+        
+            // Stash the old positions for transition.
+            root.eachBefore(d => {
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
         }
         update(root);
     }
@@ -749,7 +750,7 @@ class ChartAtomComponentSvgDialog extends Dialog
         super(chartAtomView.container)
         this.chartAtomView = chartAtomView
         this.subContainer.style.width = '90%' 
-        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+        this.subContainer.style.height = `${document.body.offsetHeight - 200}px`
 
         this.subContainer.appendChild(this.createElementHr())
         // identifier
@@ -765,13 +766,30 @@ class ChartAtomComponentSvgDialog extends Dialog
         this.subContainer.appendChild(this.createElementHr())
 
         // name
-        this.parentRole = this.createElementTextInput()
+        this.rolePath = this.createElementTextInput()
         this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
-        this.subContainer.appendChild(this.parentRole)
+        this.subContainer.appendChild(this.rolePath)
         this.subContainer.appendChild(this.createElementHr())
 
         this.subContainer.appendChild(this.createElementHeader('Key Value Tree'))
         this.chartAtomComponentSvg = new ChartAtomComponentSvg(this)
+
+        let that = this
+        this.cancelBtn = this.createElementButton('CANCEL')
+        this.cancelBtn.style.backgroundColor = 'red'
+        this.cancelBtn.onclick = function(){that.hidden()}
+        this.cancelBtn.style.width = '20%'
+        this.clearBtn = this.createElementButton('CLEAR')
+        this.clearBtn.style.backgroundColor = 'blue'
+        this.clearBtn.onclick = function(){that.clear()}
+        this.clearBtn.style.width = '20%'
+        this.applyBtn = this.createElementButton('APPLY')
+        this.applyBtn.style.backgroundColor = 'green'
+        this.applyBtn.onclick = function(){that.apply()}
+        this.applyBtn.style.width = '60%'
+        this.subContainer.appendChild(this.applyBtn)
+        this.subContainer.appendChild(this.clearBtn)
+        this.subContainer.appendChild(this.cancelBtn)
     }
 
     apply(){
@@ -780,7 +798,7 @@ class ChartAtomComponentSvgDialog extends Dialog
             identifier: this.identifier.value,
             desc: this.desc.value,
             key_value_tree: this.chartAtomComponentSvg.data,
-            parent_role: this.parentRole.value,
+            role_path: this.rolePath.value,
         }
         this.chartAtomView.controlExec(model)
     }
@@ -788,6 +806,7 @@ class ChartAtomComponentSvgDialog extends Dialog
     update(model){
         this.identifier.value = model.identifier
         this.desc.value = model.desc
+        this.rolePath.value = model.role_path
         this.chartAtomComponentSvg.update(model.key_value_tree)
     }
 
@@ -796,27 +815,22 @@ class ChartAtomComponentSvgDialog extends Dialog
     }
 }
 
-class ChartAtomComponentSvg extends Tree
+class ChartAtomComponentSvg extends svg
 {
     constructor(dialog){
         super(dialog.subContainer)
+        this.tree = new Tree(this.svg)
+    }
 
+    update(data){
         let that = this
-        this.cancel = this.createElementButton('CANCEL')
-        this.cancel.style.backgroundColor = 'red'
-        this.cancel.style.float = 'right'
-        this.cancel.onclick = function(){dialog.hidden()}
-        this.clear = this.createElementButton('CLEAR')
-        this.clear.style.backgroundColor = 'blue'
-        this.clear.style.float = 'right'
-        this.clear.onclick = function(){dialog.clear()}
-        this.apply = this.createElementButton('APPLY')
-        this.apply.style.backgroundColor = 'green'
-        this.apply.style.float = 'right'
-        this.apply.onclick = function(){dialog.apply()}
-        // this.bottomBtnSets.appendChild(this.cancel)
-        // this.bottomBtnSets.appendChild(this.clear)
-        // this.bottomBtnSets.appendChild(this.apply)
+        this.data = data
+        this.tree.update(this.data)
+        this.tree.nodeEnter.on("click", (event, d) => {
+                that.clickEvent(event, d)
+                // update(d);
+                // console.log(that.data)
+            });
     }
 
     clickEvent(event, d){

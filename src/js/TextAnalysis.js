@@ -16,8 +16,6 @@ import { TextFileOriginalComponentNavigate } from './navigate'
 import common from '@/plugins/common'
 
 const fs = require('fs')
-const { remote } = require('electron')
-const { BrowserWindow } = remote
 
 class SystemTestView extends View
 {
@@ -228,7 +226,7 @@ class TextAnalysisView extends View
         this.batchInsightView = new BatchInsightView(this)
         this.batchStatisticView = new BatchStatisticView(this)
         this.textFileCompareView = new TextFileCompareView(this)
-        this.globalChartView = new GlobalChartView(this)
+        // this.globalChartView = new GlobalChartView(this)
 
         let that = this
         ipcRenderer.on('shutdown', () => {

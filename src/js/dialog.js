@@ -483,7 +483,6 @@ class StatisticAtomComponentDialog extends Dialog
 
         //******************** code *******************/
         var codeContainer = this.createElementDiv()
-        codeContainer.appendChild(this.createElementHr())
         // identifier
         this.identifier = this.createElementTextInput()
         codeContainer.appendChild(this.createElementHeader('Identifier(Global Unique)'))
@@ -509,9 +508,8 @@ class StatisticAtomComponentDialog extends Dialog
         this.subContainer.appendChild(this.createElementHr())
 
         this.parentRole = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
-        this.subContainer.appendChild(this.parentRole)
-        this.subContainer.appendChild(this.createElementHr())
+        codeContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
+        codeContainer.appendChild(this.parentRole)
 
         // search and cancel button
         this.apply = this.createElementButton('STATISTIC')
