@@ -36,9 +36,9 @@ class FileContainerComponentTab extends Tab
     updatePlaceholder(model){
         let that = this
         var tablink = this.tabs[model.namespace].ins
-        tablink.style.width = `${model.file_name.length * 8}px`
         var title = this.tabs[model.namespace].title
         title.innerHTML = model.file_name
+        tablink.style.width = `${model.file_name.length * 8}px`
         title.addEventListener('click', function()
         {
             that.fileContainerView.controlDisplayFile(model.namespace)
@@ -89,17 +89,18 @@ class TextFileFunctionComponentTab extends Tab
         super(textFileFunctionView.container)
         this.textFileFunctionView = textFileFunctionView
 
-        this.container.style.position = 'fixed'
-        this.container.style.zIndex = 1
+        // this.container.style.position = 'fixed'
+        // this.container.style.zIndex = 1
         this.container.style.left = 0
         // this.container.style.top = 0
         this.container.style.width = '100%'
         this.container.style.overflow = 'hidden'
+        this.container.style.border = 'none'
 
         let that = this
         this.subscribePlaceholder('Search')
         var tablink = this.getPlaceholder('Search')
-        tablink.style.width = '25%'
+        tablink.style.width = '33%'
         this.searchTitle = this.tabs['Search'].title
         this.searchTitle.style.width = '100%'
         this.searchTitle.innerHTML = 'Search'
@@ -110,7 +111,7 @@ class TextFileFunctionComponentTab extends Tab
 
         this.subscribePlaceholder('Chart')
         tablink = this.getPlaceholder('Chart')
-        tablink.style.width = '24%'
+        tablink.style.width = '32%'
 
         this.chartTitle = this.tabs['Chart'].title
         this.chartTitle.style.width = '100%'
@@ -122,7 +123,7 @@ class TextFileFunctionComponentTab extends Tab
 
         this.subscribePlaceholder('Insight')
         tablink = this.getPlaceholder('Insight')
-        tablink.style.width = '25%'
+        tablink.style.width = '0%'
         this.insightTitle = this.tabs['Insight'].title
         this.insightTitle.style.width = '100%'
         this.insightTitle.innerHTML = 'Insight'
@@ -133,7 +134,7 @@ class TextFileFunctionComponentTab extends Tab
 
         this.subscribePlaceholder('Statistic')
         tablink = this.getPlaceholder('Statistic')
-        tablink.style.width = '24%'
+        tablink.style.width = '33%'
         this.statisticTitle = this.tabs['Statistic'].title
         this.statisticTitle.style.width = '100%'
         this.statisticTitle.innerHTML = 'Statistic'

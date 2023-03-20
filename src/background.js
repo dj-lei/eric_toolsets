@@ -24,7 +24,6 @@ async function createWindow() {
   win = new BrowserWindow({
     width: 800,
     height: 600,
-    // show: false,
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
@@ -161,13 +160,13 @@ async function createWindow() {
               win.webContents.send('new-chart')
             }
           },
-          {
-            label: 'New Insight',
-            accelerator: 'CommandOrControl+G',
-            click: () => {
-              win.webContents.send('new-insight')
-            }
-          },
+          // {
+          //   label: 'New Insight',
+          //   accelerator: 'CommandOrControl+G',
+          //   click: () => {
+          //     win.webContents.send('new-insight')
+          //   }
+          // },
           {
             label: 'New Statistic',
             accelerator: 'CommandOrControl+J',

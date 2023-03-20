@@ -692,7 +692,7 @@ class TextFileOriginalModel(Model):
         await self.new_view_object()
         
     def model(self):
-        return {'namespace': self.namespace, 'point': self.point, 'rate_height': self.rate_height, 'point': self.point, 
+        return {'namespace': self.namespace, 'file_name': self.parent.file_name, 'point': self.point, 'rate_height': self.rate_height, 'point': self.point, 
                 'range': self.range, 'count': self.count, 'display_lines': self.display_lines, 'data_tree': self.data_tree}
 
     async def listener(self, publish_namespace):
@@ -992,9 +992,10 @@ class SearchAtomModel(ListModel):
                         if key == 'timestamp':
                             continue
                         if key not in self.res_key_value:
-                            self.res_key_value[key] = {'identifier': self.identifier, 'name':key, 'type': type(r.named[key]).__name__, 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                            self.res_key_value[key] = {'identifier': self.identifier, 'name':key, 'type': type(r.named[key]).__name__, 'global_index':[], 'search_index':[], 'text':[], 'value':[], 'timestamp':[]}
                         self.res_key_value[key]['global_index'].append(unit['range'][0]+self.backward_rows)
                         self.res_key_value[key]['search_index'].append(search_index)
+                        self.res_key_value[key]['text'].append(string)
                         self.res_key_value[key]['value'].append(r.named[key])
                         self.res_key_value[key]['timestamp'].append(ts)
                     break
@@ -1003,9 +1004,10 @@ class SearchAtomModel(ListModel):
             for exp in self.exp_mark:
                 if len(re.findall(exp['exp'], string, flags=re.IGNORECASE)) > 0:
                     if exp['abbr'] not in self.res_key_value:
-                        self.res_key_value[exp['abbr']] = {'identifier': self.identifier, 'name':exp['abbr'], 'type': 'mark', 'global_index':[], 'search_index':[], 'value':[], 'timestamp':[]}
+                        self.res_key_value[exp['abbr']] = {'identifier': self.identifier, 'name':exp['abbr'], 'type': 'mark', 'global_index':[], 'search_index':[], 'text':[], 'value':[], 'timestamp':[]}
                     self.res_key_value[exp['abbr']]['global_index'].append(unit['range'][0]+self.backward_rows)
                     self.res_key_value[exp['abbr']]['search_index'].append(search_index)
+                    self.res_key_value[exp['abbr']]['text'].append(string)
                     self.res_key_value[exp['abbr']]['value'].append(exp['color'])
                     self.res_key_value[exp['abbr']]['timestamp'].append(ts)
 
@@ -1885,8 +1887,7 @@ class TextFileCompareModel(Model):
         self.text_analysis = text_analysis
 
     def model(self):
-        return {'namespace': self.namespace, 'first': self.file_container.text_files[self.first_file_namespace].text_file_original.namespace if self.first_file_namespace != '' else '', 
-                'second': self.file_container.text_files[self.second_file_namespace].text_file_original.namespace if self.first_file_namespace != '' else '',
+        return {'namespace': self.namespace, 'first':  '', 'second':  '',
                 'files': list(self.file_container.text_files.keys())}
 
     async def listener(self, subscribe_namespace):
@@ -1898,7 +1899,11 @@ class TextFileCompareModel(Model):
         first_file, second_file = self.compare()
         await first_file.text_file_function.search_function.on_refresh_roles(sid)
         await second_file.text_file_function.search_function.on_refresh_roles(sid)
-        await self.emit('refresh', self.model(), namespace=self.namespace)
+
+        m = self.model()
+        m['first'] = self.file_container.text_files[self.first_file_namespace].text_file_original.namespace
+        m['second'] = self.file_container.text_files[self.second_file_namespace].text_file_original.namespace
+        await self.emit('refresh', m, namespace=self.namespace)
 
     def compare(self):
         def self_clean_special_symbols(text, symbol):
@@ -1936,13 +1941,13 @@ class TextFileCompareModel(Model):
             for search_index, unit in enumerate(first_search_atom.res_search_units):
                 string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]])
                 if self_clean_special_symbols(string, ' ') not in second_clean_lines:
-                    first_special.append({'identifier': first_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp']})
+                    first_special.append({'identifier': first_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp'], 'text': string})
 
             second_special = []
             for search_index, unit in enumerate(second_search_atom.res_search_units):
                 string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]])
                 if self_clean_special_symbols(string, ' ') not in first_clean_lines:
-                    second_special.append({'identifier': second_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp']})
+                    second_special.append({'identifier': second_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp'], 'text': string})
 
             first_search_atom.res_compare_special_lines = first_special
             first_search_atom.specials = list(pd.DataFrame(first_special)['global_index'].values) if len(first_special) > 0 else []

@@ -16,6 +16,8 @@ import { TextFileOriginalComponentNavigate } from './navigate'
 import common from '@/plugins/common'
 
 const fs = require('fs')
+const { remote } = require('electron')
+const { BrowserWindow } = remote
 
 class SystemTestView extends View
 {
@@ -560,15 +562,14 @@ class TextFileOriginalView extends View
     }
 
     controlJump(d){
-        console.log(d)
         this.socket.emit("jump", d)
     }
 
     onSetHeight(model){
-        this.tableShow.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
-        this.tableShow.table.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
-        this.tableShow.slider.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
-        this.svgShow.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.tableShow.container.style.height = `${parseInt((document.body.offsetHeight - 50) * model.rate_height)}px`
+        this.tableShow.table.style.height = `${parseInt((document.body.offsetHeight - 50) * model.rate_height)}px`
+        this.tableShow.slider.style.height = `${parseInt((document.body.offsetHeight - 50) * model.rate_height)}px`
+        this.svgShow.container.style.height = `${parseInt((document.body.offsetHeight - 50) * model.rate_height)}px`
     }
 
     onRefresh(model){
@@ -592,7 +593,7 @@ class TextFileFunctionView extends View
         this.chartFunctionView = ''
         this.statisticFunctionView = ''
 
-        // this.container.style.border = '1px solid #ddd'
+        this.container.style.border = '1px solid #ddd'
         // this.container.style.height = '0px'
         this.container.style.overflowY = 'auto'
         this.show = new TextFileFunctionComponentTab(this)
@@ -612,7 +613,7 @@ class TextFileFunctionView extends View
     }
 
     onSetHeight(model){
-        this.container.style.height = `${parseInt((document.body.offsetHeight - 30) * model.rate_height)}px`
+        this.container.style.height = `${parseInt((document.body.offsetHeight - 50) * model.rate_height)}px`
     }
 }
 
@@ -696,6 +697,7 @@ class SearchAtomView extends ListView
 
     onActive(){
         this.show.display()
+        // this.container.scrollIntoView({ behavior: 'smooth' })
     }
 }
 

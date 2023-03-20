@@ -119,10 +119,12 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
         LineTypeForm.append(LineTypeDot)
         LineTypeForm.append(this.createElementLabel('Dot', 'dot'))
 
-        // var title = this.createElementLabel('Dot', 'dot')
-        // title.
-        // this.topNavigate.appendChild(title)
+        // console.log(this.textFileOriginalComponentSvg)
+        this.title = this.createElementLabel('Title', 'title')
+        this.title.style.float = 'right'
+        
         this.topNavigate.appendChild(LineTypeForm)
+        this.topNavigate.appendChild(this.title)
 
         let that = this
         const alignType = document.querySelectorAll('input[name="AlignType"]')
@@ -140,6 +142,10 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
                 that.textFileOriginalComponentSvg.update()
             })
         })
+    }
+
+    setTitle(title){
+        this.title.innerHTML = title
     }
 }
 

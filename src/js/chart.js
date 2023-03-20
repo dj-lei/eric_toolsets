@@ -336,7 +336,7 @@ class SequentialChart extends Chart
 			data:[]
 		}
 		line.forEach((dot) => {
-			markLine['data'].push({'xAxis': dot.graph_index, 'globalIndex': dot.global_index, 'searchIndex': dot.search_index, 'label': {'color': dot.value, 'formatter':dot.name, 'fontSize':10}})
+			markLine['data'].push({'xAxis': dot.global_index, 'globalIndex': dot.global_index, 'searchIndex': dot.search_index, 'label': {'color': dot.value, 'formatter':dot.name, 'fontSize':10}})
 		})
 
 		this.option['series'].push(
@@ -407,9 +407,9 @@ class SequentialChart extends Chart
 		Object.keys(this.selectedLines).forEach((line) => {
 			if (this.selectedLines[line].length > 0){
 				if (this.selectedLines[line][0].type == 'mark'){
-					this.setMarkLine(`${this.selectedLines[line][0].search_alias}.${this.selectedLines[line][0].name}`,this.selectedLines[line])
+					this.setMarkLine(`${this.selectedLines[line][0].identifier}.${this.selectedLines[line][0].name}`,this.selectedLines[line])
 				}else{
-					this.setLine(`${this.selectedLines[line][0].search_alias}.${this.selectedLines[line][0].name}`, this.selectedLines[line])
+					this.setLine(`${this.selectedLines[line][0].identifier}.${this.selectedLines[line][0].name}`, this.selectedLines[line])
 				}
 			}
 		})

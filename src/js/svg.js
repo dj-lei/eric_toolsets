@@ -4,9 +4,6 @@ import { Component } from './element'
 import { Dialog } from './dialog'
 import { TextFileOriginalComponentSvgNavigate, TextFileCompareComponentSvgDialogNavigate } from './navigate'
 
-const { remote } = require('electron')
-const win = remote.getCurrentWindow()
-
 const color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
 '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
 
@@ -269,13 +266,13 @@ class IndentedTree extends svgElement
             .text(d => d.data.name)
             .attr("stroke", "white")
             .attr("fill", "white")
+            .style("cursor", "pointer")
             .on("click", function(event, d) {
                 console.log(d)
             })
-            .style("cursor", "pointer")
-
+            
         text.each(function() {
-            var textWidth = this.getComputedTextLength(); // 获取文本宽度
+            var textWidth = this.getComputedTextLength();
             d3.select(this)
                 .attr("transform", "translate(" + -1 * textWidth + ", 0)");
         })
@@ -290,10 +287,8 @@ class LineChart extends svgElement
         this.d = d
         this.lineType = lineType
         this.points = []
-
         Object.keys(d.data.data.select_lines).forEach((name, index) =>{
             if (d.data.data.select_lines[name][0].type == 'mark') {
-                console.log(d.data.data.select_lines[name])
                 this.addMark(d.data.data.select_lines[name], d.height)
             }else{
                 this.addLine(d.data.data.select_lines[name], name, d.height, index)
@@ -364,6 +359,7 @@ class LineChart extends svgElement
             .data(line)
             .enter()
                 .append("circle")
+                .attr("class", "dot")
                 .attr("r", 4)
                 .attr("fill", color[index])
                 .attr("cx", d => d.x)
@@ -384,7 +380,7 @@ class LineChart extends svgElement
                 .attr("x2", d => d.x)
                 .attr("y2", height)
                 .attr("stroke", d => d.value)
-                .attr("stroke-width", 3)
+                .attr("stroke-width", 1.5)
         }else if(this.lineType == 'solid'){
             node.append("line")
                 .attr("x1", d => d.x)
@@ -392,19 +388,17 @@ class LineChart extends svgElement
                 .attr("x2", d => d.x)
                 .attr("y2", height)
                 .attr("stroke", d => d.value)
-                .attr("stroke-width", 3)
+                .attr("stroke-width", 1.5)
                 .attr("stroke-dasharray", "10 10")
         }
 
         node.append("text")
+            .attr("class", "mark")
             .attr("x", d => d.x)
             .attr("y", 0)
-            .attr("stroke", d => d.value)
-            .attr("fill", d => d.value)
+            // .attr("stroke", d => d.value)
             .text(d => d.name)
-            .on("click", function(event, d) {
-                console.log(d)
-            })
+            .style("fill", d => d.value)
             .style("cursor", "pointer")
     }
 }
@@ -416,12 +410,11 @@ class LineStory extends svgElement
         this.d = d
         this.marks = {}
         this.specials = ''
-        this.svg.append("rect")
-            .attr("x", 0)
-            .attr("height", d.height)
-            .attr("width", (((d.ex - d.sx < 1) & (d.ex - d.sx > 0)) | (d.data.data.count == 1)) ? 1 : d.ex - d.sx)
-            .attr("fill", "#808080")
-        // console.log(d)
+        this.story = this.svg.append("rect")
+                        .attr("x", 0)
+                        .attr("height", d.height)
+                        .attr("width", (((d.ex - d.sx < 1) & (d.ex - d.sx > 0)) | (d.data.data.count == 1)) ? 1 : d.ex - d.sx)
+                        .attr("fill", "#808080")
 
         Object.keys(d.data.data.res_marks).forEach((key) => {
             this.marks[key] = this.svg.append("g")
@@ -431,8 +424,8 @@ class LineStory extends svgElement
                                     .append("path")
                                     .attr("transform", d => `translate(${d.x},0) rotate(60)`)
                                     .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
-                                    .style("cursor", "pointer")
                                     .style("fill", d => d.value)
+                                    .style("cursor", "pointer")
         })
 
         if (d.data.data.res_compare_special_lines.length > 0) {
@@ -443,8 +436,8 @@ class LineStory extends svgElement
                                 .append("path")
                                 .attr("transform", s => `translate(${s.x},${d.height})`)
                                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
-                                .style("cursor", "pointer")
                                 .style("fill", "#FFD700")
+                                .style("cursor", "pointer")
         }
     }
 }
@@ -454,8 +447,6 @@ class TextFileOriginalComponentSvg extends svg
     constructor(textFileOriginalView, container){
         super(container)
         this.textFileOriginalView = textFileOriginalView
-        console.log(this.textFileOriginalView)
-
         this.alignType = 'timestamp'
         this.lineType = 'dash'
         this.startPosition = 0
@@ -465,6 +456,9 @@ class TextFileOriginalComponentSvg extends svg
         this.lineChartHeight = 200
         this.lineStoryHeight = 20
         this.intervalHeight = 10
+
+        this.starts = []
+        this.ends = []
 
         this.tooltip = d3.select(this.container).append("div")
                             .style("display", 'none')
@@ -481,35 +475,30 @@ class TextFileOriginalComponentSvg extends svg
         this.container.insertBefore(this.textFileOriginalComponentSvgNavigate.container, this.svgElm);
     }
 
-    update(data){
-        this.clear()
-        let that = this
-        this.currentHeight = 0
-        if (data) {
-            this.data = data
-        }
-        this.svg.style("overflow", "visible")
-
+    getBoundary(){
         // get boundary
-        var starts = []
-        var ends = []
+        this.starts = []
+        this.ends = []
         d3.hierarchy(this.data).eachBefore(d => {
             if (d.data.data != null) {
                 if (this.alignType == 'timestamp') {
                     if ((d.data.data.start_timestamp != 0) & (d.data.data.end_timestamp != 0)) {
-                        starts.push(d.data.data.start_timestamp)
-                        ends.push(d.data.data.end_timestamp)
+                        this.starts.push(d.data.data.start_timestamp)
+                        this.ends.push(d.data.data.end_timestamp)
                     }
                 }else{
-                    starts.push(d.data.data.start_global_index)
-                    ends.push(d.data.data.end_global_index)
+                    this.starts.push(d.data.data.start_global_index)
+                    this.ends.push(d.data.data.end_global_index)
                 }
             }
         })
+    }
 
+    addXAxis(){
         // add x axis
+        let that = this
         var x = d3.scaleLinear().range([0, this.viewWidth])
-        x.domain(d3.extent(starts.concat(ends)))
+        x.domain(d3.extent(this.starts.concat(this.ends)))
         var xA = d3.axisBottom(x)
         var domain = x.domain()
         var tickValues = xA.scale().ticks().concat(domain[0], domain[1])
@@ -527,7 +516,135 @@ class TextFileOriginalComponentSvg extends svg
         .select(".domain")
         .style('stroke', "#FFF")
         xAxis.selectAll('.tick line').style('stroke', "#FFF")
+        return x
+    }
 
+    addBookmarkLine(){
+        // Bookmark line
+        function dragged(event) {
+            d3.select(this).attr("transform", `translate(${event.x} 0)`)
+        }
+        this.drag = d3.drag().on("drag", dragged)
+
+        const line = this.svg.append("line").attr("transform", `translate(0 0)`)
+                        .attr("y1", 0)
+                        .attr("y2", this.currentHeight)
+                        .attr("stroke", "#FF3300FF")
+                        .attr("stroke-width", 4)
+                        .style("cursor", "pointer")
+                        .call(this.drag)
+    }
+
+    addLineChart(d){
+        function getDotTooltipContent(d) {
+            var res = `
+                <b style="color:#000">Key&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.full_name}</b><br/>
+                <b style="color:#000">Timestamp: ${common.formatTimestamp(d.timestamp)}</b><br/>
+                <b style="color:#000">Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.value}</b><br/>
+            `
+            return res
+        }
+
+        function getMarkTooltipContent(d) {
+            var res = `
+                <b style="color:#000">identifier&nbsp;&nbsp;&nbsp;: ${d.identifier}</b><br/>
+                <b style="color:#000">Timestamp: ${common.formatTimestamp(d.timestamp)}</b><br/>
+                <b style="color:#000">text&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.text}</b><br/>
+            `
+            return res
+        }
+
+        let that = this
+        var lc = new LineChart(this.svg.select(`#${d.id}`), d, this.lineType)
+        lc.svg.selectAll('.dot').on("click", function(event, d) {
+            that.textFileOriginalView.controlJump(d)
+        })
+        this.bindMouseEvent(lc.svg.selectAll('.dot'), getDotTooltipContent)
+
+        lc.svg.selectAll('.mark').on("click", function(event, d) {
+            that.textFileOriginalView.controlJump(d)
+        })
+        this.bindMouseEvent(lc.svg.selectAll('.mark'), getMarkTooltipContent)
+    }
+
+    addLineStory(d){
+        function getTooltipContent(d) {
+            var res = `
+                <b style="color:#000">identifier&nbsp;&nbsp;&nbsp;: ${d.identifier}</b><br/>
+                <b style="color:#000">Timestamp: ${common.formatTimestamp(d.timestamp)}</b><br/>
+                <b style="color:#000">text&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.text}</b><br/>
+            `
+            return res
+        }
+
+        function getStoryTooltipContent(d) {
+            var res = `
+                <b style="color:#000">identifier: ${d.data.data.identifier}</b><br/>
+                <b style="color:#000">desc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.data.data.desc}</b><br/>
+            `
+            return res
+        }
+
+        let that = this
+        var ls = new LineStory(this.svg.select(`#${d.id}`), d)
+
+        this.bindMouseEvent(ls.story, getStoryTooltipContent)
+
+        if (ls.specials != '') {
+            ls.specials.on("click", function(event, d) {
+                that.textFileOriginalView.controlJump(d)
+            })
+            this.bindMouseEvent(ls.specials, getTooltipContent)
+        }
+
+        Object.keys(ls.marks).forEach((key) => {
+            ls.marks[key].on("click", function(event, d) {
+                that.textFileOriginalView.controlJump(d)
+            })
+            this.bindMouseEvent(ls.marks[key], getTooltipContent)
+        })
+    }
+
+    bindMouseEvent(elm, func){
+        let that = this
+        elm.on("mouseover", function(event, d) {
+
+            if(['path', 'text'].includes(d3.select(this).node().nodeName)){
+                d3.select(this).style('fill', "#FFF")
+            }else{
+                const currentColor = d3.color(d3.select(this).attr('fill'));
+                currentColor.opacity = 0.6;
+                d3.select(this).attr('fill', currentColor);
+            }
+
+            that.tooltip.html(func(d))
+                .style("left", (event.pageX) + "px")
+                .style("top", (event.offsetY) + "px")
+                .style("display", 'block')
+            })
+        .on("mouseout", function(event, d) {
+            if(['path', 'text'].includes(d3.select(this).node().nodeName)){
+                if (d.name) {
+                    d3.select(this).style('fill', d => d.value)
+                }else{
+                    d3.select(this).style('fill', '#FFD700')
+                }
+
+            }else{
+                const currentColor = d3.color(d3.select(this).attr('fill'));
+                currentColor.opacity = 1;
+                d3.select(this).attr('fill', currentColor);
+            }
+
+            that.tooltip.style("display", 'none')
+        })
+    }
+
+    addIndentedTree(root){
+        new IndentedTree(this.svg, root)
+    }
+
+    mapXY(x){
         // map x y
         var i = 0
         var root = d3.hierarchy(this.data).eachBefore(d => {
@@ -545,8 +662,8 @@ class TextFileOriginalComponentSvg extends svg
                         d.sx = x(d.data.data.start_timestamp)
                         d.ex = x(d.data.data.end_timestamp)
                     }else{
-                        d.sx = x(starts[0])
-                        d.ex = x(starts[0])
+                        d.sx = 0
+                        d.ex = 0
                     }
                 }else{
                     d.sx = x(d.data.data.start_global_index)
@@ -592,69 +709,36 @@ class TextFileOriginalComponentSvg extends svg
                     this.currentHeight = this.currentHeight + this.lineStoryHeight + this.intervalHeight
                 }
             }
-        
         })
+        return root
+    }
 
-        function getTooltipContent(d) {
-            var res = `
-                <b style="color:#000">Key&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.full_name}</b><br/>
-                <b style="color:#000">Timestamp: ${common.formatTimestamp(d.timestamp)}</b><br/>
-                <b style="color:#000">Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.value}</b><br/>
-            `
-            return res
+    update(data){
+        this.clear()
+        this.currentHeight = 0
+        if (data) {
+            this.data = data
         }
+        this.textFileOriginalComponentSvgNavigate.setTitle(this.textFileOriginalView.model.file_name)
+        this.svg.style("overflow", "visible")
+
+        this.getBoundary()
+        var x = this.addXAxis()
+        var root = this.mapXY(x)
+
+        this.addIndentedTree(root)
 
         const nodes = root.descendants()
-        new IndentedTree(this.svg, root)
         nodes.forEach(d => {
             if (d.data.data != null){
                 if (d.data.data.type == 'chart') {
-                    var lc = new LineChart(this.svg.select(`#${d.id}`), d, this.lineType)
-                    lc.svg.selectAll("circle")
-                    .on("click", function(event, d) {
-                        that.textFileOriginalView.controlJump(d)
-                    })
-                    .on("mouseover", function(event, d) {
-                        that.tooltip.html(getTooltipContent(d))
-                            .style("left", (event.pageX) + "px")
-                            .style("top", (event.offsetY) + "px")
-                            .style("display", 'block')
-                      })
-                    .on("mouseout", function(d) {
-                        that.tooltip
-                            .style("display", 'none')
-                    })
+                    this.addLineChart(d)   
                 }else if(d.data.data.type == 'search'){
-                    var ls = new LineStory(this.svg.select(`#${d.id}`), d)
-                    if (ls.specials != '') {
-                        ls.specials.on("click", function(event, d) {
-                            that.textFileOriginalView.controlJump(d)
-                        })
-                    }
-
-                    Object.keys(ls.marks).forEach((key) => {
-                        ls.marks[key].on("click", function(event, d) {
-                            that.textFileOriginalView.controlJump(d)
-                        })
-                    })
+                    this.addLineStory(d)
                 }
             }
         })
-
-        // Bookmark line
-        function dragged(event) {
-            d3.select(this).attr("transform", `translate(${event.x} 0)`)
-        }
-        this.drag = d3.drag().on("drag", dragged)
-
-        const line = this.svg.append("line").attr("transform", `translate(0 0)`)
-                        .attr("y1", 0)
-                        .attr("y2", this.currentHeight)
-                        .attr("stroke", "#FF3300FF")
-                        .attr("stroke-width", 4)
-                        .style("cursor", "pointer")
-                        .call(this.drag)
-
+        this.addBookmarkLine()
         // console.log(this.svg.node())
     }
 }
@@ -808,9 +892,10 @@ class TextFileCompareComponentSvgDialog extends Dialog
         this.subContainer.style.display = 'flex'
         this.subContainer.style.flexDirection = 'column'
         this.subContainer.style.border = '1px solid #808080'
-        this.subContainer.style.width = '98%' 
+        this.subContainer.style.width = '100%' 
         this.subContainer.style.height = '100%'
-        this.subContainer.style.margin = '2% auto 2% auto'
+        // this.subContainer.style.margin = '2% auto 2% auto'
+        this.subContainer.style.margin = '0'
 
         this.textFileCompareComponentSvgDialogNavigate = new TextFileCompareComponentSvgDialogNavigate(this)
         this.subContainer.append(this.textFileCompareComponentSvgDialogNavigate.container)

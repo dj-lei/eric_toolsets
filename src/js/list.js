@@ -4,12 +4,13 @@ class List extends Component
 {
     constructor(position){
         super(position)
-        this.container.style.marginTop = '32px'
+        // this.container.style.marginTop = '32px'
 
         this.ul = this.createElementUl()
         this.ul.style.listStyleType = 'none'
         this.ul.style.padding = 0
         this.ul.style.margin = 0
+        this.container.style.border = 'none'
         this.container.append(this.ul)
     }
 
@@ -19,10 +20,6 @@ class List extends Component
         
         this.ul.append(li)
     }
-
-    // getPlaceholder(namespace){
-    //     return this.locateChildElement(this.ul, 'li', namespace)
-    // }
 }
 
 class SearchFunctionComponentList extends List
