@@ -24,7 +24,7 @@ class svg extends Component
         this.svgElm.setAttribute('height', '100%')
         this.container.append(this.svgElm)
 
-        var zoom = d3.zoom().scaleExtent([scaleMin, scaleMax]).on("zoom", zoomed)
+        var zoom = d3.zoom().scaleExtent([scaleMin, scaleMax]).on("zoom", this.zoomed)
         d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
 
         this.svg = d3.select(this.svgElm).append("g")
@@ -32,12 +32,11 @@ class svg extends Component
                     .style("font", "12px sans-serif")
                     .append("g")
                         .attr("transform", `translate(${document.body.offsetWidth / 3},${document.body.offsetHeight / 4})`)
-    
-        let that = this
-        function zoomed(event) {
-            const {transform} = event
-            d3.select(that.svgElm).select("#canvas").attr("transform", transform)
-        }
+    }
+
+    zoomed(event) {
+        const {transform} = event
+        d3.select(this.svgElm).select("#canvas").attr("transform", transform)
     }
 
     update(data){
@@ -474,7 +473,8 @@ class TextFileOriginalComponentSvg extends svg
                             .style("padding", "5px")
 
         this.bottomTip = d3.select(this.container).append("div")
-                            .attr("id", 'test')
+                            .style("width", `${this.container.clientWidth}px`)
+                            .style("height", '150px')
                             .style("display", 'none')
                             .style("position", "absolute")
                             .style("top", "0")
@@ -482,12 +482,19 @@ class TextFileOriginalComponentSvg extends svg
                             .style("background-color", "#000")
                             .style("color", "white")
                             .style("padding", "10px")
-                            .style("font-size", "10px")
+                            .style("font-size", "12px")
                             .style("overflow", "auto")
 
         // this.container.style.backgroundColor = '#000'
         this.textFileOriginalComponentSvgNavigate = new TextFileOriginalComponentSvgNavigate(this)
         this.container.insertBefore(this.textFileOriginalComponentSvgNavigate.container, this.svgElm);
+    }
+
+    zoomed(event) {
+        const {transform} = event
+        d3.select(this.svgElm).select("#canvas").attr("transform", transform)
+
+
     }
 
     getBoundary(){
@@ -518,18 +525,17 @@ class TextFileOriginalComponentSvg extends svg
         var domain = x.domain()
         var tickValues = xA.scale().ticks().concat(domain[0], domain[1])
         xA.tickValues(tickValues)
-        const xAxis = this.svg.append("g")
-                        .attr("transform", "translate(0,0)")
+        const xAxis = this.svg.append("g").attr("transform", "translate(0,0)")
         xAxis.call(xA.tickFormat(function(d) {
-                if (that.alignType == 'timestamp') {
-                    return common.formatTimestamp(d) 
-                }else{
-                    return d
-                }
-            }))
-        .style('stroke', "#FFF")
-        .select(".domain")
-        .style('stroke', "#FFF")
+                    if (that.alignType == 'timestamp') {
+                        return common.formatTimestamp(d) 
+                    }else{
+                        return d
+                    }
+                }))
+            .style('stroke', "#FFF")
+            .select(".domain")
+            .style('stroke', "#FFF")
         xAxis.selectAll('.tick line').style('stroke', "#FFF")
         return x
     }
@@ -578,12 +584,7 @@ class TextFileOriginalComponentSvg extends svg
 
             // }
             var searchAtom = that.textFileOriginalView.getSearchAtomIns(d)
-            var searchAtomShow = new SearchAtomComponentTable(searchAtom, document.getElementById('test'))
-            searchAtom.controlJump(d)
-            console.log(searchAtomShow.container.innerHTML)
-            that.bottomTip.html(searchAtomShow.container.innerHTML)
-                .style("display", 'block')
-            
+            searchAtom.controlGetAllLines(that)
         })
         this.bindMouseEvent(lc.svg.selectAll('.dot'), getDotTooltipContent)
 
@@ -667,6 +668,17 @@ class TextFileOriginalComponentSvg extends svg
 
     addIndentedTree(root){
         new IndentedTree(this.svg, root)
+    }
+
+    displayBottomTip(lines){
+        var table = this.createElementTable()
+        lines.forEach((line) => {
+            var tr = this.createElementTr()
+            tr.insertAdjacentHTML('beforeend', line['text'])
+            table.appendChild(tr)
+        })
+        this.bottomTip.html(table.innerHTML)
+            .style("display", 'block')
     }
 
     mapXY(x){

@@ -957,6 +957,37 @@ class SearchAtomModel(ListModel):
     async def on_text_click_event(self, sid, params):
         await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll', params['globalIndex'])
 
+    def on_get_all_lines(self, sid):
+        def word_color_replace(word):
+            return word.group(0).replace(word.group(1), '<span style="color:'+color[self.words.index(word.group(1))]+'">'+word.group(1)+'</span>')
+
+        lines = []
+        reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
+        for index, line in enumerate(self.res_lines):
+            text = self.text_file.lines[line].replace(' ', '&nbsp')
+            num = str(index)
+            num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
+
+            flag = True
+            for mark in self.marks:
+                if index in mark['search_index']:
+                    flag = False
+                    lines.append({'text': num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
+                    break
+
+            if flag:
+                if line in self.specials:
+                    lines.append({'text': num+'<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
+                    continue
+        
+                if len(self.words) > 0:
+                    lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, text)+'</td>', 'global_index': line})
+                else:
+                    lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
+
+        return Response(status.SUCCESS, msg.NONE, lines).__dict__
+
+    
     def search(self):
         self.res_lines = []
         self.res_key_value = {}

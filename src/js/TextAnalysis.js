@@ -701,6 +701,16 @@ class SearchAtomView extends ListView
         this.socket.emit("jump", point)
     }
 
+    controlGetAllLines(ins){
+        this.socket.emit("get_all_lines", async (response) => {
+            if(response.status == status.SUCCESS){
+                ins.displayBottomTip(response.model)
+            }else{
+                alert(response.msg)
+            }
+        })
+    }
+
     controlActive(){
         this.socket.emit("active")
     }
