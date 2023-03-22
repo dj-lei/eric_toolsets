@@ -186,6 +186,7 @@ class ListModel(Model):
         self.identifier = ''
         self.desc = ''
         self.role_path = ''
+        self.is_active = False
         self.text_analysis = self.subscribe_namespace(self.get_text_analysis_namespace())
         self.text_file = self.subscribe_namespace(self.get_text_file_namespace())
 
@@ -196,6 +197,7 @@ class ListModel(Model):
 
         self.__dict__.update(model)
         if mode == 'new':
+            self.is_active = True
             await self.on_refresh(sid)
         else:
             await self.send_message(sid, self.get_file_container_namespace(), 'on_new_function', self.__class__.__name__.split('Atom')[0], model)
@@ -679,7 +681,7 @@ class TextFileOriginalModel(Model):
         self.rate_height = 1
         self.step = 1
         self.point = 0
-        self.range = 60
+        self.range = 50
         self.count =  len(text_file.lines)
         self.display_lines = []
 
@@ -719,7 +721,7 @@ class TextFileOriginalModel(Model):
     async def on_jump(self, sid, d):
         namespace = self.parent.text_file_function.search_function.namespace + '/' + d['identifier']
         await self.parent.text_file_function.search_function.models[namespace].on_active(sid)
-        await self.parent.text_file_function.search_function.models[namespace].on_scroll(sid, d['search_index'])
+        await self.parent.text_file_function.search_function.models[namespace].on_jump(sid, d['search_index'])
 
         self.parent.text_file_function.search_function.active_search_atom = self.parent.text_file_function.search_function.models[namespace]
         await self.on_refresh_acitve(sid)
@@ -754,10 +756,11 @@ class TextFileOriginalModel(Model):
         self.range = range
         self.display_lines = []
         if (self.point + self.range) > len(self.parent.lines):
-            self.point = len(self.parent.lines) - self.range
+            self.point = len(self.parent.lines) - self.range + 2
 
         reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
         for index, line in enumerate(self.parent.lines[self.point:self.point+self.range]):
+            text = line.replace(' ', '&nbsp')
             num = str(self.point + index)
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
 
@@ -765,18 +768,18 @@ class TextFileOriginalModel(Model):
             for mark in self.marks:
                 if self.point + index in mark['global_index']:
                     flag = False
-                    self.display_lines.append(num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+                    self.display_lines.append(num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>')
                     break
 
             if flag:
                 if index in self.specials:
-                    self.display_lines.append(num+'<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+                    self.display_lines.append(num+'<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>')
                     continue
         
                 if len(self.words) > 0:
-                    self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, line)+'</td>')
+                    self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, text)+'</td>')
                 else:
-                    self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+line+'</td>')
+                    self.display_lines.append(num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>')
 
 
 class TextFileFunctionModel(Model):
@@ -867,7 +870,6 @@ class SearchAtomModel(ListModel):
     async def __init__(self, parent, model, mode='normal'):
         await super().__init__(model['namespace'], mode)
         self.parent = parent
-        self.is_active = False
         self.words = []
         self.marks = []
         self.specials = []
@@ -932,7 +934,24 @@ class SearchAtomModel(ListModel):
         await self.emit('deactive', namespace=self.namespace)
 
     async def on_scroll(self, sid, point):
-        self.scroll(point)
+        supple = 0
+        if (self.point + point + self.range) > len(self.res_lines):
+            supple = self.range - len(self.res_lines)
+        elif (self.point + point) < 0:
+            self.point = 0
+        else:
+            self.point = self.point + point
+
+        self.display(supple)
+        await self.emit('refresh', self.model(), namespace=self.namespace)
+
+    async def on_jump(self, sid, point):
+        supple = 0
+        self.point = point
+        if (point + self.range) > len(self.res_lines):
+            supple = point + self.range - len(self.res_lines)
+       
+        self.display(supple)
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def on_text_click_event(self, sid, params):
@@ -968,7 +987,10 @@ class SearchAtomModel(ListModel):
             else:
                 self.words.append(key)
 
-        self.scroll(0) 
+        supple = 0
+        if (self.point + self.range) > len(self.res_lines):
+            supple = self.range - len(self.res_lines)
+        self.display(supple)
 
     def extract(self):
         if len(self.exp_extract) == 0:
@@ -1017,23 +1039,14 @@ class SearchAtomModel(ListModel):
         self.start_timestamp = min(tmp_timestamps) if len(tmp_timestamps) != 0 else 0
         self.end_timestamp = max(tmp_timestamps) if len(tmp_timestamps) != 0 else 0
 
-    def scroll(self, point):
+    def display(self, supple=0):
         def word_color_replace(word):
             return word.group(0).replace(word.group(1), '<span style="color:'+color[self.words.index(word.group(1))]+'">'+word.group(1)+'</span>')
 
-        if point in [1, -1]:
-            self.point = self.point + point
-        else:
-            self.point = point
-        if self.point < 0:
-            self.point = 0
-
         self.display_lines = []
-        if (self.point + self.range) > len(self.res_lines):
-            self.point = len(self.res_lines) - self.range
-
         reg = '['+'|'.join(special_symbols)+']' +'('+'|'.join(self.words)+')'+ '['+'|'.join(special_symbols)+']'
         for index, line in enumerate(self.res_lines[self.point:self.point+self.range]):
+            text = self.text_file.lines[line].replace(' ', '&nbsp')
             num = str(self.point + index)
             num = '<td style="color:#FFF;background-color:#666666;font-size:10px;">'+num+'</td>'
 
@@ -1041,18 +1054,21 @@ class SearchAtomModel(ListModel):
             for mark in self.marks:
                 if self.point + index in mark['search_index']:
                     flag = False
-                    self.display_lines.append({'text': num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
+                    self.display_lines.append({'text': num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
                     break
 
             if flag:
                 if line in self.specials:
-                    self.display_lines.append({'text': num+'<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
+                    self.display_lines.append({'text': num+'<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
                     continue
         
                 if len(self.words) > 0:
-                    self.display_lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, self.text_file.lines[line])+'</td>', 'global_index': line})
+                    self.display_lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, text)+'</td>', 'global_index': line})
                 else:
-                    self.display_lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+self.text_file.lines[line]+'</td>', 'global_index': line})
+                    self.display_lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
+        if supple > 0:
+            for _ in range(supple):
+                self.display_lines.append({'text': '<td style="color:#FFF;background-color:#666666;font-size:10px;">END</td>' + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">&nbsp</td>', 'global_index': -1})
 
 
 class ChartAtomModel(ListModel):
@@ -1907,11 +1923,14 @@ class TextFileCompareModel(Model):
 
     def compare(self):
         def self_clean_special_symbols(text, symbol):
+            text = re.sub(r'0x[\da-fA-F]+', symbol, text)
             for ch in [':', '/','{','}','[',']','(',')','#','+','!',';',',','"','\'','@','`','$','^','&','|','-','.','=','\n']:
                 if ch in text:
                     text = text.replace(ch,symbol)
-            text = re.sub("\d+", '', text)
-            return re.sub(symbol+"+", symbol, text).strip()
+                    
+            text = re.sub(r'\d+', '', text)
+            text = re.sub(symbol+"+", symbol, text).strip()
+            return text
 
         first_file = self.file_container.text_files[self.first_file_namespace]
         second_file = self.file_container.text_files[self.second_file_namespace]

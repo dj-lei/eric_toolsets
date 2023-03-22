@@ -2,6 +2,7 @@ import * as d3 from "d3"
 import common from '@/plugins/common'
 import { Component } from './element'
 import { Dialog } from './dialog'
+import { SearchAtomComponentTable } from './table'
 import { TextFileOriginalComponentSvgNavigate, TextFileCompareComponentSvgDialogNavigate } from './navigate'
 
 const color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
@@ -448,6 +449,7 @@ class TextFileOriginalComponentSvg extends svg
     constructor(textFileOriginalView, container){
         super(container)
         this.textFileOriginalView = textFileOriginalView
+        this.mode = 'single'
         this.alignType = 'timestamp'
         this.lineType = 'dash'
         this.startPosition = 0
@@ -470,6 +472,18 @@ class TextFileOriginalComponentSvg extends svg
                             .style("box-shadow", "2px 2px 2px #ccc")
                             .style("font-size", "12px")
                             .style("padding", "5px")
+
+        this.bottomTip = d3.select(this.container).append("div")
+                            .attr("id", 'test')
+                            .style("display", 'none')
+                            .style("position", "absolute")
+                            .style("top", "0")
+                            .style("left", "0")
+                            .style("background-color", "#000")
+                            .style("color", "white")
+                            .style("padding", "10px")
+                            .style("font-size", "10px")
+                            .style("overflow", "auto")
 
         // this.container.style.backgroundColor = '#000'
         this.textFileOriginalComponentSvgNavigate = new TextFileOriginalComponentSvgNavigate(this)
@@ -558,7 +572,18 @@ class TextFileOriginalComponentSvg extends svg
         let that = this
         var lc = new LineChart(this.svg.select(`#${d.id}`), d, this.lineType)
         lc.svg.selectAll('.dot').on("click", function(event, d) {
-            that.textFileOriginalView.controlJump(d)
+            // if (that.mode == 'single') {
+            //     that.textFileOriginalView.controlJump(d)
+            // }else{
+
+            // }
+            var searchAtom = that.textFileOriginalView.getSearchAtomIns(d)
+            var searchAtomShow = new SearchAtomComponentTable(searchAtom, document.getElementById('test'))
+            searchAtom.controlJump(d)
+            console.log(searchAtomShow.container.innerHTML)
+            that.bottomTip.html(searchAtomShow.container.innerHTML)
+                .style("display", 'block')
+            
         })
         this.bindMouseEvent(lc.svg.selectAll('.dot'), getDotTooltipContent)
 
@@ -609,7 +634,6 @@ class TextFileOriginalComponentSvg extends svg
     bindMouseEvent(elm, func){
         let that = this
         elm.on("mouseover", function(event, d) {
-
             if(['path', 'text'].includes(d3.select(this).node().nodeName)){
                 d3.select(this).style('fill', "#FFF")
             }else{
@@ -910,6 +934,7 @@ class TextFileCompareComponentSvgDialog extends Dialog
         this.subContainer.style.height = '100%'
         // this.subContainer.style.margin = '2% auto 2% auto'
         this.subContainer.style.margin = '0'
+        this.subContainer.style.overflow = 'hidden'
 
         this.textFileCompareComponentSvgDialogNavigate = new TextFileCompareComponentSvgDialogNavigate(this)
         this.subContainer.append(this.textFileCompareComponentSvgDialogNavigate.container)

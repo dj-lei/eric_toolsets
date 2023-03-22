@@ -36,9 +36,9 @@ class FileContainerComponentTab extends Tab
     updatePlaceholder(model){
         let that = this
         var tablink = this.tabs[model.namespace].ins
+        tablink.style.width = `${model.file_name.length * 8}px`
         var title = this.tabs[model.namespace].title
         title.innerHTML = model.file_name
-        tablink.style.width = `${model.file_name.length * 8}px`
         title.addEventListener('click', function()
         {
             that.fileContainerView.controlDisplayFile(model.namespace)
@@ -85,8 +85,8 @@ class FileContainerComponentTab extends Tab
 
 class TextFileFunctionComponentTab extends Tab
 {
-    constructor(textFileFunctionView){
-        super(textFileFunctionView.container)
+    constructor(textFileFunctionView, container){
+        super(container)
         this.textFileFunctionView = textFileFunctionView
 
         // this.container.style.position = 'fixed'

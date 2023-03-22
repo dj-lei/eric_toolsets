@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import zipfile
 import gzip
+# from textblob import TextBlob
 # from deepdiff import DeepDiff
 # from tslearn.metrics import lcss_path
 # from sklearn.preprocessing import minmax_scale
@@ -136,5 +137,16 @@ def convert_dict_format(data):
     return res
 
 def convert_datetime_timestamp(date_time):
-    date_time = dp(date_time, yearfirst=True)
-    return time.mktime(date_time.timetuple()) + (date_time.microsecond / 1000000)
+    try:
+        datetime_obj = dp(date_time, yearfirst=True)
+        return time.mktime(datetime_obj.timetuple()) + (datetime_obj.microsecond / 1000000)
+    except ValueError:
+        pass
+
+    try:
+        datetime_obj = datetime.datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S:%f')
+        return time.mktime(datetime_obj.timetuple()) + (datetime_obj.microsecond / 1000000)
+    except ValueError:
+        pass
+
+    return None

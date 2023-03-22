@@ -197,9 +197,9 @@ class SearchAtomComponentDialog extends Dialog
         this.subContainer.appendChild(this.expMarkUl)
         this.subContainer.appendChild(this.createElementHr())
 
-        this.parentRole = this.createElementTextInput()
+        this.rolePath = this.createElementTextInput()
         this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
-        this.subContainer.appendChild(this.parentRole)
+        this.subContainer.appendChild(this.rolePath)
         this.subContainer.appendChild(this.createElementHr())
 
         // search and cancel button
@@ -225,7 +225,7 @@ class SearchAtomComponentDialog extends Dialog
             backward_rows: parseInt(this.backwardRows.value),
             exp_extract: this.getExpExtractList(),
             exp_mark: this.getExpMarkList(),
-            parent_role: this.parentRole.value,
+            role_path: this.rolePath.value,
         }
         this.searchAtomView.controlExec(model)
     }
@@ -249,7 +249,7 @@ class SearchAtomComponentDialog extends Dialog
             this.expMarkColor.value = mark.color
             this.addExpMarkItem()
         })
-        this.parentRole.value = model.role_path
+        this.rolePath.value = model.role_path
     }
 
     addExpExtractItem(){
@@ -507,9 +507,9 @@ class StatisticAtomComponentDialog extends Dialog
         codeContainer.appendChild(this.result)
         this.subContainer.appendChild(this.createElementHr())
 
-        this.parentRole = this.createElementTextInput()
+        this.rolePath = this.createElementTextInput()
         codeContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
-        codeContainer.appendChild(this.parentRole)
+        codeContainer.appendChild(this.rolePath)
 
         // search and cancel button
         this.apply = this.createElementButton('STATISTIC')
@@ -558,7 +558,7 @@ class StatisticAtomComponentDialog extends Dialog
             identifier: this.identifier.value,
             desc: this.desc.value,
             code: this.code.value,
-            parent_role: this.parentRole.value,
+            role_path: this.rolePath.value,
         }
         this.statisticAtomView.controlExec(model)
     }
@@ -578,7 +578,7 @@ class StatisticAtomComponentDialog extends Dialog
             this.identifier.value = model.identifier
             this.desc.value = model.desc
             this.code.value = model.code
-            this.parentRole.value = model.parent_role
+            this.rolePath.value = model.role_path
         }else if (this.type == 'graph') {
             this.graph.draw(model.compareGraph)
         }

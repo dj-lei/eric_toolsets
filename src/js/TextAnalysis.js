@@ -270,7 +270,7 @@ class TextAnalysisView extends View
         if (args.class_name == 'TextFileView') {
             this.fileContainerView.textFileViews[args.namespace] = new TextFileView(args.namespace)
         }else if (args.class_name == 'TextFileOriginalView') {
-            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileOriginalView = new TextFileOriginalView(args.namespace)
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileOriginalView = new TextFileOriginalView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.namespace)
         }else if (args.class_name == 'TextFileFunctionView') {
             this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView = new TextFileFunctionView(args.namespace)
         }else if (args.class_name == 'SearchFunctionView') {
@@ -545,13 +545,18 @@ class TextFileView extends View
 
 class TextFileOriginalView extends View
 {
-    constructor(namespace){
+    constructor(parent, namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.parent = parent
         this.container.style.border = '1px solid #ddd'
         this.navigate = new TextFileOriginalComponentNavigate(this)
         this.tableShow = new TextFileOriginalComponentTable(this)
         this.svgShow = new TextFileOriginalComponentSvg(this, this.container)
         this.svgShow.hidden()
+    }
+
+    getSearchAtomIns(d){
+        return this.parent.textFileFunctionView.searchFunctionView.views[this.namespace.replace('TextFileOriginal', `TextFileFunction/SearchFunction/${d.identifier}`)]
     }
 
     controlScroll(point){
@@ -594,7 +599,8 @@ class TextFileFunctionView extends View
         this.container.style.border = '1px solid #ddd'
         // this.container.style.height = '0px'
         this.container.style.overflowY = 'auto'
-        this.show = new TextFileFunctionComponentTab(this)
+        this.show = new TextFileFunctionComponentTab(this, common.getParentContainer(namespace))
+        common.getParentContainer(namespace).insertBefore(this.show.container, this.container)
         this.controlHidden()
     }
 
@@ -611,7 +617,17 @@ class TextFileFunctionView extends View
     }
 
     onSetHeight(model){
-        this.container.style.height = `${parseInt((document.body.offsetHeight - 50) * model.rate_height)}px`
+        this.container.style.height = `${parseInt((document.body.offsetHeight - 130) * model.rate_height)}px`
+    }
+
+    onDisplay(){
+        super.onDisplay()
+        this.show.display()
+    }
+
+    onHidden(){
+        super.onHidden()
+        this.show.hidden()
     }
 }
 
@@ -674,11 +690,15 @@ class SearchAtomView extends ListView
 
         this.model = model
         this.dialog = new SearchAtomComponentDialog(this)
-        this.show = new SearchAtomComponentTable(this)
+        this.show = new SearchAtomComponentTable(this, this.container)
     }
 
     controlScroll(point){
         this.socket.emit("scroll", point)
+    }
+
+    controlJump(point){
+        this.socket.emit("jump", point)
     }
 
     controlActive(){
@@ -695,7 +715,7 @@ class SearchAtomView extends ListView
 
     onActive(){
         this.show.display()
-        // this.container.scrollIntoView({ behavior: 'smooth' })
+        this.container.scrollIntoView({ behavior: 'smooth' })
     }
 }
 

@@ -63,8 +63,8 @@ class TextFileOriginalComponentTable extends Table
 
 class SearchAtomComponentTable extends Table
 {
-    constructor(searchAtomView){
-        super(searchAtomView.container)
+    constructor(searchAtomView, container){
+        super(container)
         this.searchAtomView = searchAtomView
 
         let that = this
@@ -81,7 +81,7 @@ class SearchAtomComponentTable extends Table
         })
 
         this.slider.addEventListener('input', (event) => {
-            that.searchAtomView.controlScroll(parseInt(event.target.value))
+            that.searchAtomView.controlJump(parseInt(event.target.value))
         })
 
         this.table.addEventListener("wheel", function(e){
@@ -92,7 +92,7 @@ class SearchAtomComponentTable extends Table
                 that.slider.value = parseInt(that.slider.value) + 1
                 that.searchAtomView.controlScroll(1)
             }
-            that.searchAtomView.controlScroll(parseInt(that.slider.value))
+            // that.searchAtomView.controlScroll(parseInt(that.slider.value))
             e.preventDefault()
             e.stopPropagation()
         })
@@ -124,7 +124,9 @@ class SearchAtomComponentTable extends Table
             tr.insertAdjacentHTML('beforeend', line['text'])
 
             tr.addEventListener("dblclick", function() {
-                that.searchAtomView.controlTextClickEvent({'globalIndex': line['global_index']})
+                if (line['global_index'] != -1) {
+                    that.searchAtomView.controlTextClickEvent({'globalIndex': line['global_index']})
+                }
             })
             this.table.appendChild(tr)
         })
