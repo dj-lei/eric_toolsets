@@ -10,7 +10,7 @@ export default {
       const second = String(dateObj.getSeconds()).padStart(2, '0');
       const microsecond = String(timestamp.toFixed(6)).slice(10);
       
-      const formattedDate = `${year}-${month}-${day} ${hour}:${minute}:${second}${microsecond}`
+      const formattedDate = `${year}-${month}-${day} ${hour}:${minute}:${second}`
       return formattedDate
     },
 

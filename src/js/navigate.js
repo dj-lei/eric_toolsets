@@ -119,7 +119,6 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
         LineTypeForm.append(LineTypeDot)
         LineTypeForm.append(this.createElementLabel('Dot', 'dot'))
 
-        // console.log(this.textFileOriginalComponentSvg)
         this.title = this.createElementLabel('Title', 'title')
         this.title.style.float = 'right'
         
@@ -127,7 +126,7 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
         this.topNavigate.appendChild(this.title)
 
         let that = this
-        const alignType = document.querySelectorAll('input[name="AlignType"]')
+        const alignType = alignTypeForm.querySelectorAll('input[name="AlignType"]')
         alignType.forEach(option => {
             option.addEventListener('click', () => {
                 that.textFileOriginalComponentSvg.alignType = option.value
@@ -135,7 +134,7 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
             })
         })
 
-        const LineType = document.querySelectorAll('input[name="LineType"]')
+        const LineType = LineTypeForm.querySelectorAll('input[name="LineType"]')
         LineType.forEach(option => {
             option.addEventListener('click', () => {
                 that.textFileOriginalComponentSvg.lineType = option.value

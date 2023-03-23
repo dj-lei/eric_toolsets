@@ -314,11 +314,13 @@ class Fellow(Model):
             else:
                 roles = self.models[namespace].role_path.split('.')
                 for index, role in enumerate(roles):
-                    if self.text_file.roles.contains(role):
+                    parent = '-'.join(roles[0:index])
+                    node = '-'.join(roles[0:index+1])
+                    if self.text_file.roles.contains(node):
                         if index == len(roles) - 1:
-                            self.text_file.roles.update_node(role, parent=roles[index-1], data = self.models[namespace].model())
+                            self.text_file.roles.update_node(node, parent=parent, data = self.models[namespace].model())
                     else:
-                        self.text_file.roles.create_node(role, role, parent=roles[index-1], data = self.models[namespace].model() if index == len(roles) - 1 else None)
+                        self.text_file.roles.create_node(role, node, parent=parent, data = self.models[namespace].model() if index == len(roles) - 1 else None)
 
         # self.text_file.roles.show()
         data_tree = convert_dict_format(self.text_file.roles.to_dict(sort=False, with_data=True))
@@ -987,7 +989,6 @@ class SearchAtomModel(ListModel):
 
         return Response(status.SUCCESS, msg.NONE, lines).__dict__
 
-    
     def search(self):
         self.res_lines = []
         self.res_key_value = {}

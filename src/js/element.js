@@ -424,7 +424,7 @@ class Component extends Element
         var table = document.createElement('table')
         table.style.display = 'inline-block'
         table.style.width = '98%'
-        table.style.overflowX = 'scroll'
+        table.style.overflowX = 'auto'
         table.style.overflowY= 'hidden'
         table.style.whiteSpace = 'nowrap'
         table.style.border = 'none'

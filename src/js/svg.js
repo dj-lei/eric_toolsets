@@ -13,6 +13,8 @@ class svg extends Component
     constructor(position, scaleMin=0.2, scaleMax=3){
         super(position)
         this.svg = ''
+        this.scaleMin = scaleMin
+        this.scaleMax = scaleMax
 
         this.container.style.width = "100%"
         this.container.style.height = '100%'
@@ -24,20 +26,27 @@ class svg extends Component
         this.svgElm.setAttribute('height', '100%')
         this.container.append(this.svgElm)
 
-        var zoom = d3.zoom().scaleExtent([scaleMin, scaleMax]).on("zoom", this.zoomed)
-        d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
-
         this.svg = d3.select(this.svgElm).append("g")
                     .attr("id", "canvas")
                     .style("font", "12px sans-serif")
                     .append("g")
-                        .attr("transform", `translate(${document.body.offsetWidth / 3},${document.body.offsetHeight / 4})`)
+                        // .attr("transform", `translate(${document.body.offsetWidth / 3},${document.body.offsetHeight / 4})`)
+    
+        var zoom = d3.zoom().scaleExtent([this.scaleMin, this.scaleMax]).on("zoom", zoomed)
+        d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
+
+        let that = this
+        function zoomed(event) {
+            const {transform} = event
+            d3.select(that.svgElm).select("#canvas").attr("transform", transform)
+        }
     }
 
-    zoomed(event) {
-        const {transform} = event
-        d3.select(this.svgElm).select("#canvas").attr("transform", transform)
-    }
+    // zoomed(event, ins) {
+    //     console.log(ins)
+    //     const {transform} = event
+    //     d3.select(ins).select("#canvas").attr("transform", transform)
+    // }
 
     update(data){
         this.data = data
@@ -461,6 +470,8 @@ class TextFileOriginalComponentSvg extends svg
 
         this.starts = []
         this.ends = []
+        this.x = ''
+        this.xAxis = ''
 
         this.tooltip = d3.select(this.container).append("div")
                             .style("display", 'none')
@@ -473,28 +484,35 @@ class TextFileOriginalComponentSvg extends svg
                             .style("padding", "5px")
 
         this.bottomTip = d3.select(this.container).append("div")
-                            .style("width", `${this.container.clientWidth}px`)
-                            .style("height", '150px')
-                            .style("display", 'none')
-                            .style("position", "absolute")
-                            .style("top", "0")
-                            .style("left", "0")
-                            .style("background-color", "#000")
-                            .style("color", "white")
-                            .style("padding", "10px")
-                            .style("font-size", "12px")
-                            .style("overflow", "auto")
 
-        // this.container.style.backgroundColor = '#000'
         this.textFileOriginalComponentSvgNavigate = new TextFileOriginalComponentSvgNavigate(this)
         this.container.insertBefore(this.textFileOriginalComponentSvgNavigate.container, this.svgElm);
+    
+        var zoom = d3.zoom().scaleExtent([this.scaleMin, this.scaleMax]).on("zoom", zoomed)
+        d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
+        d3.select(this.svgElm).on("click", hiddenBottomTip)
+
+        let that = this
+        function zoomed(event) {
+            const {transform} = event
+            d3.select(that.svgElm).select("#canvas").attr("transform", transform)
+            that.xAxis.attr("transform", `translate(${transform.x},10)`)
+
+            that.x = d3.scaleLinear().range([0, that.viewWidth * transform.k])
+            that.x.domain(d3.extent(that.starts.concat(that.ends)))
+            that.xAxis.call(that.updateXAxis, that.x, transform, that.alignType)
+        }
+
+        function hiddenBottomTip(){
+            that.bottomTip.style("display", 'none')
+        }
     }
 
-    zoomed(event) {
-        const {transform} = event
-        d3.select(this.svgElm).select("#canvas").attr("transform", transform)
-
-
+    clear(){
+        this.svg.selectAll("*").remove()
+        if (this.xAxis != '') {
+            this.xAxis.selectAll("*").remove()
+        }
     }
 
     getBoundary(){
@@ -518,26 +536,29 @@ class TextFileOriginalComponentSvg extends svg
 
     addXAxis(){
         // add x axis
-        let that = this
-        var x = d3.scaleLinear().range([0, this.viewWidth])
-        x.domain(d3.extent(this.starts.concat(this.ends)))
-        var xA = d3.axisBottom(x)
-        var domain = x.domain()
-        var tickValues = xA.scale().ticks().concat(domain[0], domain[1])
-        xA.tickValues(tickValues)
-        const xAxis = this.svg.append("g").attr("transform", "translate(0,0)")
-        xAxis.call(xA.tickFormat(function(d) {
-                    if (that.alignType == 'timestamp') {
-                        return common.formatTimestamp(d) 
-                    }else{
-                        return d
-                    }
-                }))
-            .style('stroke', "#FFF")
-            .select(".domain")
-            .style('stroke', "#FFF")
-        xAxis.selectAll('.tick line').style('stroke', "#FFF")
-        return x
+        this.x = d3.scaleLinear().range([0, this.viewWidth])
+        this.x.domain(d3.extent(this.starts.concat(this.ends)))
+        this.xAxis = d3.select(this.svgElm).append("g").attr("transform", "translate(0,10)")
+        this.xAxis.call(this.updateXAxis, this.x, {'k': 1}, this.alignType)
+    }
+
+    updateXAxis(g, x, transform, alignType){
+        var xA = d3.axisBottom(x).ticks(8 * transform.k)
+        // var domain = x.domain()
+        // var tickValues = xA.scale().ticks().concat(domain[0], domain[1])
+        // xA.tickValues(tickValues)
+        // g.attr("transform", `translate(0,0)`)
+        g.call(xA.tickFormat(function(d) {
+                        if (alignType == 'timestamp') {
+                            return common.formatTimestamp(d) 
+                        }else{
+                            return d
+                        }
+                    }))
+                .style('stroke', "#FFF")
+                .select(".domain")
+                .style('stroke', "#FFF")
+        g.selectAll('.tick line').style('stroke', "#FFF")
     }
 
     addBookmarkLine(){
@@ -578,18 +599,22 @@ class TextFileOriginalComponentSvg extends svg
         let that = this
         var lc = new LineChart(this.svg.select(`#${d.id}`), d, this.lineType)
         lc.svg.selectAll('.dot').on("click", function(event, d) {
-            // if (that.mode == 'single') {
-            //     that.textFileOriginalView.controlJump(d)
-            // }else{
-
-            // }
-            var searchAtom = that.textFileOriginalView.getSearchAtomIns(d)
-            searchAtom.controlGetAllLines(that)
+            if (that.mode == 'single') {
+                that.textFileOriginalView.controlJump(d)
+            }else{
+                var searchAtom = that.textFileOriginalView.getSearchAtomIns(d)
+                searchAtom.controlGetAllLines(that, d.search_index)
+            }
         })
         this.bindMouseEvent(lc.svg.selectAll('.dot'), getDotTooltipContent)
 
         lc.svg.selectAll('.mark').on("click", function(event, d) {
-            that.textFileOriginalView.controlJump(d)
+            if (that.mode == 'single') {
+                that.textFileOriginalView.controlJump(d)
+            }else{
+                var searchAtom = that.textFileOriginalView.getSearchAtomIns(d)
+                searchAtom.controlGetAllLines(that, d.search_index)
+            }
         })
         this.bindMouseEvent(lc.svg.selectAll('.mark'), getMarkTooltipContent)
     }
@@ -619,17 +644,31 @@ class TextFileOriginalComponentSvg extends svg
 
         if (ls.specials != '') {
             ls.specials.on("click", function(event, d) {
-                that.textFileOriginalView.controlJump(d)
+                if (that.mode == 'single') {
+                    that.textFileOriginalView.controlJump(d)
+                }else{
+                    var searchAtom = that.textFileOriginalView.getSearchAtomIns(d)
+                    searchAtom.controlGetAllLines(that, d.search_index)
+                }
             })
             this.bindMouseEvent(ls.specials, getTooltipContent)
         }
 
         Object.keys(ls.marks).forEach((key) => {
             ls.marks[key].on("click", function(event, d) {
-                that.textFileOriginalView.controlJump(d)
+                if (that.mode == 'single') {
+                    that.textFileOriginalView.controlJump(d)
+                }else{
+                    var searchAtom = that.textFileOriginalView.getSearchAtomIns(d)
+                    searchAtom.controlGetAllLines(that, d.search_index)
+                }
             })
             this.bindMouseEvent(ls.marks[key], getTooltipContent)
         })
+    }
+
+    addIndentedTree(root){
+        new IndentedTree(this.svg, root)
     }
 
     bindMouseEvent(elm, func){
@@ -666,19 +705,23 @@ class TextFileOriginalComponentSvg extends svg
         })
     }
 
-    addIndentedTree(root){
-        new IndentedTree(this.svg, root)
-    }
-
-    displayBottomTip(lines){
+    displayBottomTip(lines, scrollRow){
+        var c = this.createElementDiv()
         var table = this.createElementTable()
+        table.id = 'bottomTip'
         lines.forEach((line) => {
             var tr = this.createElementTr()
             tr.insertAdjacentHTML('beforeend', line['text'])
             table.appendChild(tr)
         })
-        this.bottomTip.html(table.innerHTML)
-            .style("display", 'block')
+        c.appendChild(table)
+
+        this.bottomTip.html(c.innerHTML)
+        .style("display", 'block')
+
+        var bt = d3.select("#bottomTip")
+        var row = bt.select(`tr:nth-child(${scrollRow + 1})`).node()
+        row.scrollIntoView()
     }
 
     mapXY(x){
@@ -760,8 +803,8 @@ class TextFileOriginalComponentSvg extends svg
         this.svg.style("overflow", "visible")
 
         this.getBoundary()
-        var x = this.addXAxis()
-        var root = this.mapXY(x)
+        this.addXAxis()
+        var root = this.mapXY(this.x)
 
         this.addIndentedTree(root)
 
@@ -769,13 +812,28 @@ class TextFileOriginalComponentSvg extends svg
         nodes.forEach(d => {
             if (d.data.data != null){
                 if (d.data.data.type == 'chart') {
-                    this.addLineChart(d)   
+                    this.addLineChart(d)  
                 }else if(d.data.data.type == 'search'){
                     this.addLineStory(d)
                 }
             }
         })
         this.addBookmarkLine()
+
+        this.bottomTip.style("width", `${this.container.clientWidth}px`)
+            .style("height", '150px')
+            .style("display", 'none')
+            .style("position", "absolute")
+            .style("bottom", "0")
+            .style("left", "0")
+            .style("background-color", "#000")
+            .style("color", "white")
+            .style("padding", "5px")
+            .style("font-size", "12px")
+            .style("border", "1px solid #aaa")
+            .style("border-radius", "5px")
+            .style("box-shadow", "2px 2px 2px #ccc")
+            .style("overflow", "auto")
         // console.log(this.svg.node())
     }
 }
@@ -944,7 +1002,7 @@ class TextFileCompareComponentSvgDialog extends Dialog
         this.subContainer.style.border = '1px solid #808080'
         this.subContainer.style.width = '100%' 
         this.subContainer.style.height = '100%'
-        // this.subContainer.style.margin = '2% auto 2% auto'
+        // this.subContainer.style.margin = '1% auto 1% auto'
         this.subContainer.style.margin = '0'
         this.subContainer.style.overflow = 'hidden'
 
@@ -962,8 +1020,10 @@ class TextFileCompareComponentSvgDialog extends Dialog
         this.subContainer.append(this.secondDiv)
 
         this.firstSvg = new TextFileOriginalComponentSvg('', this.firstDiv)
+        this.firstSvg.mode = 'compare'
         this.firstSvg.container.style.flex = 1
         this.secondSvg = new TextFileOriginalComponentSvg('', this.secondDiv)
+        this.secondSvg.mode = 'compare'
         this.secondSvg.container.style.flex = 1
     }
 

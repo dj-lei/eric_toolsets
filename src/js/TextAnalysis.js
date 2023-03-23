@@ -701,10 +701,11 @@ class SearchAtomView extends ListView
         this.socket.emit("jump", point)
     }
 
-    controlGetAllLines(ins){
+    controlGetAllLines(ins, scrollRow){
+        console.log(scrollRow)
         this.socket.emit("get_all_lines", async (response) => {
             if(response.status == status.SUCCESS){
-                ins.displayBottomTip(response.model)
+                ins.displayBottomTip(response.model, scrollRow)
             }else{
                 alert(response.msg)
             }
@@ -747,8 +748,9 @@ class ChartAtomView extends ListView
     }
 
     onRefresh(model){
-        super.onRefresh(model)
-        this.show.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 100)}px`, width:`${document.body.offsetWidth}px`})
+        console.log('!!!!!!!!')
+        // super.onRefresh(model)
+        // this.show.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 100)}px`, width:`${document.body.offsetWidth}px`})
     }
 }
 
@@ -798,7 +800,7 @@ class BatchInsightView extends BatchView
 {
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.BATCHINSIGHT}`, textAnalysisView.container)
-
+        this.parent = textAnalysisView
         this.dialog = new BatchInsightComponentDialog(this)
         this.show = new BatchInsightComponentSvgDialog(this)
         this.batchInsightComponentTableDialog = new BatchInsightComponentTableDialog(this)
@@ -831,7 +833,7 @@ class BatchStatisticView extends BatchView
 {
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.BATCHSTATISTIC}`, textAnalysisView.container)
-
+        this.parent = textAnalysisView
         this.dialog = new BatchStatisticComponentDialog(this)
         this.show = new BatchStatisticComponentTableDialog(this)
     }
@@ -849,7 +851,7 @@ class TextFileCompareView extends BatchView
 {
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.TEXTFILECOMPARE}`, textAnalysisView.container)
-        this.textAnalysisView = textAnalysisView
+        this.parent = textAnalysisView
         this.dialog = new TextFileCompareComponentDialog(this)
         this.show = new TextFileCompareComponentSvgDialog(this)
     }
@@ -863,8 +865,8 @@ class TextFileCompareView extends BatchView
         this.show.display()
         
         this.model = model
-        var first = this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView
-        var second = this.textAnalysisView.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.second)].textFileOriginalView
+        var first = this.parent.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView
+        var second = this.parent.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.second)].textFileOriginalView
         this.show.refresh(first, second)
     }
 }
