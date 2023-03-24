@@ -488,6 +488,18 @@ class TextFileOriginalComponentSvg extends svg
         this.textFileOriginalComponentSvgNavigate = new TextFileOriginalComponentSvgNavigate(this)
         this.container.insertBefore(this.textFileOriginalComponentSvgNavigate.container, this.svgElm);
     
+        this.resetCoordinates()
+    }
+
+    clear(){
+        this.svg.selectAll("*").remove()
+        if (this.xAxis != '') {
+            this.xAxis.selectAll("*").remove()
+        }
+        this.resetCoordinates()
+    }
+
+    resetCoordinates(){
         var zoom = d3.zoom().scaleExtent([this.scaleMin, this.scaleMax]).on("zoom", zoomed)
         d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
         d3.select(this.svgElm).on("click", hiddenBottomTip)
@@ -505,13 +517,6 @@ class TextFileOriginalComponentSvg extends svg
 
         function hiddenBottomTip(){
             that.bottomTip.style("display", 'none')
-        }
-    }
-
-    clear(){
-        this.svg.selectAll("*").remove()
-        if (this.xAxis != '') {
-            this.xAxis.selectAll("*").remove()
         }
     }
 
@@ -639,7 +644,6 @@ class TextFileOriginalComponentSvg extends svg
 
         let that = this
         var ls = new LineStory(this.svg.select(`#${d.id}`), d)
-
         this.bindMouseEvent(ls.story, getStoryTooltipContent)
 
         if (ls.specials != '') {
@@ -719,8 +723,8 @@ class TextFileOriginalComponentSvg extends svg
         this.bottomTip.html(c.innerHTML)
         .style("display", 'block')
 
-        var bt = d3.select("#bottomTip")
-        var row = bt.select(`tr:nth-child(${scrollRow + 1})`).node()
+        // var bt = d3.select("#bottomTip")
+        var row = this.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
         row.scrollIntoView()
     }
 

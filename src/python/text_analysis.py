@@ -108,7 +108,7 @@ class Model(socketio.AsyncNamespace, AsyncObject):
 
     async def on_connected(self, sid, namespace):
         self.sid = sid
-        print('Two-way connection established: ', namespace)
+        # print('Two-way connection established: ', namespace)
 
     async def on_disconnect(self, sid):
         await sio.disconnect(self.sid)

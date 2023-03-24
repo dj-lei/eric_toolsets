@@ -702,7 +702,6 @@ class SearchAtomView extends ListView
     }
 
     controlGetAllLines(ins, scrollRow){
-        console.log(scrollRow)
         this.socket.emit("get_all_lines", async (response) => {
             if(response.status == status.SUCCESS){
                 ins.displayBottomTip(response.model, scrollRow)
