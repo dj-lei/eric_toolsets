@@ -2,8 +2,7 @@ import * as d3 from "d3"
 import common from '@/plugins/common'
 import { Component } from './element'
 import { Dialog } from './dialog'
-import { SearchAtomComponentTable } from './table'
-import { TextFileOriginalComponentSvgNavigate, TextFileCompareComponentSvgDialogNavigate } from './navigate'
+import { TextFileOriginalComponentSvgNavigate, TextFileCompareComponentSvgDialogNavigate, ChartAtomComponentLineChartNavigate } from './navigate'
 
 const color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
 '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
@@ -41,12 +40,6 @@ class svg extends Component
             d3.select(that.svgElm).select("#canvas").attr("transform", transform)
         }
     }
-
-    // zoomed(event, ins) {
-    //     console.log(ins)
-    //     const {transform} = event
-    //     d3.select(ins).select("#canvas").attr("transform", transform)
-    // }
 
     update(data){
         this.data = data
@@ -291,17 +284,19 @@ class IndentedTree extends svgElement
 
 class LineChart extends svgElement
 {
-    constructor(svg, d, lineType){
+    constructor(svg, lines, lineType, width, height){
         super(svg)
 
-        this.d = d
+        this.width = width
+        this.height = height
+        this.lines = lines
         this.lineType = lineType
         this.points = []
-        Object.keys(d.data.data.select_lines).forEach((name, index) =>{
-            if (d.data.data.select_lines[name][0].type == 'mark') {
-                this.addMark(d.data.data.select_lines[name], d.height)
+        Object.keys(this.lines).forEach((name, index) =>{
+            if (this.lines[name][0].type == 'mark') {
+                this.addMark(this.lines[name], height)
             }else{
-                this.addLine(d.data.data.select_lines[name], name, d.height, index)
+                this.addLine(this.lines[name], name, height, index)
             }
         })
     }
@@ -324,7 +319,7 @@ class LineChart extends svgElement
 
         // add y axis
         const yAxis = this.svg.append("g")
-                        .attr("transform", `translate(${(index * -50) - 20},0)`)
+                        .attr("transform", `translate(${this.width + (index * 50) + 20},0)`)
         yAxis.call(d3.axisLeft(y).tickSize(0))
             .style('stroke', color[index])
             .append("text")
@@ -602,7 +597,7 @@ class TextFileOriginalComponentSvg extends svg
         }
 
         let that = this
-        var lc = new LineChart(this.svg.select(`#${d.id}`), d, this.lineType)
+        var lc = new LineChart(this.svg.select(`#${d.id}`), d.data.data.select_lines, this.lineType, d.ex - d.sx, d.height)
         lc.svg.selectAll('.dot').on("click", function(event, d) {
             if (that.mode == 'single') {
                 that.textFileOriginalView.controlJump(d)
@@ -951,6 +946,207 @@ class ChartAtomComponentSvg extends svg
     }
 }
 
+class ChartAtomComponentLineChart extends svg
+{    
+    constructor(chartAtomView){
+        super(chartAtomView.container)
+        this.chartAtomView = chartAtomView
+
+        this.container.style.display = 'none'
+		let that = this
+		this.chartAtomView.collapsible.addEventListener("click", function() {
+			if (that.container.style.display === "block") {
+				that.container.style.display = "none"
+			} else {
+				that.container.style.display = "block"
+			}
+		})
+
+        this.alignType = 'timestamp'
+        this.lineType = 'dash'
+        this.startPosition = 0
+        this.endPosition = 0
+        this.viewWidth = document.body.offsetWidth - 100
+        this.container.style.height = `${parseInt(document.body.offsetHeight / 2 - 100)}px`
+        this.lineChartHeight = parseInt(document.body.offsetHeight / 2 - 120)
+
+
+        this.starts = []
+        this.ends = []
+        this.x = ''
+        this.xAxis = ''
+
+        this.tooltip = d3.select(this.container).append("div")
+                            .style("display", 'none')
+                            .style("position", "absolute")
+                            .style("background-color", "#fff")
+                            .style("border", "1px solid #aaa")
+                            .style("border-radius", "5px")
+                            .style("box-shadow", "2px 2px 2px #ccc")
+                            .style("font-size", "12px")
+                            .style("padding", "5px")
+
+        this.chartAtomComponentLineChartNavigate = new ChartAtomComponentLineChartNavigate(this)
+        this.container.insertBefore(this.chartAtomComponentLineChartNavigate.container, this.svgElm);
+
+        this.resetCoordinates()
+    }
+
+    clear(){
+        this.svg.selectAll("*").remove()
+        if (this.xAxis != '') {
+            this.xAxis.selectAll("*").remove()
+        }
+        this.resetCoordinates()
+    }
+
+    resetCoordinates(){
+        var zoom = d3.zoom().scaleExtent([this.scaleMin, this.scaleMax]).on("zoom", zoomed)
+        d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
+
+        let that = this
+        function zoomed(event) {
+            const {transform} = event
+            d3.select(that.svgElm).select("#canvas").attr("transform", transform)
+            that.xAxis.attr("transform", `translate(${transform.x},10)`)
+
+            that.x = d3.scaleLinear().range([0, that.viewWidth * transform.k])
+            if (that.alignType == 'timestamp') {
+                that.x.domain([that.data.start_timestamp, that.data.end_timestamp])
+            }else{
+                that.x.domain([that.data.start_global_index, that.data.end_global_index])
+            }
+            that.xAxis.call(that.updateXAxis, that.x, transform, that.alignType)
+        }
+    }
+
+    addXAxis(){
+        // add x axis
+        this.x = d3.scaleLinear().range([0, this.viewWidth])
+        if (this.alignType == 'timestamp') {
+            this.x.domain([this.data.start_timestamp, this.data.end_timestamp])
+        }else{
+            this.x.domain([this.data.start_global_index, this.data.end_global_index])
+        }
+        this.xAxis = d3.select(this.svgElm).append("g").attr("transform", "translate(0,10)")
+        this.xAxis.call(this.updateXAxis, this.x, {'k': 1}, this.alignType)
+    }
+
+    updateXAxis(g, x, transform, alignType){
+        var xA = d3.axisBottom(x).ticks(8 * transform.k)
+        // var domain = x.domain()
+        // var tickValues = xA.scale().ticks().concat(domain[0], domain[1])
+        // xA.tickValues(tickValues)
+        // g.attr("transform", `translate(0,0)`)
+        g.call(xA.tickFormat(function(d) {
+                        if (alignType == 'timestamp') {
+                            return common.formatTimestamp(d) 
+                        }else{
+                            return d
+                        }
+                    }))
+                .style('stroke', "#FFF")
+                .select(".domain")
+                .style('stroke', "#FFF")
+        g.selectAll('.tick line').style('stroke', "#FFF")
+    }
+
+    addLineChart(d){
+        function getDotTooltipContent(d) {
+            var res = `
+                <b style="color:#000">Key&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.full_name}</b><br/>
+                <b style="color:#000">Timestamp: ${common.formatTimestamp(d.timestamp)}</b><br/>
+                <b style="color:#000">Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.value}</b><br/>
+            `
+            return res
+        }
+
+        function getMarkTooltipContent(d) {
+            var res = `
+                <b style="color:#000">identifier&nbsp;&nbsp;&nbsp;: ${d.identifier}</b><br/>
+                <b style="color:#000">Timestamp: ${common.formatTimestamp(d.timestamp)}</b><br/>
+                <b style="color:#000">text&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${d.text}</b><br/>
+            `
+            return res
+        }
+
+        let that = this
+        var lc = new LineChart(this.svg, d.select_lines, this.lineType, this.viewWidth, this.lineChartHeight)
+        lc.svg.selectAll('.dot').on("click", function(event, d) {
+            that.chartAtomView.controlClickEvent(d)
+        })
+        this.bindMouseEvent(lc.svg.selectAll('.dot'), getDotTooltipContent)
+
+        lc.svg.selectAll('.mark').on("click", function(event, d) {
+            that.chartAtomView.controlClickEvent(d)
+        })
+        this.bindMouseEvent(lc.svg.selectAll('.mark'), getMarkTooltipContent)
+    }
+
+    bindMouseEvent(elm, func){
+        let that = this
+        elm.on("mouseover", function(event, d) {
+            if(['path', 'text'].includes(d3.select(this).node().nodeName)){
+                d3.select(this).style('fill', "#FFF")
+            }else{
+                const currentColor = d3.color(d3.select(this).attr('fill'));
+                currentColor.opacity = 0.6;
+                d3.select(this).attr('fill', currentColor);
+            }
+
+            that.tooltip.html(func(d))
+                .style("left", (event.pageX) + "px")
+                .style("top", (event.offsetY) + "px")
+                .style("display", 'block')
+            })
+        .on("mouseout", function(event, d) {
+            if(['path', 'text'].includes(d3.select(this).node().nodeName)){
+                if (d.name) {
+                    d3.select(this).style('fill', d => d.value)
+                }else{
+                    d3.select(this).style('fill', '#FFD700')
+                }
+
+            }else{
+                const currentColor = d3.color(d3.select(this).attr('fill'));
+                currentColor.opacity = 1;
+                d3.select(this).attr('fill', currentColor);
+            }
+
+            that.tooltip.style("display", 'none')
+        })
+    }
+
+    mapXY(x){
+        // map x y
+        // convert timestamp or global_index to x
+        Object.keys(this.data.select_lines).forEach((name) =>{
+            this.data.select_lines[name].forEach(dot => {
+                if (this.alignType == 'timestamp') {
+                    dot.x = x(dot.timestamp)
+                }else{
+                    dot.x = x(dot.global_index)
+                }
+            })
+        })
+    }
+
+    refresh(data){
+        this.chartAtomView.collapsible.innerHTML = '+ ' + this.chartAtomView.model.desc
+        this.clear()
+        this.currentHeight = 0
+        if (data) {
+            this.data = data
+        }
+        this.svg.style("overflow", "visible")
+
+        this.addXAxis()
+        this.mapXY(this.x)
+        this.addLineChart(this.data)
+    }
+
+}
+
 class BatchInsightComponentSvgDialog extends Dialog
 {
     constructor(batchInsightView){
@@ -1119,4 +1315,4 @@ class GlobalChartComponentSvg extends Tree
     }
 }
 
-export {TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog}
+export {TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog, ChartAtomComponentLineChart}

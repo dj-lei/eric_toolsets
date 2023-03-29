@@ -15,5 +15,6 @@
   "BATCHSTATISTIC": "/BatchStatistic",
   "TEXTFILECOMPARE": "/TextFileCompare",
   "GLOBALCHART": "/GlobalChart",
-  "SYSTEMTEST": "/SystemTest"
+  "SYSTEMTEST": "/SystemTest",
+  "SCRIPT": "/Script"
 }

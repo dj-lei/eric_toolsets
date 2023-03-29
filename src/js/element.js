@@ -1,6 +1,13 @@
 import { io } from "socket.io-client"
 import common from '@/plugins/common'
 
+import CodeMirror from 'codemirror'
+import 'codemirror/lib/codemirror.css'
+import 'codemirror/theme/material-darker.css'
+import 'codemirror/mode/python/python'
+import 'codemirror/addon/hint/show-hint'
+import 'codemirror/addon/hint/show-hint.css'
+
 const server = "http://127.0.0.1:8000"
 
 class Element
@@ -483,13 +490,30 @@ class Component extends Element
         // table.style.overflowX = 'scroll'
         // table.style.overflowY= 'hidden'
         // table.style.whiteSpace = 'nowrap'
-        textarea.style.border = 'none'
+        textarea.style.border = '1px solid #808080'
         return textarea
     }
 
     createElementSelect(){
         var select = document.createElement('select')
         return select
+    }
+
+    createPythonCodeMirror(textarea){
+        var codemirror = CodeMirror.fromTextArea(textarea, {
+            mode: 'python',
+            lineNumbers: true,
+            theme: 'material-darker',
+            // extraKeys: {
+            //     'Ctrl-Enter': function(cm) {
+            //         console.log(cm.getValue())
+            //     },
+            //     // 'Ctrl-Enter': function(cm) {
+            //     //     cm.showHint({hint: that.pythonHint})
+            //     // }
+            // }
+        })
+        return codemirror
     }
 }
 

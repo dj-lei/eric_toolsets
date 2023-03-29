@@ -2,8 +2,8 @@ import common from '@/plugins/common'
 import http from '@/plugins/http'
 import urls from '@/plugins/urls'
 import { ipcRenderer } from 'electron'
-
 import { Component } from './element'
+
 
 class Dialog extends Component
 {
@@ -465,51 +465,41 @@ class StatisticAtomComponentDialog extends Dialog
 
         this.identifier = ''
         this.desc = ''
-        this.code = ''
-        this.type = 'code'
-        this.parentRole = ''
+        this.script = ''
+        this.rolePath = ''
         this.init()
     }
 
-    init(graphAlias){
+    init(){
         let that = this
-        
-        // var types = ['code', 'graph']
-        // this.select = this.createElementSelect()
-        // for (var x in types) {
-        //     this.select.options[this.select.options.length] = new Option(x, x)
-        // }
-        // this.subContainer.appendChild(this.select)
 
-        //******************** code *******************/
-        var codeContainer = this.createElementDiv()
         // identifier
         this.identifier = this.createElementTextInput()
-        codeContainer.appendChild(this.createElementHeader('Identifier(Global Unique)'))
-        codeContainer.appendChild(this.identifier)
-        codeContainer.appendChild(this.createElementHr())
+        this.subContainer.appendChild(this.createElementHeader('Identifier(Global Unique)'))
+        this.subContainer.appendChild(this.identifier)
+        this.subContainer.appendChild(this.createElementHr())
 
-        // search description
+        // description
         this.desc = this.createElementTextInput()
-        codeContainer.appendChild(this.createElementHeader('Code Description'))
-        codeContainer.appendChild(this.desc)
-        codeContainer.appendChild(this.createElementHr())
+        this.subContainer.appendChild(this.createElementHeader('Script Description'))
+        this.subContainer.appendChild(this.desc)
+        this.subContainer.appendChild(this.createElementHr())
 
-        //  python code 
-        this.code = this.createElementTextarea()
-        codeContainer.appendChild(this.createElementHeader('Python Code'))
-        codeContainer.appendChild(this.code)
-        codeContainer.appendChild(this.createElementHr())
+        //  python script 
+        var textarea = this.createElementTextarea()
+        this.subContainer.appendChild(this.createElementHeader('Python Script'))
+        this.subContainer.appendChild(textarea)
+        this.script = this.createPythonCodeMirror(textarea)
 
-        //  code test result 
+        //  script test result 
         this.result = this.createElementTextarea()
-        codeContainer.appendChild(this.createElementHeader('Code Test Result'))
-        codeContainer.appendChild(this.result)
+        this.subContainer.appendChild(this.createElementHeader('Script Test Result'))
+        this.subContainer.appendChild(this.result)
         this.subContainer.appendChild(this.createElementHr())
 
         this.rolePath = this.createElementTextInput()
-        codeContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
-        codeContainer.appendChild(this.rolePath)
+        this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
+        this.subContainer.appendChild(this.rolePath)
 
         // search and cancel button
         this.apply = this.createElementButton('STATISTIC')
@@ -523,41 +513,37 @@ class StatisticAtomComponentDialog extends Dialog
         this.cancel.style.backgroundColor = 'red'
         this.cancel.style.width = '20%'
         this.cancel.onclick = function(){that.hidden()}
-        codeContainer.appendChild(this.apply)
-        codeContainer.appendChild(this.test)
-        codeContainer.appendChild(this.cancel)
-        this.subContainer.appendChild(codeContainer)
-
-        //******************** graph *******************/
-        // var graphContainer = this.createElementDiv()
-        // var graphSelect = this.createElementSelect()
-        // this.graph = new SequentialChart(this.container)
-
-        // for (x in graphAlias) {
-        //     graphSelect.options[graphSelect.options.length] = new Option(x, x)
-        // }
-        // graphSelect.onchange = function() {
-        //     that.statisticAtomView.getCompareGraph(graphAlias[this.value])
-        // }
-        // graphContainer.appendChild(graphSelect)
-
-        // this.select.onchange = function() {
-        //     if (types[this.value] == 'code') {
-        //         that.type = 'code'
-        //         codeContainer.style.display = 'block'
-        //     }else if (types[this.value] == 'graph') {
-        //         that.type = 'graph'
-        //         graphContainer.style.display = 'block'
-        //     }
-        // }
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.test)
+        this.subContainer.appendChild(this.cancel)
     }
+
+    // pythonHint(editor){
+    //     const word = /[A-Za-z_0-9]+/
+    //     const cur = editor.getCursor()
+    //     const curLine = editor.getLine(cur.line)
+    //     const curWord = curLine.slice(0, cur.ch).match(word)
+    //     const suggestions = ['print', 'prkkint', 'def', 'if', 'else', 'while', 'for', 'return']
+    //     console.log(cur,curLine,curWord)
+    //     if (curWord) {
+    //         const prefix = curWord[0]
+    //         const matching = suggestions.filter((suggestion) => suggestion.startsWith(prefix))
+    //         if (matching.length > 0) {
+    //             return {
+    //                 list: matching,
+    //                 from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+    //                 to: CodeMirror.Pos(cur.line, cur.ch)
+    //             }
+    //         }
+    //     }
+    // }
 
     statistic(){
         let model = {
             namespace: this.statisticAtomView.namespace,
             identifier: this.identifier.value,
             desc: this.desc.value,
-            code: this.code.value,
+            script: this.script.getValue(),
             role_path: this.rolePath.value,
         }
         this.statisticAtomView.controlExec(model)
@@ -568,21 +554,17 @@ class StatisticAtomComponentDialog extends Dialog
             namespace: this.statisticAtomView.namespace,
             identifier: this.identifier.value,
             desc: this.desc.value,
-            code: this.code.value,
+            script: this.script.getValue(),
         }
         this.statisticAtomView.controlStatisticTest(model)
     }
 
     update(model){
-        if (this.type == 'code') {
-            this.identifier.value = model.identifier
-            this.desc.value = model.desc
-            this.code.value = model.code
-            this.rolePath.value = model.role_path
-        }else if (this.type == 'graph') {
-            this.graph.draw(model.compareGraph)
-        }
-
+        this.identifier.value = model.identifier
+        this.desc.value = model.desc
+        this.script.setValue(model.script)
+        this.script.refresh()
+        this.rolePath.value = model.role_path
     }
 
     refreshTest(model){
@@ -834,6 +816,72 @@ class TextFileCompareComponentDialog extends Dialog
             second_file_namespace: this.secondFilesSelect.value
         }
         this.textFileCompareView.controlExec(model)
+    }
+}
+
+class ScriptDialog extends Dialog
+{
+    constructor(scriptView){
+        super(scriptView.container)
+        this.scriptView = scriptView
+
+        this.desc = ''
+        this.script = ''
+        this.init()
+    }
+
+    init(){
+        let that = this
+
+        // description
+        this.desc = this.createElementTextInput()
+        this.subContainer.appendChild(this.createElementHeader('Script Description'))
+        this.subContainer.appendChild(this.desc)
+        this.subContainer.appendChild(this.createElementHr())
+
+        //  python script 
+        var textarea = this.createElementTextarea()
+        this.subContainer.appendChild(this.createElementHeader('Python Script'))
+        this.subContainer.appendChild(textarea)
+        this.script = this.createPythonCodeMirror(textarea)
+
+        //  console
+        // this.console = this.createElementTextarea()
+        // this.subContainer.appendChild(this.createElementHeader('Console'))
+        // this.subContainer.appendChild(this.console)
+
+        // execute and cancel button
+        this.apply = this.createElementButton('EXECUTE')
+        this.apply.style.width = '80%'
+        this.apply.onclick = function(){
+            // that.console.value = ''
+            that.run()
+        }
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '20%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
+    }
+
+    log(msg){
+        this.console.value = this.console.value != '' ? this.console.value + '\n' + msg : msg
+    }
+
+    update(model){
+        this.desc.value = model.desc
+        this.script.setValue(model.script)
+        this.script.refresh()
+    }
+
+    run(){
+        let model = {
+            desc: this.desc.value,
+            script: this.script.getValue()
+        }
+
+        this.scriptView.controlExec(model)
     }
 }
 
@@ -1094,4 +1142,4 @@ class ShareDownloadDialog extends Dialog
     }
 }
 
-export {Dialog, SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog}
+export {Dialog, SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, ScriptDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog}

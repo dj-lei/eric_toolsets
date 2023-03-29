@@ -148,6 +148,85 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
     }
 }
 
+class ChartAtomComponentLineChartNavigate extends Navigate
+{
+    constructor(chartAtomComponentLineChart){
+        super(chartAtomComponentLineChart.container)
+        this.chartAtomComponentLineChart = chartAtomComponentLineChart
+
+        // Align Type Form
+        var alignTypeForm = this.createElementForm()
+        alignTypeForm.style.marginRight = '50px'
+        // alignTypeForm.style.border = '1px solid black'
+        alignTypeForm.append(this.createElementLabel('AlignType: '))
+
+        var alignTypeTimestamp = this.createElementRadioInput()
+        alignTypeTimestamp.checked = true
+        alignTypeTimestamp.id = 'timestamp'
+        alignTypeTimestamp.name = 'AlignType'
+        alignTypeTimestamp.value = 'timestamp'
+        alignTypeForm.append(alignTypeTimestamp)
+        alignTypeForm.append(this.createElementLabel('Timestamp', 'timestamp'))
+
+        var alignTypeGlobal = this.createElementRadioInput()
+        alignTypeGlobal.id = 'global'
+        alignTypeGlobal.name = 'AlignType'
+        alignTypeGlobal.value = 'global'
+        alignTypeForm.append(alignTypeGlobal)
+        alignTypeForm.append(this.createElementLabel('Global', 'global'))
+        this.topNavigate.appendChild(alignTypeForm)
+
+        // Line Type Form
+        var LineTypeForm = this.createElementForm()
+        // LineTypeForm.style.border = '1px solid black'
+        LineTypeForm.append(this.createElementLabel('LineType: '))
+
+        var LineTypeDash = this.createElementRadioInput()
+        LineTypeDash.checked = true
+        LineTypeDash.id = 'dash'
+        LineTypeDash.name = 'LineType'
+        LineTypeDash.value = 'dash'
+        LineTypeForm.append(LineTypeDash)
+        LineTypeForm.append(this.createElementLabel('Dash', 'dash'))
+
+        var LineTypeSolid = this.createElementRadioInput()
+        LineTypeSolid.id = 'solid'
+        LineTypeSolid.name = 'LineType'
+        LineTypeSolid.value = 'solid'
+        LineTypeForm.append(LineTypeSolid)
+        LineTypeForm.append(this.createElementLabel('Solid', 'solid'))
+
+        var LineTypeDot = this.createElementRadioInput()
+        LineTypeDot.id = 'dot'
+        LineTypeDot.name = 'LineType'
+        LineTypeDot.value = 'dot'
+        LineTypeForm.append(LineTypeDot)
+        LineTypeForm.append(this.createElementLabel('Dot', 'dot'))
+        this.topNavigate.appendChild(LineTypeForm)
+
+        let that = this
+        const alignType = alignTypeForm.querySelectorAll('input[name="AlignType"]')
+        alignType.forEach(option => {
+            option.addEventListener('click', () => {
+                that.chartAtomComponentLineChart.alignType = option.value
+                that.chartAtomComponentLineChart.refresh()
+            })
+        })
+
+        const LineType = LineTypeForm.querySelectorAll('input[name="LineType"]')
+        LineType.forEach(option => {
+            option.addEventListener('click', () => {
+                that.chartAtomComponentLineChart.lineType = option.value
+                that.chartAtomComponentLineChart.refresh()
+            })
+        })
+    }
+
+    setTitle(title){
+        this.title.innerHTML = title
+    }
+}
+
 class TextFileCompareComponentSvgDialogNavigate extends Navigate
 {
     constructor(dialog){
@@ -164,4 +243,4 @@ class TextFileCompareComponentSvgDialogNavigate extends Navigate
     }
 }
 
-export {TextFileOriginalComponentNavigate, TextFileOriginalComponentSvgNavigate, TextFileCompareComponentSvgDialogNavigate}
+export {TextFileOriginalComponentNavigate, TextFileOriginalComponentSvgNavigate, TextFileCompareComponentSvgDialogNavigate, ChartAtomComponentLineChartNavigate}

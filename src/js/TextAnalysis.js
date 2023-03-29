@@ -3,12 +3,11 @@ import ns from '@/config/namespace.json'
 
 import { ipcRenderer } from 'electron'
 import { View, ListView, BatchView} from './element'
-import { SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog } from './dialog'
+import { SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, ScriptDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
 import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable, BatchInsightComponentTableDialog, BatchStatisticComponentTableDialog } from './table'
 import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
-import { TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog } from './svg'
-import { GlobalChartComponentSequentialChartDialog, ChartAtomComponentSequentialChart } from './chart'
+import { TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog, ChartAtomComponentLineChart } from './svg'
 import { StatisticAtomComponentTextarea } from './textarea'
 import { TextFileOriginalComponentNavigate } from './navigate'
 // import { TextLogicFlow } from './flow'
@@ -221,11 +220,12 @@ class TextAnalysisView extends View
         super(ns.TEXTANALYSIS, position)
 
         this.fileContainerView = new FileContainerView(this)
-        this.systemTest = new SystemTestView(this)
-
-        this.batchInsightView = new BatchInsightView(this)
-        this.batchStatisticView = new BatchStatisticView(this)
         this.textFileCompareView = new TextFileCompareView(this)
+        this.scriptView = new ScriptView(this)
+
+        // this.systemTest = new SystemTestView(this)
+        // this.batchInsightView = new BatchInsightView(this)
+        // this.batchStatisticView = new BatchStatisticView(this)
         // this.globalChartView = new GlobalChartView(this)
 
         let that = this
@@ -255,6 +255,9 @@ class TextAnalysisView extends View
         })
         ipcRenderer.on('open-text-file-compare-show', () => {
             that.socket.emit("display_text_file_compare_show")
+        })
+        ipcRenderer.on('open-script', () => {
+            that.socket.emit("display_script")
         })
     }
 
@@ -735,7 +738,7 @@ class ChartAtomView extends ListView
         super(model.namespace, document.getElementById(model.namespace))
         this.model = model
         this.dialog = new ChartAtomComponentSvgDialog(this)
-        this.show = new ChartAtomComponentSequentialChart(this)
+        this.show = new ChartAtomComponentLineChart(this)
     }
 
     controlClearKeyValueTree(){
@@ -747,8 +750,7 @@ class ChartAtomView extends ListView
     }
 
     onRefresh(model){
-        console.log('!!!!!!!!')
-        // super.onRefresh(model)
+        super.onRefresh(model)
         // this.show.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 100)}px`, width:`${document.body.offsetWidth}px`})
     }
 }
@@ -785,13 +787,50 @@ class StatisticAtomView extends ListView
         this.socket.emit("statistic_test", model)
     }
 
-    controlGetCompareGraph(name){
-        this.socket.emit("get_compare_graph", name)
-    }
-
     onRefreshTest(model){
         this.model = model
         this.dialog.refreshTest(this.model)
+    }
+}
+
+class TextFileCompareView extends BatchView
+{
+    constructor(textAnalysisView){
+        super(`${textAnalysisView.namespace}${ns.TEXTFILECOMPARE}`, textAnalysisView.container)
+        this.parent = textAnalysisView
+        this.dialog = new TextFileCompareComponentDialog(this)
+        this.show = new TextFileCompareComponentSvgDialog(this)
+    }
+
+    onUpdateDialog(model){
+        this.model = model
+        this.dialog.update(this.model)
+    }
+
+    onRefresh(model){
+        this.show.display()
+        
+        this.model = model
+        var first = this.parent.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView
+        var second = this.parent.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.second)].textFileOriginalView
+        this.show.refresh(first, second)
+    }
+}
+
+class ScriptView extends BatchView
+{
+    constructor(textAnalysisView){
+        super(`${textAnalysisView.namespace}${ns.SCRIPT}`, textAnalysisView.container)
+        this.parent = textAnalysisView
+        this.dialog = new ScriptDialog(this)
+    }
+
+    controlExec(model){
+        this.socket.emit("exec", model)
+    }
+
+    onConsole(msg){
+        this.dialog.log(msg)
     }
 }
 
@@ -846,30 +885,6 @@ class BatchStatisticView extends BatchView
     }
 }
 
-class TextFileCompareView extends BatchView
-{
-    constructor(textAnalysisView){
-        super(`${textAnalysisView.namespace}${ns.TEXTFILECOMPARE}`, textAnalysisView.container)
-        this.parent = textAnalysisView
-        this.dialog = new TextFileCompareComponentDialog(this)
-        this.show = new TextFileCompareComponentSvgDialog(this)
-    }
-
-    onUpdateDialog(model){
-        this.model = model
-        this.dialog.update(this.model)
-    }
-
-    onRefresh(model){
-        this.show.display()
-        
-        this.model = model
-        var first = this.parent.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView
-        var second = this.parent.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.second)].textFileOriginalView
-        this.show.refresh(first, second)
-    }
-}
-
 class GlobalChartView extends BatchView
 {
     constructor(textAnalysisView){
@@ -901,4 +916,4 @@ class GlobalChartView extends BatchView
     }
 }
 
-export {TextAnalysisView} 
+export {TextAnalysisView}

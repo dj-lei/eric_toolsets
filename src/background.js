@@ -181,12 +181,12 @@ async function createWindow() {
               win.webContents.send('new-text-file-compare')
             }
           },
-          {
-            label: 'New Global Chart',
-            click: () => {
-              win.webContents.send('new-global-chart')
-            }
-          },
+          // {
+          //   label: 'New Global Chart',
+          //   click: () => {
+          //     win.webContents.send('new-global-chart')
+          //   }
+          // },
           { type: 'separator' },
           {
             label: 'Open Function Area',
@@ -201,42 +201,42 @@ async function createWindow() {
               win.webContents.send('open-text-file-compare-show')
             }
           },
-          {
-            label: 'Open Global Chart Show',
-            click: () => {
-              win.webContents.send('open-global-chart-show')
-            }
-          },
+          // {
+          //   label: 'Open Global Chart Show',
+          //   click: () => {
+          //     win.webContents.send('open-global-chart-show')
+          //   }
+          // },
         ]
       },
       {
-        label: 'Batch',
+        label: 'Script',
         submenu: [
+          // {
+          //   label: 'New Batch Insight',
+          //   click: () => {
+          //     win.webContents.send('new-batch-insight')
+          //   }
+          // },
           {
-            label: 'New Batch Insight',
+            label: 'Open Script',
             click: () => {
-              win.webContents.send('new-batch-insight')
+              win.webContents.send('open-script')
             }
           },
-          {
-            label: 'New Batch Statistic',
-            click: () => {
-              win.webContents.send('new-batch-statistic')
-            }
-          },
-          { type: 'separator' },
-          {
-            label: 'Open Batch Insight Show',
-            click: () => {
-              win.webContents.send('open-batch-insight-show')
-            }
-          },
-          {
-            label: 'Open Batch Statistic Show',
-            click: () => {
-              win.webContents.send('open-batch-statistic-show')
-            }
-          },
+          // { type: 'separator' },
+          // {
+          //   label: 'Open Batch Insight Show',
+          //   click: () => {
+          //     win.webContents.send('open-batch-insight-show')
+          //   }
+          // },
+          // {
+          //   label: 'Open Batch Statistic Show',
+          //   click: () => {
+          //     win.webContents.send('open-batch-statistic-show')
+          //   }
+          // },
         ]
       },
       {
@@ -256,34 +256,23 @@ async function createWindow() {
           }
         ]
       },
-      {
-        label: 'Ericsson',
-        submenu: [
-          {
-            label: 'DCGM Analysis',
-            click: () => {
-              win.webContents.send('dcgm-analysis')
-            }
-          },
-          {
-            label: 'Telog Analysis',
-            click: () => {
-              win.webContents.send('telog-analysis')
-            }
-          }
-        ]
-      },
-      {
-        label: 'AppTest',
-        submenu: [
-          {
-            label: 'System Test',
-            click: () => {
-              win.webContents.send('system-test')
-            }
-          }
-        ]
-      },
+      // {
+      //   label: 'Ericsson',
+      //   submenu: [
+      //     {
+      //       label: 'DCGM Analysis',
+      //       click: () => {
+      //         win.webContents.send('dcgm-analysis')
+      //       }
+      //     },
+      //     {
+      //       label: 'Telog Analysis',
+      //       click: () => {
+      //         win.webContents.send('telog-analysis')
+      //       }
+      //     }
+      //   ]
+      // },
       {
         label: 'View',
         submenu: [

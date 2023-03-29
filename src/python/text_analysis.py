@@ -8,7 +8,6 @@ from engineio.payload import Payload
 from asyncio import get_event_loop
 Payload.max_decode_packets = 40000
 
-# sio = socketio.AsyncServer(engineio_logger=True, logger=True, cors_allowed_origins="*")
 sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
 sio.attach(app)
@@ -20,8 +19,6 @@ special_symbols = ['/','\*','\{','\}','\[','\]','\(','\)','#','+','-','!','=',':
 color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
         '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
 
-# sys.path.append(os.path.join(os.path.dirname(__file__)))
-print(os.path.dirname(__file__))
 ns = json_to_object(json.load(open(os.path.dirname(__file__) +'\\'+ '../config/namespace.json')))
 status = json_to_object(json.load(open(os.path.dirname(__file__) +'\\'+ '../config/status.json')))
 msg = json_to_object(json.load(open(os.path.dirname(__file__) +'\\'+ '../config/msg.json')))
@@ -366,10 +363,10 @@ class TextAnalysisModel(Model):
 
         self.parallel = parallel
         self.file_container = await FileContainerModel(self, self.mode)
-
-        self.batch_insight = await BatchInsightModel(self, self.mode)
-        self.batch_statistic = await BatchStatisticModel(self, self.mode)
         self.text_file_compare = await TextFileCompareModel(self, self.mode)
+        self.script = await ScriptModel(self, self.mode)
+        # self.batch_insight = await BatchInsightModel(self, self.mode)
+        # self.batch_statistic = await BatchStatisticModel(self, self.mode)
         # self.global_chart = await GlobalChartModel(self, self.mode)
 
     async def listener(self, publish_namespace):
@@ -399,6 +396,9 @@ class TextAnalysisModel(Model):
     async def on_display_text_file_compare_show(self, sid):
         await self.text_file_compare.on_display_show(sid)
 
+    async def on_display_script(self, sid):
+        await self.script.on_display_dialog(sid)
+
     async def on_shutdown(self, sid):
         await app.shutdown()
         await app.cleanup()
@@ -426,10 +426,22 @@ class FileContainerModel(Model):
             await self.on_display_file(sid, new_file_namespace)
         
     def on_get_config(self, sid):
-        return self.text_files[self.active_text_file].on_get_config()
+        config = self.text_files[self.active_text_file].on_get_config()
+        script = self.parent.script
+        config['script'] = {'desc': script.desc, 'script': script.script}
+        print(config)
+        return Response(status.SUCCESS, msg.NONE, config).__dict__
 
-    async def on_load_config(self, sid, config):
-        await self.text_files[self.active_text_file].on_load_config(sid, config)
+    async def on_load_config(self, sid, path):
+        if self.active_text_file != '':
+            await self.text_files[self.active_text_file].on_load_config(sid, path)
+
+        with open(path) as f:
+            config = json.loads(f.read())
+            if config['script']['script'] != '':
+                self.parent.script.__dict__.update(config['script'])
+                await self.parent.script.on_update_dialog(sid)
+                await self.parent.script.on_display_dialog(sid)
 
     async def on_load_next_config(self, sid):
         await self.text_files[self.active_text_file].on_load_next_config(sid)
@@ -574,10 +586,10 @@ class TextFileModel(Model):
 
         for statistic_atom in self.text_file_function.statistic_function.models.keys():
             model = self.text_file_function.statistic_function.models[statistic_atom].__dict__
-            tmp = {'role_path':model['role_path'], 'identifier':model['identifier'], 'desc':model['desc'], 'code':model['code'], 'statistic_type':model['statistic_type']}
+            tmp = {'role_path':model['role_path'], 'identifier':model['identifier'], 'desc':model['desc'], 'script':model['script']}
             self.config['statistic'].append(tmp)
 
-        return Response(status.SUCCESS, msg.NONE, self.config).__dict__
+        return self.config
 
     async def on_load_all_config(self, sid, path, load=['search', 'chart', 'insight', 'statistic']):
         self.path = path
@@ -1134,7 +1146,7 @@ class ChartAtomModel(ListModel):
             await self.on_update_dialog('')
 
     async def on_click_event(self, sid, params):
-        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll', params['data']['globalIndex'])
+        await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll', params['global_index'])
 
     async def on_clear_key_value_tree(self, sid):
         self.generate_key_value_tree()
@@ -1625,18 +1637,15 @@ class StatisticAtomModel(ListModel):
         await super().__init__(model['namespace'], mode)
         self.parent = parent
 
-        self.code = ''
-
-        self.statistic_type = 'code'
+        self.script = ''
         self.result = ''
-        self.result_type = ''
 
         self.search_function = self.subscribe_namespace(self.get_search_function_namespace())
         self.__dict__.update(model)
         await self.new_view_object()
 
     def model(self):
-        return {'role_path': self.role_path, 'type': 'statistic', 'namespace': self.namespace, 'identifier': self.identifier, 'desc': self.desc, 'code': self.code, 'result':str(self.result), 'result_type':str(self.result_type)}
+        return {'role_path': self.role_path, 'type': 'statistic', 'namespace': self.namespace, 'identifier': self.identifier, 'desc': self.desc, 'script': self.script, 'result':str(self.result)}
 
     async def listener(self, publish_namespace):
         pass
@@ -1649,28 +1658,130 @@ class StatisticAtomModel(ListModel):
 
     def statistic(self):
         self.result = ''
-        self.result_type = ''
-
-        if self.statistic_type == 'code':
-            self.code_statistic()
-        elif self.statistic_type == 'graph':
-            self.graph_statistic()
-
-    def code_statistic(self):
         try:
-            exec(self.code)
+            exec(self.script)
         except Exception as e:
             self.result = str(e)
-            self.result_type = "error"
-        self.result_type = type(self.result)
 
-    def graph_statistic(self):
-        self.result = []
-        for index, _ in enumerate(self.first_graph):
-            path, score = lcss_path(self.first_graph[index], self.second_graph[index])
-            std1 = np.std(self.first_graph[index])
-            std2 = np.std(self.second_graph[index])
-            self.result.append(path, score, std1, std2)
+
+class ScriptModel(Model):
+    async def __init__(self, text_analysis, mode='normal'):
+        await super().__init__(text_analysis.namespace + ns.SCRIPT, mode)
+        self.parent = text_analysis
+        self.desc = ''
+        self.script = ''
+        self.error = ''
+
+        self.text_analysis = text_analysis
+        await self.new_view_object()
+
+    def model(self):
+        return {'namespace': self.namespace, 'desc': self.desc, 'script': self.script}
+
+    async def on_exec(self, sid, model):
+        self.__dict__.update(model)
+
+        self.execute()
+        # await self.emit('console', str(self.error), namespace=self.namespace)
+
+    async def on_console(self, sid, msg):
+        await self.emit('console', str(msg), namespace=self.namespace)
+
+    def execute(self):
+        self.error = ''
+        try:
+            exec(self.script)
+        except Exception as e:
+            self.error = e
+            print(e)
+
+
+class TextFileCompareModel(Model):
+    async def __init__(self, text_analysis, mode='normal'):
+        await super().__init__(text_analysis.namespace + ns.TEXTFILECOMPARE, mode)
+        self.parent = text_analysis
+        self.first_file_namespace = ''
+        self.second_file_namespace = ''
+
+        self.file_container = self.subscribe_namespace(ns.TEXTANALYSIS + ns.FILECONTAINER)
+        self.text_analysis = text_analysis
+
+    def model(self):
+        return {'namespace': self.namespace, 'first':  '', 'second':  '',
+                'files': list(self.file_container.text_files.keys())}
+
+    async def listener(self, subscribe_namespace):
+        await self.on_update_dialog('')
+
+    async def on_exec(self, sid, model):
+        self.__dict__.update(model)
+
+        first_file, second_file = self.compare()
+        await first_file.text_file_function.search_function.on_refresh_roles(sid)
+        await second_file.text_file_function.search_function.on_refresh_roles(sid)
+
+        m = self.model()
+        m['first'] = self.file_container.text_files[self.first_file_namespace].text_file_original.namespace
+        m['second'] = self.file_container.text_files[self.second_file_namespace].text_file_original.namespace
+        await self.emit('refresh', m, namespace=self.namespace)
+
+    def compare(self):
+        def self_clean_special_symbols(text, symbol):
+            text = re.sub(r'0x[\da-fA-F]+', symbol, text)
+            for ch in [':', '/','{','}','[',']','(',')','#','+','!',';',',','"','\'','@','`','$','^','&','|','-','.','=','\n']:
+                if ch in text:
+                    text = text.replace(ch,symbol)
+                    
+            text = re.sub(r'\d+', '', text)
+            text = re.sub(symbol+"+", symbol, text).strip()
+            return text
+
+        first_file = self.file_container.text_files[self.first_file_namespace]
+        second_file = self.file_container.text_files[self.second_file_namespace]
+
+        # compare search
+        for search_namespace in first_file.text_file_function.search_function.models.keys():
+            first_search_namespace = first_file.text_file_function.search_function.namespace + '/' + search_namespace.split('/')[-1]
+            second_search_namespace = second_file.text_file_function.search_function.namespace + '/' + search_namespace.split('/')[-1]
+            first_search_atom = first_file.text_file_function.search_function.models[first_search_namespace]
+            second_search_atom = second_file.text_file_function.search_function.models[second_search_namespace]
+
+            first_clean_lines = []
+            for unit in first_search_atom.res_search_units:
+                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]])
+                first_clean_lines.append(self_clean_special_symbols(string, ' '))
+            first_clean_lines = list(set(first_clean_lines))
+            first_search_atom.res_clean_lines = first_clean_lines
+
+            second_clean_lines = []
+            for unit in second_search_atom.res_search_units:
+                string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]])
+                second_clean_lines.append(self_clean_special_symbols(string, ' '))
+            second_clean_lines = list(set(second_clean_lines))
+            second_search_atom.res_clean_lines = second_clean_lines
+
+            first_special = []
+            for search_index, unit in enumerate(first_search_atom.res_search_units):
+                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]])
+                if self_clean_special_symbols(string, ' ') not in second_clean_lines:
+                    first_special.append({'identifier': first_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp'], 'text': string})
+
+            second_special = []
+            for search_index, unit in enumerate(second_search_atom.res_search_units):
+                string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]])
+                if self_clean_special_symbols(string, ' ') not in first_clean_lines:
+                    second_special.append({'identifier': second_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp'], 'text': string})
+
+            first_search_atom.res_compare_special_lines = first_special
+            first_search_atom.specials = list(pd.DataFrame(first_special)['global_index'].values) if len(first_special) > 0 else []
+            second_search_atom.res_compare_special_lines = second_special
+            second_search_atom.specials = list(pd.DataFrame(second_special)['global_index'].values) if len(second_special) > 0 else []
+        return first_file, second_file
+
+        # compare chart
+        # for identifier in first_file.text_file_function.chart_function.models.keys():
+        #     first_chart_atom = first_file.text_file_function.chart_function.models[identifier]
+        #     second_chart_atom = second_file.text_file_function.chart_function.models[identifier]
 
 
 class BatchInsightModel(BatchModel):
@@ -1922,94 +2033,6 @@ class BatchStatisticModel(BatchModel):
             sample[atom.identifier] = atom.result
         self.table = self.table.append(sample, ignore_index=True)
         return sample
-
-
-class TextFileCompareModel(Model):
-    async def __init__(self, text_analysis, mode='normal'):
-        await super().__init__(text_analysis.namespace + ns.TEXTFILECOMPARE, mode)
-        self.parent = text_analysis
-        self.first_file_namespace = ''
-        self.second_file_namespace = ''
-
-        self.file_container = self.subscribe_namespace(ns.TEXTANALYSIS + ns.FILECONTAINER)
-        self.text_analysis = text_analysis
-
-    def model(self):
-        return {'namespace': self.namespace, 'first':  '', 'second':  '',
-                'files': list(self.file_container.text_files.keys())}
-
-    async def listener(self, subscribe_namespace):
-        await self.on_update_dialog('')
-
-    async def on_exec(self, sid, model):
-        self.__dict__.update(model)
-
-        first_file, second_file = self.compare()
-        await first_file.text_file_function.search_function.on_refresh_roles(sid)
-        await second_file.text_file_function.search_function.on_refresh_roles(sid)
-
-        m = self.model()
-        m['first'] = self.file_container.text_files[self.first_file_namespace].text_file_original.namespace
-        m['second'] = self.file_container.text_files[self.second_file_namespace].text_file_original.namespace
-        await self.emit('refresh', m, namespace=self.namespace)
-
-    def compare(self):
-        def self_clean_special_symbols(text, symbol):
-            text = re.sub(r'0x[\da-fA-F]+', symbol, text)
-            for ch in [':', '/','{','}','[',']','(',')','#','+','!',';',',','"','\'','@','`','$','^','&','|','-','.','=','\n']:
-                if ch in text:
-                    text = text.replace(ch,symbol)
-                    
-            text = re.sub(r'\d+', '', text)
-            text = re.sub(symbol+"+", symbol, text).strip()
-            return text
-
-        first_file = self.file_container.text_files[self.first_file_namespace]
-        second_file = self.file_container.text_files[self.second_file_namespace]
-
-        # compare search
-        for search_namespace in first_file.text_file_function.search_function.models.keys():
-            first_search_namespace = first_file.text_file_function.search_function.namespace + '/' + search_namespace.split('/')[-1]
-            second_search_namespace = second_file.text_file_function.search_function.namespace + '/' + search_namespace.split('/')[-1]
-            first_search_atom = first_file.text_file_function.search_function.models[first_search_namespace]
-            second_search_atom = second_file.text_file_function.search_function.models[second_search_namespace]
-
-            first_clean_lines = []
-            for unit in first_search_atom.res_search_units:
-                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]])
-                first_clean_lines.append(self_clean_special_symbols(string, ' '))
-            first_clean_lines = list(set(first_clean_lines))
-            first_search_atom.res_clean_lines = first_clean_lines
-
-            second_clean_lines = []
-            for unit in second_search_atom.res_search_units:
-                string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]])
-                second_clean_lines.append(self_clean_special_symbols(string, ' '))
-            second_clean_lines = list(set(second_clean_lines))
-            second_search_atom.res_clean_lines = second_clean_lines
-
-            first_special = []
-            for search_index, unit in enumerate(first_search_atom.res_search_units):
-                string = '\n'.join(first_file.lines[unit['range'][0]:unit['range'][1]])
-                if self_clean_special_symbols(string, ' ') not in second_clean_lines:
-                    first_special.append({'identifier': first_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp'], 'text': string})
-
-            second_special = []
-            for search_index, unit in enumerate(second_search_atom.res_search_units):
-                string = '\n'.join(second_file.lines[unit['range'][0]:unit['range'][1]])
-                if self_clean_special_symbols(string, ' ') not in first_clean_lines:
-                    second_special.append({'identifier': second_search_atom.identifier, 'global_index':unit['range'][0], 'search_index': search_index, 'timestamp': unit['timestamp'], 'text': string})
-
-            first_search_atom.res_compare_special_lines = first_special
-            first_search_atom.specials = list(pd.DataFrame(first_special)['global_index'].values) if len(first_special) > 0 else []
-            second_search_atom.res_compare_special_lines = second_special
-            second_search_atom.specials = list(pd.DataFrame(second_special)['global_index'].values) if len(second_special) > 0 else []
-        return first_file, second_file
-
-        # compare chart
-        # for identifier in first_file.text_file_function.chart_function.models.keys():
-        #     first_chart_atom = first_file.text_file_function.chart_function.models[identifier]
-        #     second_chart_atom = second_file.text_file_function.chart_function.models[identifier]
 
 
 class GlobalChartModel(Model):

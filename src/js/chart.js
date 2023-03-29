@@ -1,4 +1,3 @@
-import * as echarts from 'echarts'
 import { Component } from './element'
 import { Dialog } from './dialog'
 
@@ -502,77 +501,4 @@ class ChartAtomComponentSequentialChart extends SequentialChart
 	}
 }
 
-class GlobalChartComponentSequentialChartDialog extends Dialog
-{
-    constructor(globalChartView){
-        super(globalChartView.container)
-        this.subContainer.style.width = '90%' 
-        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
-
-        this.globalChartComponentSequentialChart = new GlobalChartComponentSequentialChart(this)
-    }
-
-	refresh(model){
-		this.globalChartComponentSequentialChart.refresh(model)
-	}
-
-	clear(){
-		this.globalChartComponentSequentialChart.clear()
-	}
-
-	resize(){
-		this.globalChartComponentSequentialChart.chart.resize({height:`${document.body.offsetHeight - 150}px`, width:`${parseInt(document.body.offsetWidth * 0.9)}px`})
-	}
-}
-
-class GlobalChartComponentSequentialChart extends SequentialChart
-{
-    constructor(dialog){
-        super(dialog.subContainer)
-
-        this.cancel = this.createElementButton('CANCEL')
-        this.cancel.style.backgroundColor = 'red'
-        this.cancel.style.float = 'right'
-        this.cancel.onclick = function(){dialog.hidden()}
-        this.bottomBtnSets.appendChild(this.cancel)
-    }
-
-	refresh(model){
-		super.refresh(model.select_lines)
-		this.setToolBox()
-		this.chart.setOption(this.option, true)
-		// this.bindChartClickEvent()
-	}
-
-	drawLines(){
-		let that = this
-		// package line
-		if (Object.keys(this.selectedLines).length == 0) {
-			this.option['yAxis'] = [{'type':'value'}]
-		}
-		Object.keys(this.selectedLines).forEach((line) => {
-			if (this.selectedLines[line].length > 0){
-				if (this.selectedLines[line][0].type == 'mark'){
-					this.setMarkLine(line, this.selectedLines[line])
-				}else{
-					this.setLine(line, this.selectedLines[line])
-				}
-			}
-		})
-	}
-
-	bindChartClickEvent(){
-		let that = this
-
-		// bind click event and paint
-		this.chart.on('click', function(params) { 
-			console.log(params)
-		});
-	}
-
-	jump(params){
-
-	}
-}
-
-export {GlobalChartComponentSequentialChartDialog, InsightAtomComponentSequentialChart, ChartAtomComponentSequentialChart}
+export {InsightAtomComponentSequentialChart, ChartAtomComponentSequentialChart}

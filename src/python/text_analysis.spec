@@ -1,15 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_data_files
-from PyInstaller.utils.hooks import collect_submodules
-from PyInstaller.utils.hooks import copy_metadata
-
 datas = []
-datas += collect_data_files('en_core_web_sm')
-datas += copy_metadata('en_core_web_sm')
 
 hiddenimports = []
-hiddenimports += collect_submodules('en_core_web_sm')
 hiddenimports += [
         'engineio.async_drivers.aiohttp',
         'engineio.async_aiohttp',
