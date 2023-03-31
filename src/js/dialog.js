@@ -172,7 +172,7 @@ class SearchAtomComponentDialog extends Dialog
         this.expExtractUl = this.createElementUl()
         
         header = this.createElementHeader('Extract Key Value Express(Python Parse)')
-        header.appendChild(this.createElementAHref(' Document', 'https://docs.python.org/3/library/re.html'))
+        header.appendChild(this.createElementAHref(' Document', 'https://pypi.org/project/parse/'))
         this.subContainer.appendChild(header)
         this.subContainer.appendChild(this.expExtract)
         this.subContainer.appendChild(addExpExtract)
@@ -214,8 +214,8 @@ class SearchAtomComponentDialog extends Dialog
         this.subContainer.appendChild(this.cancel)
     }
 
-    search(){
-        let model = {
+    model(){
+        return {
             namespace: this.searchAtomView.namespace,
             identifier: this.identifier.value,
             desc: this.desc.value,
@@ -226,8 +226,12 @@ class SearchAtomComponentDialog extends Dialog
             exp_extract: this.getExpExtractList(),
             exp_mark: this.getExpMarkList(),
             role_path: this.rolePath.value,
+            is_active: this.searchAtomView.show.table.style.display === "none" ? false : true
         }
-        this.searchAtomView.controlExec(model)
+    }
+
+    search(){ 
+        this.searchAtomView.controlExec(this.model())
     }
 
     update(model){
@@ -462,7 +466,7 @@ class StatisticAtomComponentDialog extends Dialog
     constructor(statisticAtomView){
         super(statisticAtomView.container)
         this.statisticAtomView = statisticAtomView
-
+        this.subContainer.style.width = '80%'
         this.identifier = ''
         this.desc = ''
         this.script = ''
@@ -538,15 +542,19 @@ class StatisticAtomComponentDialog extends Dialog
     //     }
     // }
 
-    statistic(){
-        let model = {
+    model(){
+        return {
             namespace: this.statisticAtomView.namespace,
             identifier: this.identifier.value,
             desc: this.desc.value,
             script: this.script.getValue(),
             role_path: this.rolePath.value,
+            is_active: this.statisticAtomView.show.container.style.display === "none" ? false : true
         }
-        this.statisticAtomView.controlExec(model)
+    }
+
+    statistic(){
+        this.statisticAtomView.controlExec(this.model())
     }
 
     statisticTest(){
@@ -825,30 +833,41 @@ class ScriptDialog extends Dialog
         super(scriptView.container)
         this.scriptView = scriptView
 
+        this.subContainer.style.width = '80%'
+        this.subContainer.style.overflow = 'hidden'
+        this.container.style.overflow = 'hidden'
         this.desc = ''
         this.script = ''
         this.init()
+    }
+
+    model(){
+        return {script: [this.script.getValue()]}
     }
 
     init(){
         let that = this
 
         // description
-        this.desc = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Script Description'))
-        this.subContainer.appendChild(this.desc)
-        this.subContainer.appendChild(this.createElementHr())
+        // this.desc = this.createElementTextInput()
+        // this.subContainer.appendChild(this.createElementHeader('Script Description'))
+        // this.subContainer.appendChild(this.desc)
+        // this.subContainer.appendChild(this.createElementHr())
 
         //  python script 
-        var textarea = this.createElementTextarea()
+        this.textarea = this.createElementTextarea()
         this.subContainer.appendChild(this.createElementHeader('Python Script'))
-        this.subContainer.appendChild(textarea)
-        this.script = this.createPythonCodeMirror(textarea)
+        this.subContainer.appendChild(this.textarea)
+        this.script = this.createPythonCodeMirror(this.textarea)
 
         //  console
-        // this.console = this.createElementTextarea()
-        // this.subContainer.appendChild(this.createElementHeader('Console'))
-        // this.subContainer.appendChild(this.console)
+        this.console = this.createElementTextarea()
+        this.console.style.height = '150px'
+        this.console.style.backgroundColor = 'black'
+        this.console.style.color = 'white'
+        this.console.style.fontSize = '12px'
+        this.subContainer.appendChild(this.createElementHeader('Console'))
+        this.subContainer.appendChild(this.console)
 
         // execute and cancel button
         this.apply = this.createElementButton('EXECUTE')
@@ -867,21 +886,23 @@ class ScriptDialog extends Dialog
 
     log(msg){
         this.console.value = this.console.value != '' ? this.console.value + '\n' + msg : msg
+        this.console.scrollTop = this.console.scrollHeight
     }
 
     update(model){
-        this.desc.value = model.desc
-        this.script.setValue(model.script)
-        this.script.refresh()
+        // this.desc.value = model.desc
+        this.script.setValue(model.script[0])
+        this.script.setSize(null, parseInt(document.body.offsetHeight / 2))
+        let that = this
+        setTimeout(function() {
+            that.script.refresh()
+        }, 100)
+        this.script.scrollIntoView({ line: 0, ch: 0 }, 0)
     }
 
     run(){
-        let model = {
-            desc: this.desc.value,
-            script: this.script.getValue()
-        }
-
-        this.scriptView.controlExec(model)
+        this.console.value = ''
+        this.scriptView.controlExec(this.model())
     }
 }
 
@@ -1056,9 +1077,6 @@ class ShareDownloadDialog extends Dialog
         this.fileContainerView = fileContainerView
 
         this.configs = []
-        if (process.env.NODE_ENV === 'production') {
-            this.init()
-        }
     }
 
     async init(){

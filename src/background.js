@@ -124,18 +124,39 @@ async function createWindow() {
               win.webContents.send('import-config')
             }
           },
-          // {
-          //   label: 'Save Config',
-          //   accelerator: 'CommandOrControl+S',
-          //   click: () => {
-          //     win.webContents.send('save-config')
-          //   }
-          // },
+          {
+            label: 'Save Config',
+            accelerator: 'CommandOrControl+S',
+            click: () => {
+              win.webContents.send('save-config')
+            }
+          },
           {
             label: 'Export Config',
             accelerator: 'CommandOrControl+E',
             click: () => {
               win.webContents.send('export-config')
+            }
+          },
+          {
+            label: 'Import Script',
+            accelerator: 'Alt+CommandOrControl+I',
+            click: () => {
+              win.webContents.send('import-script')
+            }
+          },
+          {
+            label: 'Save Script',
+            accelerator: 'Alt+CommandOrControl+S',
+            click: () => {
+              win.webContents.send('save-script')
+            }
+          },
+          {
+            label: 'Export Script',
+            accelerator: 'Alt+CommandOrControl+E',
+            click: () => {
+              win.webContents.send('export-script')
             }
           },
           { type: 'separator' },
@@ -256,23 +277,6 @@ async function createWindow() {
           }
         ]
       },
-      // {
-      //   label: 'Ericsson',
-      //   submenu: [
-      //     {
-      //       label: 'DCGM Analysis',
-      //       click: () => {
-      //         win.webContents.send('dcgm-analysis')
-      //       }
-      //     },
-      //     {
-      //       label: 'Telog Analysis',
-      //       click: () => {
-      //         win.webContents.send('telog-analysis')
-      //       }
-      //     }
-      //   ]
-      // },
       {
         label: 'View',
         submenu: [
@@ -290,23 +294,13 @@ async function createWindow() {
   ]
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
-
-  let options = {
-    // See place holder 1 in above image
-    title : "Select Text File", 
-    // See place holder 3 in above image
-    buttonLabel : "Select",
-    // See place holder 4 in above image
-    // filters :[
-    //   {name: 'Images', extensions: ['jpg', 'png', 'gif']},
-    //   {name: 'Movies', extensions: ['mkv', 'avi', 'mp4']},
-    //   {name: 'Custom File Type', extensions: ['as']},
-    //   {name: 'All Files', extensions: ['*']}
-    // ],
-    properties: ['openFile', 'multiSelections']
-  }
   
   ipcMain.handle('open-file', async () => {
+    let options = {
+      title : "Select Text File", 
+      buttonLabel : "Select",
+      properties: ['openFile', 'multiSelections']
+    }
     const result = await dialog.showOpenDialog(win, options)
     return result
   })
@@ -319,6 +313,15 @@ async function createWindow() {
   })
 
   ipcMain.handle('import-config', async () => {
+    let options = {
+      title : "Select Config File", 
+      buttonLabel : "Select",
+      filters :[
+        {name: 'Config File', extensions: ['ecfg']}
+      ],
+      properties: ['openFile']
+    }
+
     const file = await dialog.showOpenDialog(win, options)
     var content = []
     if (!file.canceled) {
@@ -332,14 +335,14 @@ async function createWindow() {
   ipcMain.handle('export-config', async (event, config) => {
     const file = await dialog.showSaveDialog(win, {
                     title: 'Select the Path to save config',
-                    defaultPath: path.join(__dirname, './assets/config.txt'),
+                    defaultPath: path.join(__dirname, './assets/config.ecfg'),
                     buttonLabel: 'Save',
                     // Restricting the user to only Text Files.
-                    // filters: [
-                    //     {
-                    //         name: 'Text Files',
-                    //         extensions: ['txt', 'docx']
-                    //     }, ],
+                    filters: [
+                        {
+                            name: 'Config File',
+                            extensions: ['ecfg']
+                        }, ],
                     properties: []
                 })
 
@@ -349,17 +352,71 @@ async function createWindow() {
         fs.writeFile(file.filePath.toString(), 
             config, function (err) {
             if (err) throw err;
-            console.log('Saved!')
+            console.log('Config Saved!')
         })
     }
-    return file
+    return file.filePath
   })
 
   ipcMain.handle('save-config', async (event, filepath, config) => {
     fs.writeFile(filepath, 
       config, function (err) {
       if (err) throw err;
-          console.log('Saved!')
+          console.log('Config Saved!')
+      })
+  })
+
+  ipcMain.handle('import-script', async () => {
+    let options = {
+      title : "Select Script File", 
+      buttonLabel : "Select",
+      filters :[
+        {name: 'Script File', extensions: ['escp']}
+      ],
+      properties: ['openFile']
+    }
+
+    const file = await dialog.showOpenDialog(win, options)
+    var content = []
+    if (!file.canceled) {
+        content = [file.filePaths[0], fs.readFileSync(file.filePaths[0], 'utf-8')]
+    }else{
+        content = ['', '']
+    }
+    return content[0]
+  })
+
+  ipcMain.handle('export-script', async (event, script) => {
+    const file = await dialog.showSaveDialog(win, {
+                    title: 'Select the Path to save script',
+                    defaultPath: path.join(__dirname, './assets/config.escp'),
+                    buttonLabel: 'Save',
+                    // Restricting the user to only Text Files.
+                    filters: [
+                        {
+                            name: 'Script File',
+                            extensions: ['escp']
+                        }, ],
+                    properties: []
+                })
+
+    // Stating whether dialog operation was cancelled or not.
+    if (!file.canceled) {
+        // Creating and Writing to the sample.txt file
+        fs.writeFile(file.filePath.toString(), 
+            script, function (err) {
+            if (err) throw err;
+            console.log('Script Saved!')
+        })
+    }
+    return file.filePath
+  })
+
+  ipcMain.handle('save-script', async (event, filepath, script) => {
+    fs.writeFile(filepath, 
+      script, function (err) {
+      if (err) throw err;
+          console.log('Script Saved!')
       })
   })
 

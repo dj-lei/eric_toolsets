@@ -29,7 +29,7 @@ from types import SimpleNamespace
 # import en_core_web_sm
 # nlp = en_core_web_sm.load()
 
-def createUuid4():
+def create_uuid4():
     return str(uuid.uuid4()).replace('-','')
 
 def json_to_object(json_data):

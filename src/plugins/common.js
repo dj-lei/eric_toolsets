@@ -75,12 +75,24 @@ export default {
       return res;
     },
 
-    exportJosnToLocalTxt(content, fileName){
-      var a = document.createElement("a");
-      var file = new Blob([JSON.stringify(content)], {type: 'text/plain'});
-      a.href = URL.createObjectURL(file);
-      a.download = fileName;
-      a.click();
+    promptSuccess(msg){
+      var prompt = document.getElementById('prompt')
+      prompt.style.backgroundColor = 'green'
+      prompt.innerHTML = msg
+      prompt.style.display = 'block'
+      setTimeout(() => {
+        prompt.style.display = 'none'
+      }, 3000)
     },
+
+    promptError(msg){
+      var prompt = document.getElementById('prompt')
+      prompt.style.backgroundColor = 'red'
+      prompt.innerHTML = msg
+      prompt.style.display = 'block'
+      setTimeout(() => {
+        prompt.style.display = 'none'
+      }, 3000)
+    }
 }
 

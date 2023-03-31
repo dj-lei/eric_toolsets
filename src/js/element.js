@@ -8,6 +8,7 @@ import 'codemirror/mode/python/python'
 import 'codemirror/addon/hint/show-hint'
 import 'codemirror/addon/hint/show-hint.css'
 
+const { shell } = require('electron')
 const server = "http://127.0.0.1:8000"
 
 class Element
@@ -97,6 +98,7 @@ class View extends Element
 {
     constructor(namespace, position){
         super(position)
+        this.model = {}
         this.namespace = namespace
         this.container.id = this.namespace
         this.initOn()
@@ -124,6 +126,14 @@ class View extends Element
 
     controlDelete(){
         this.socket.emit("delete")
+    }
+
+    controlSync(){
+        this.socket.emit("sync", this.model)
+    }
+
+    onSync(model){
+        this.model = model
     }
 
     onReconnect(namespace){
@@ -161,6 +171,7 @@ class View extends Element
     }
 
     onUpdateDialog(model){
+        this.model = model
         this.dialog.update(model)
     }
 
@@ -227,6 +238,19 @@ class ListView extends View
             }
         }
         this.dialog.hidden()
+    }
+
+    controlActive(){
+        this.socket.emit("active")
+    }
+    
+    onDeactive(){
+        this.show.hidden()
+    }
+
+    onActive(){
+        this.show.display()
+        this.container.scrollIntoView({ behavior: 'smooth' })
     }
 
     onRefresh(model){
@@ -322,10 +346,19 @@ class Component extends Element
 
     createElementAHref(name, href){
         var a = document.createElement('a')
-        a.style.fontSize = '10px'
+        a.style.fontSize = '16px'
         a.style.fontWeight = 'bold'
-        a.innerHTML = name
-        a.href = href
+        a.style.color = 'rgb(135, 206, 235)'
+        // a.style.textDecoration = 'underline'
+        a.textContent = name
+        // a.href = href
+        a.addEventListener('click', function(event) {
+            event.preventDefault();
+            shell.openExternal(href)
+        });
+        a.addEventListener('mouseover', function(event) {
+            this.style.cursor = 'pointer';
+        });
         return a
     }
 

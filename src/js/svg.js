@@ -885,15 +885,19 @@ class ChartAtomComponentSvgDialog extends Dialog
         this.subContainer.appendChild(this.cancelBtn)
     }
 
-    apply(){
-        let model = {
+    model(){
+        return {
             namespace: this.chartAtomView.namespace,
             identifier: this.identifier.value,
             desc: this.desc.value,
             key_value_tree: this.chartAtomComponentSvg.data,
             role_path: this.rolePath.value,
+            is_active: this.chartAtomView.show.container.style.display === "none" ? false : true
         }
-        this.chartAtomView.controlExec(model)
+    }
+
+    apply(){
+        this.chartAtomView.controlExec(this.model())
     }
 
     update(model){

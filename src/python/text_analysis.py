@@ -2,10 +2,11 @@ from utils import *
 from special import take_apart_dcgm, take_apart_telog
 
 import socketio
+import asyncio
 from aiohttp import web
 from aiohttp.web_runner import GracefulExit
 from engineio.payload import Payload
-from asyncio import get_event_loop
+
 Payload.max_decode_packets = 40000
 
 sio = socketio.AsyncServer(cors_allowed_origins="*")
@@ -121,6 +122,9 @@ class Model(socketio.AsyncNamespace, AsyncObject):
         await self.on_disconnect(self.sid)
         # del sio.namespace_handlers[self.namespace]
 
+    async def on_sync(self, sid, model):
+        self.__dict__.update(model)
+
     async def send_message(self, sid, namespace, func_name, *args):
         await pub.send_message(sid, namespace, self.namespace, func_name, *args)
 
@@ -226,6 +230,15 @@ class ListModel(Model):
         await self.parent.is_publish_able(self.namespace)
         await self.emit('refresh', self.model(), namespace=self.namespace)
         await self.emit('stopLoader', namespace=self.namespace)
+        if self.is_active == True:
+            await self.on_active(sid)
+
+    async def on_active(self, sid):
+        await self.emit('active', namespace=self.namespace)
+
+    async def on_deactive(self, sid):
+        self.is_active = False
+        await self.emit('deactive', namespace=self.namespace)
 
 
 class BatchModel(Model):
@@ -424,24 +437,37 @@ class FileContainerModel(Model):
             self.text_files[new_file_namespace] = await TextFileModel(self, new_file_namespace, path, self.mode)
             await self.emit('newFile', self.text_files[new_file_namespace].model(), namespace=self.namespace)
             await self.on_display_file(sid, new_file_namespace)
+
+    async def on_delete_file(self, sid, namespace):
+        namespaces = list(self.text_files.keys())
+        index = namespaces.index(namespace)
+        if((index == 0)&(len(namespaces) == 1)):
+            self.active_text_file = ''
+        elif (index == 0):
+            index = index + 1
+            self.active_text_file = namespaces[index]
+        else:
+            index = index - 1
+            self.active_text_file = namespaces[index]
+        await self.text_files[namespace].on_delete(sid)
         
     def on_get_config(self, sid):
         config = self.text_files[self.active_text_file].on_get_config()
-        script = self.parent.script
-        config['script'] = {'desc': script.desc, 'script': script.script}
-        print(config)
         return Response(status.SUCCESS, msg.NONE, config).__dict__
+    
+    def on_get_script(self, sid):
+        return Response(status.SUCCESS, msg.NONE, self.parent.script.script).__dict__
 
+    async def on_load_script(self, sid, path):
+        with open(path) as f:
+            self.parent.script.__dict__.update(json.loads(f.read()))
+            self.parent.script.path = path
+        await self.parent.script.on_update_dialog(sid)
+        await self.parent.script.on_display_dialog(sid)
+    
     async def on_load_config(self, sid, path):
         if self.active_text_file != '':
             await self.text_files[self.active_text_file].on_load_config(sid, path)
-
-        with open(path) as f:
-            config = json.loads(f.read())
-            if config['script']['script'] != '':
-                self.parent.script.__dict__.update(config['script'])
-                await self.parent.script.on_update_dialog(sid)
-                await self.parent.script.on_display_dialog(sid)
 
     async def on_load_next_config(self, sid):
         await self.text_files[self.active_text_file].on_load_next_config(sid)
@@ -504,7 +530,7 @@ class TextFileModel(Model):
         self.data = {}
         self.path = path
         self.file_name = path.split('\\')[-1]
-        self.config = {}
+        self.config = ''
         self.load = ['search', 'chart', 'insight', 'statistic']
         self.load_order = 0
 
@@ -624,6 +650,7 @@ class TextFileModel(Model):
         self.load_order = 0
         with open(self.path) as f:
             self.config = json.loads(f.read())
+        await self.emit('sync', self.model(), namespace = self.namespace)
         await self.on_adjust_view_rate(sid, 0.5)
         await self.on_load_next_config(sid)
 
@@ -928,12 +955,8 @@ class SearchAtomModel(ListModel):
         #     self.search()
         #     await self.on_scroll('', 0)
 
-    async def on_refresh(self, sid):
-        await super().on_refresh(sid)
-        if self.is_active == True:
-            await self.on_active(sid)
-
     async def on_active(self, sid):
+        await super().on_active(sid)
         if self.parent.active_search_atom is not None:
             await self.parent.active_search_atom.on_deactive(sid)
 
@@ -941,11 +964,7 @@ class SearchAtomModel(ListModel):
         self.parent.active_search_atom = self
         await self.send_message(sid, self.get_text_file_original_namespace(), 'on_refresh_acitve')
         await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll')
-        await self.emit('active', namespace=self.namespace)
-
-    async def on_deactive(self, sid):
-        self.is_active = False
-        await self.emit('deactive', namespace=self.namespace)
+        
 
     async def on_scroll(self, sid, point):
         supple = 0
@@ -1668,32 +1687,74 @@ class ScriptModel(Model):
     async def __init__(self, text_analysis, mode='normal'):
         await super().__init__(text_analysis.namespace + ns.SCRIPT, mode)
         self.parent = text_analysis
-        self.desc = ''
-        self.script = ''
+        self.path = ''
+        self.script = []
         self.error = ''
 
         self.text_analysis = text_analysis
         await self.new_view_object()
 
     def model(self):
-        return {'namespace': self.namespace, 'desc': self.desc, 'script': self.script}
+        return {'namespace': self.namespace, 'path':self.path, 'script': self.script}
 
     async def on_exec(self, sid, model):
         self.__dict__.update(model)
 
-        self.execute()
+        await self.aexec()
         # await self.emit('console', str(self.error), namespace=self.namespace)
 
-    async def on_console(self, sid, msg):
+    async def on_console(self, sid=None, msg=None):
         await self.emit('console', str(msg), namespace=self.namespace)
 
-    def execute(self):
+    async def aexec(self):
         self.error = ''
         try:
-            exec(self.script)
+            exec(
+                f'async def __ex(self): ' +
+                ''.join(f'\n {l}' for l in self.script[0].split('\n'))
+            )
+            return await locals()['__ex'](self)
         except Exception as e:
             self.error = e
-            print(e)
+            await self.on_console(msg=f'{str(e)}')
+
+    async def batch_handle(self, dir_path, config_path):
+        table = pd.DataFrame()
+        for index, file_name in enumerate(iterate_files_in_directory(dir_path)):
+            new_file_namespace = self.text_analysis.file_container.namespace+'/'+file_name
+
+            text_file = await TextFileModel(self.text_analysis.file_container, new_file_namespace, dir_path+'\\'+file_name, mode = 'batch')
+            await text_file.on_load_all_config('', config_path)
+            sample = {'index': index, 'file_path':text_file.path, 'config_path':self.config_path, 'file_name': text_file.file_name}
+            
+            search_function = text_file.text_file_function.search_function
+            search_res = []
+            for search_namespace in search_function.models.keys():
+                search_res.append(search_function.models[search_namespace].model())
+            sample['search_atoms'] = search_res
+                
+            chart_function = text_file.text_file_function.chart_function
+            chart_res = []
+            for chart_namespace in chart_function.models.keys():
+                chart_res.append(chart_function.models[chart_namespace].model())
+            sample['chart_atoms'] = chart_res
+            
+            statistic_function = text_file.text_file_function.statistic_function
+            statistic_res = []
+            for statistic_namespace in statistic_function.models.keys():
+                statistic_res.append(statistic_function.models[statistic_namespace].model())
+            sample['statistic_atoms'] = statistic_res
+            
+            statistic_function = text_file.text_file_function.statistic_function
+            for statistic_namespace in statistic_function.models.keys():
+                atom = statistic_function.models[statistic_namespace]
+                sample[atom.identifier] = atom.result
+                
+            table = table.append(sample, ignore_index=True)
+            await text_file.on_delete('')
+            # print('Finish :', text_file.file_name, ' Index :', index)
+            await self.on_console(msg=f'Finish :{text_file.file_name} Index :{index}')
+        return table
 
 
 class TextFileCompareModel(Model):
@@ -1996,7 +2057,7 @@ class BatchStatisticModel(BatchModel):
         self.result_type = ''
 
         for index, path in enumerate(iterate_files_in_directory(self.dir_path)):
-            new_file_namespace = self.text_analysis.file_container.namespace+'/'+createUuid4()
+            new_file_namespace = self.text_analysis.file_container.namespace+'/'+create_uuid4()
             
             tmp_file = await TextFileModel(self.parent.file_container, new_file_namespace, self.dir_path+'\\'+path, 'batch')
             await tmp_file.on_load_all_config('', self.config_path)
@@ -2183,7 +2244,8 @@ if __name__ == '__main__':
     # freeze_support()
     # parallel = Parallel()
 
-    loop = get_event_loop()
+    loop = asyncio.get_event_loop()
     loop.run_until_complete(TextAnalysisModel('parallel'))
+    loop.close()
 
     web.run_app(app, host="127.0.0.1", port=8000)

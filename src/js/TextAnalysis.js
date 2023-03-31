@@ -10,7 +10,6 @@ import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctio
 import { TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog, ChartAtomComponentLineChart } from './svg'
 import { StatisticAtomComponentTextarea } from './textarea'
 import { TextFileOriginalComponentNavigate } from './navigate'
-// import { TextLogicFlow } from './flow'
 
 import common from '@/plugins/common'
 
@@ -332,12 +331,13 @@ class FileContainerView extends View
 {
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.FILECONTAINER}`, textAnalysisView.container)
+        this.parent = textAnalysisView
         this.textFileViews = {}
         this.activeTextFileView = ''
 
         this.show = new FileContainerComponentTab(this)
-        this.dcgmAnalysisDialog = new DCGMAnalysisDialog(this)
-        this.telogAnalysisDialog = new TelogAnalysisDialog(this)
+        // this.dcgmAnalysisDialog = new DCGMAnalysisDialog(this)
+        // this.telogAnalysisDialog = new TelogAnalysisDialog(this)
         this.shareDownloadDialog = new ShareDownloadDialog(this)
 
         let that = this
@@ -347,10 +347,13 @@ class FileContainerView extends View
         
             var filePaths = []
             var configPath = ''
+            var scriptPath = ''
             for (const f of event.dataTransfer.files) {
                 // Using the path attribute to get absolute file path
                 if (f.path.includes('.ecfg')) {
                     configPath = f.path
+                }else if (f.path.includes('.escp')) {
+                    scriptPath = f.path
                 }else{
                     filePaths.push(f.path)
                 }
@@ -360,6 +363,9 @@ class FileContainerView extends View
             }
             if (configPath != '') {
                 that.controlLoadConfig(configPath)
+            }
+            if (scriptPath != '') {
+                that.controlLoadScript(scriptPath)
             }
         })
         document.addEventListener('dragover', (e) => {
@@ -373,22 +379,45 @@ class FileContainerView extends View
                 that.controlNewFile(file.filePaths)
             }
         })
-        // ipcRenderer.on('save-config', async function () {
-        //     if (that.textFileViews[that.activeTextFileView].configPath == ''){
-        //         let file = await ipcRenderer.invoke('export-config', JSON.stringify(that.textFileViews[that.activeTextFileView].getConfig()))
-        //         that.textFileViews[that.activeTextFileView].configPath = file.filePath.toString()
-        //     }else{
-        //         await ipcRenderer.invoke('save-config', that.textFileViews[that.fileContainerView.activeTextFileView].configPath, JSON.stringify(that.fileContainerView.textFileViews[that.fileContainerView.activeTextFileView].getConfig()))
-        //     }
-        // })
-        ipcRenderer.on('export-config', async () => {
-            await that.controlGetConfig()
-        })
         ipcRenderer.on('import-config', async () => {
             let config = await ipcRenderer.invoke('import-config')
             if (config != '') {
                 that.controlLoadConfig(config)
             }
+        })
+        ipcRenderer.on('save-config', async function () {
+            if (that.textFileViews[that.activeTextFileView].model.config != ''){
+                await ipcRenderer.invoke('save-config', that.textFileViews[that.activeTextFileView].model.path, JSON.stringify(that.getAllFuncViewsConfig()))
+            }else{
+                let path = await ipcRenderer.invoke('export-config', JSON.stringify(that.getAllFuncViewsConfig()))
+                that.textFileViews[that.activeTextFileView].model.path = path
+                await that.textFileViews[that.activeTextFileView].controlSync()
+            }
+        })
+        ipcRenderer.on('export-config', async () => {
+            let path = await ipcRenderer.invoke('export-config', JSON.stringify(that.getAllFuncViewsConfig()))
+            that.textFileViews[that.activeTextFileView].model.path = path
+            await that.textFileViews[that.activeTextFileView].controlSync()
+        })
+        ipcRenderer.on('import-script', async () => {
+            let script = await ipcRenderer.invoke('import-script')
+            if (script != '') {
+                that.controlLoadScript(script)
+            }
+        })
+        ipcRenderer.on('save-script', async function () {
+            if (that.parent.scriptView.model.path){
+                await ipcRenderer.invoke('save-script', that.parent.scriptView.model.path, JSON.stringify(that.getScript()))
+            }else{
+                let path = await ipcRenderer.invoke('export-script', JSON.stringify(that.getScript()))
+                that.parent.scriptView.model.path = path
+                await that.parent.scriptView.controlSync()
+            }
+        })
+        ipcRenderer.on('export-script', async () => {
+            let path = await ipcRenderer.invoke('export-script', JSON.stringify(that.getScript()))
+            that.parent.scriptView.model.path = path
+            await that.parent.scriptView.controlSync()
         })
         ipcRenderer.on('new-search', () => {
             that.socket.emit("display_tmp_search_atom_dialog")
@@ -412,11 +441,33 @@ class FileContainerView extends View
             that.telogAnalysisDialog.display()
         })
         ipcRenderer.on('share-download', () => {
+            that.shareDownloadDialog.init()
             that.shareDownloadDialog.display()
         })
         ipcRenderer.on('share-upload', () => {
             that.shareDownloadDialog.upload()
         })
+    }
+
+    getAllFuncViewsConfig(){
+        var config = {'search':[], 'chart':[], 'statistic':[], 'insight': []}
+        var searchViews = this.textFileViews[this.activeTextFileView].textFileFunctionView.searchFunctionView.views
+        Object.keys(searchViews).forEach(namespace => {
+            config.search.push(searchViews[namespace].dialog.model())
+        })
+        var chartViews = this.textFileViews[this.activeTextFileView].textFileFunctionView.chartFunctionView.views
+        Object.keys(chartViews).forEach(namespace => {
+            config.chart.push(chartViews[namespace].dialog.model())
+        })
+        var statisticViews = this.textFileViews[this.activeTextFileView].textFileFunctionView.statisticFunctionView.views
+        Object.keys(statisticViews).forEach(namespace => {
+            config.statistic.push(statisticViews[namespace].dialog.model())
+        })
+        return config
+    }
+
+    getScript(){
+        return this.parent.scriptView.dialog.model()
     }
 
     controlNewFile(filePaths){
@@ -428,7 +479,7 @@ class FileContainerView extends View
     }
 
     controlDeleteFile(namespace){
-        this.textFileViews[namespace].controlDelete()
+        this.socket.emit("delete_file", namespace)
 
         var namespaces = Object.keys(this.show.tabs)
         var index = namespaces.indexOf(namespace)
@@ -458,6 +509,10 @@ class FileContainerView extends View
 
     controlLoadConfig(config){
         this.socket.emit("load_config", config)
+    }
+
+    controlLoadScript(script){
+        this.socket.emit("load_script", script)
     }
 
     controlSearch(model){
@@ -714,21 +769,8 @@ class SearchAtomView extends ListView
         })
     }
 
-    controlActive(){
-        this.socket.emit("active")
-    }
-
     controlTextClickEvent(params){
         this.socket.emit("text_click_event", params)
-    }
-
-    onDeactive(){
-        this.show.hidden()
-    }
-
-    onActive(){
-        this.show.display()
-        this.container.scrollIntoView({ behavior: 'smooth' })
     }
 }
 
