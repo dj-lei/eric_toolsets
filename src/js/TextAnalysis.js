@@ -437,15 +437,9 @@ class FileContainerView extends View
         ipcRenderer.on('dcgm-analysis', () => {
             that.dcgmAnalysisDialog.display()
         })
-        ipcRenderer.on('telog-analysis', () => {
-            that.telogAnalysisDialog.display()
-        })
-        ipcRenderer.on('share-download', () => {
-            that.shareDownloadDialog.init()
+        ipcRenderer.on('open-share', () => {
+            that.shareDownloadDialog.refresh()
             that.shareDownloadDialog.display()
-        })
-        ipcRenderer.on('share-upload', () => {
-            that.shareDownloadDialog.upload()
         })
     }
 

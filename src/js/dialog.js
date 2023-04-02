@@ -4,7 +4,6 @@ import urls from '@/plugins/urls'
 import { ipcRenderer } from 'electron'
 import { Component } from './element'
 
-
 class Dialog extends Component
 {
     constructor(position){
@@ -997,138 +996,127 @@ class DCGMAnalysisDialog extends Dialog
     }
 }
 
-class TelogAnalysisDialog extends Dialog
+class ShareDownloadDialog extends Dialog
 {
     constructor(fileContainerView){
         super(fileContainerView.container)
         this.fileContainerView = fileContainerView
-
-        this.telogDir = ''
-        this.saveDir = ''
-        this.telogFilter = ''
         this.init()
     }
 
     init(){
         let that = this
 
-        // Telog Directory
-        this.telogDir = this.createElementTextInput()
-        this.telogDir.style.width = '85%'
-        var browseTelogDir = this.createElementButton('BROWSE')
-        browseTelogDir.style.width = '15%'
-        browseTelogDir.onclick = function(){
-            that.browseFilesDirectory(function(path) {
-                that.telogDir.value = path
-            })
-        }
-        this.subContainer.appendChild(this.createElementHeader('Telog Directory'))
-        this.subContainer.appendChild(this.telogDir)
-        this.subContainer.appendChild(browseTelogDir)
+        var configFilter = this.createElementTextInput()
+        configFilter.placeholder = 'Input filter key word...'
+        var configHeader = this.createElementHeader('Config')
+        this.configsUl = this.createElementUl()
+        this.subContainer.appendChild(configHeader)
+        this.subContainer.appendChild(configFilter)
+        this.subContainer.appendChild(this.configsUl)
+        configFilter.addEventListener('keyup', function() {
+            var filter = this.value.toUpperCase();
+            var lis = that.configsUl.querySelectorAll('li')
+            for (var i = 0; i < lis.length; i++) {
+                var content = lis[i].getElementsByTagName('input')[0].value.toUpperCase();
+                if (content.indexOf(filter) > -1) { 
+                    lis[i].style.display = 'block';
+                } else { 
+                    lis[i].style.display = 'none';
+                }
+            }
+        })
 
-        // Save Directory
-        this.saveDir = this.createElementTextInput()
-        this.saveDir.style.width = '85%'
-        var browseSaveDir = this.createElementButton('BROWSE')
-        browseSaveDir.style.width = '15%'
-        browseSaveDir.onclick = function(){
-            that.browseFilesDirectory(function(path) {
-                that.saveDir.value = path
-            })
-        }
-        this.subContainer.appendChild(this.createElementHeader('Save Directory'))
-        this.subContainer.appendChild(this.saveDir)
-        this.subContainer.appendChild(browseSaveDir)
+        this.subContainer.appendChild(this.createElementHr())
+        var scriptFilter = this.createElementTextInput()
+        scriptFilter.placeholder = 'Input filter key word...'
+        var scriptHeader = this.createElementHeader('Script')
+        this.scriptsUl = this.createElementUl()
+        this.subContainer.appendChild(scriptHeader)
+        this.subContainer.appendChild(scriptFilter)
+        this.subContainer.appendChild(this.scriptsUl)
+        scriptFilter.addEventListener('keyup', function() {
+            var filter = this.value.toUpperCase();
+            var lis = that.scriptsUl.querySelectorAll('li')
+            for (var i = 0; i < lis.length; i++) {
+                var content = lis[i].getElementsByTagName('input')[0].value.toUpperCase();
+                if (content.indexOf(filter) > -1) { 
+                    lis[i].style.display = 'block';
+                } else { 
+                    lis[i].style.display = 'none';
+                }
+            }
+        })
 
-        // Filter condition
-        this.telogFilter = this.createElementTextInput()
-        this.telogFilter.style.width = '100%'
-        this.subContainer.appendChild(this.createElementHeader('Optional: Telog Filter Condition(Case sensitive, Comma delimited)'))
-        this.subContainer.appendChild(this.telogFilter)
+        this.downloadBtn = this.createElementButton('DOWNLOAD')
+        this.downloadBtn.style.width = "33%"
+        this.downloadBtn.onclick = function(){that.download()}
+        this.refreshBtn = this.createElementButton('REFRESH')
+        this.refreshBtn.style.width = "33%"
+        this.refreshBtn.style.backgroundColor = 'grey'
+        this.refreshBtn.onclick = function(){that.refresh()}
+        this.cancelBtn = this.createElementButton('CANCEL')
+        this.cancelBtn.style.width = "34%"
+        this.cancelBtn.style.backgroundColor = 'red'
+        this.cancelBtn.onclick = function(){that.hidden()}
 
-        // search and cancel button
-        this.apply = document.createElement('button')
-        this.apply.innerHTML = 'RUN'
-        this.apply.onclick = function(){that.run()}
-        this.cancel = document.createElement('button')
-        this.cancel.style.backgroundColor = 'red'
-        this.cancel.innerHTML = 'CANCEL'
-        this.cancel.onclick = function(){that.hidden()}
-
-        this.subContainer.appendChild(this.apply)
-        this.subContainer.appendChild(this.cancel)
+        this.subContainer.appendChild(this.downloadBtn)
+        this.subContainer.appendChild(this.refreshBtn)
+        this.subContainer.appendChild(this.cancelBtn)
     }
 
-    run(){
-        let params = {
-            telog_dir: this.telogDir.value,
-            save_dir: this.saveDir.value,
-            telog_filter: this.telogFilter.value
-        }
-
-        this.fileContainerView.controlTelogAnalysis(params)
+    addItem(ul, content){
+        var li = this.createElementLi()
+        li.style.border = '1px solid #bbb'
+        li.style.listStyle = 'none'
+        var div = this.createElementDiv()
+        div.style.width = '100%'
+        div.style.position = 'relative'
+        var input = this.createElementCheckboxInput()
+        input.style.display = 'inline-block'
+        input.style.cursor = 'pointer'
+        input.value = content
+        input.name = 'share'
+        input.id = content
+        var label = this.createElementLabel(content, content)
+        label.style.fontSize = '20px'
+        label.style.display = 'inline-block'
+        label.style.width = '95%'
+        label.style.cursor = 'pointer';
+        div.appendChild(input)
+        div.appendChild(label)
+        li.appendChild(div)
+        div.addEventListener('mouseover', function() {
+            this.style.backgroundColor = '#555'
+        });
+        div.addEventListener('mouseout', function() {
+            this.style.backgroundColor = '#333'
+        });
+        ul.append(li)
     }
-}
 
-class ShareDownloadDialog extends Dialog
-{
-    constructor(fileContainerView){
-        super(fileContainerView.container)
-        this.fileContainerView = fileContainerView
-
-        this.configs = []
-    }
-
-    async init(){
+    async query(){
         let that = this
-
         await http.get(urls.query_configs, {
             params: {
             },
             })
-          .then(response => {
-            this.configs = response.data.configs
-            this.configs.forEach((config) => {
-                var div = document.createElement("div")
-                div.style.width = '100%'
-                div.style.display = 'block'
-                div.style.position = 'relative'
-                var input = document.createElement("input")
-                input.style.float = 'left'
-                input.style.cursor = 'pointer'
-                input.type = 'radio'
-                input.value = config
-                input.name = 'share-download'
-                var label = document.createElement("h4")
-                label.style.color = '#FFF'
-                label.innerHTML = config
-                div.appendChild(input)
-                div.appendChild(label)
-                this.subContainer.appendChild(div)
-            })
-
-            let that = this
-            this.downloadBtn = this.createElementButton('DOWNLOAD')
-            this.downloadBtn.style.width = "33%"
-            this.downloadBtn.onclick = function(){that.download()}
-            this.refreshBtn = this.createElementButton('REFRESH')
-            this.refreshBtn.style.width = "33%"
-            this.refreshBtn.style.backgroundColor = 'grey'
-            this.refreshBtn.onclick = function(){that.refresh()}
-            this.cancelBtn = this.createElementButton('CANCEL')
-            this.cancelBtn.style.width = "34%"
-            this.cancelBtn.style.backgroundColor = 'red'
-            this.cancelBtn.onclick = function(){that.hidden()}
-    
-            this.subContainer.appendChild(this.downloadBtn)
-            this.subContainer.appendChild(this.refreshBtn)
-            this.subContainer.appendChild(this.cancelBtn)
+            .then(response => {
+                var contents = response.data.configs
+                contents.forEach((content) => {
+                    if(content.includes('.ecfg')){
+                        that.addItem(that.configsUl, content)
+                    }else if(content.includes('.escp')){
+                        that.addItem(that.scriptsUl, content)
+                    }
+                })
             })
             .catch(function (error) {
                 alert('Can not link to sharing service!')
                 that.hidden()
             })
     }
+
     async upload(){
         let content = await ipcRenderer.invoke('import-config')
         if(content[1] != ''){
@@ -1147,17 +1135,25 @@ class ShareDownloadDialog extends Dialog
     }
 
     async download(){
-        if (process.env.NODE_ENV == 'development'){
-            await ipcRenderer.invoke('downloadURL', {url:`http://localhost:8001/download_config/${this.container.querySelector('input[name="share-download"]:checked').value}`})
-        }else{
-            await ipcRenderer.invoke('downloadURL', {url:`http://10.166.152.87/share/download_config/${this.container.querySelector('input[name="share-download"]:checked').value}`})
-        }
+        let that = this
+        this.browseFilesDirectory(function(path) {
+            var downloadUrlList = []
+            that.container.querySelectorAll('input[name="share"]:checked').forEach(node => {
+                if (process.env.NODE_ENV == 'development'){
+                    downloadUrlList.push(`http://localhost:8001/download_config/${node.value}`)
+                }else{
+                    downloadUrlList.push(`http://10.166.152.87/share/download_config/${node.value}`)
+                }
+            })
+            ipcRenderer.invoke('downloadURL', path, downloadUrlList)
+        })
     }
 
     refresh(){
         this.deleteDomAllChilds(this.subContainer)
         this.init()
+        this.query()
     }
 }
 
-export {Dialog, SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, ScriptDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog}
+export {Dialog, SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, ScriptDialog, DCGMAnalysisDialog, ShareDownloadDialog}

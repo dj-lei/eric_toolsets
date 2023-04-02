@@ -370,7 +370,7 @@ class Component extends Element
 
     createElementLabel(text, id){
         var label = document.createElement('label')
-        label.for = id
+        label.setAttribute('for', id)
         label.innerHTML = text
         return label
     }

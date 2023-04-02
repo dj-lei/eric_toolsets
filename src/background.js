@@ -3,6 +3,7 @@
 import { app, protocol, BrowserWindow, dialog, ipcMain, Menu} from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
+import fetch from 'electron-fetch'
 
 const path = require('path')
 const fs = require('fs')
@@ -264,15 +265,9 @@ async function createWindow() {
         label: 'Share',
         submenu: [
           {
-            label: 'Upload Config',
+            label: 'Open Share',
             click: () => {
-              win.webContents.send('share-upload')
-            }
-          },
-          {
-            label: 'Download Config',
-            click: () => {
-              win.webContents.send('share-download')
+              win.webContents.send('open-share')
             }
           }
         ]
@@ -420,8 +415,23 @@ async function createWindow() {
       })
   })
 
-  ipcMain.handle('downloadURL', (event, payload) => {
-    win.webContents.downloadURL(payload.url)
+  ipcMain.handle('downloadURL', (event, savePath, downloadUrlList) => {
+    // win.webContents.downloadURL(payload.url)
+    downloadUrlList.forEach((downloadUrl) => {
+      const filename = path.basename(downloadUrl)
+      const filePath = path.join(savePath, filename)
+      const file = fs.createWriteStream(filePath)
+      fetch(downloadUrl)
+        .then((res) => {
+          res.body.pipe(file);
+          file.on('finish', () => {
+            console.log(`${filename} download success`);
+          });
+        })
+        .catch((err) => {
+          console.error(`${filename} download error：${err.message}`);
+        });
+    });
   })
 }
 
