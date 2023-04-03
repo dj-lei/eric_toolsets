@@ -1,3 +1,4 @@
+import common from '@/plugins/common'
 import { Component } from './element'
 
 class Navigate extends Component
@@ -32,24 +33,26 @@ class TextFileOriginalComponentNavigate extends Navigate
         var viewModeForm = this.createElementForm()
         viewModeForm.append(this.createElementLabel('ViewMode: '))
 
+        var uid = common.uuidv4()
         var textMode = this.createElementRadioInput()
         textMode.checked = true
-        textMode.id = 'textMode'
+        textMode.id = uid
         textMode.name = 'ViewMode'
         textMode.value = 'textMode'
         viewModeForm.append(textMode)
-        viewModeForm.append(this.createElementLabel('Text', 'textMode'))
+        viewModeForm.append(this.createElementLabel('Text', uid))
 
+        uid = common.uuidv4()
         var storyMode = this.createElementRadioInput()
-        storyMode.id = 'storyMode'
+        storyMode.id = uid
         storyMode.name = 'ViewMode'
         storyMode.value = 'storyMode'
         viewModeForm.append(storyMode)
-        viewModeForm.append(this.createElementLabel('Story', 'storyMode'))
+        viewModeForm.append(this.createElementLabel('Story', uid))
         this.topNavigate.appendChild(viewModeForm)
 
         let that = this
-        const mode = document.querySelectorAll('input[name="ViewMode"]')
+        const mode = viewModeForm.querySelectorAll('input[name="ViewMode"]')
         mode.forEach(option => {
             option.addEventListener('click', () => {
                 if (option.value == 'textMode') {
@@ -69,27 +72,30 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
     constructor(textFileOriginalComponentSvg){
         super(textFileOriginalComponentSvg.container)
         this.textFileOriginalComponentSvg = textFileOriginalComponentSvg
-
+        // var fileName = this.textFileOriginalComponentSvg.textFileOriginalView.model.file_name
+        // console.log(fileName)
         // Align Type Form
         var alignTypeForm = this.createElementForm()
         alignTypeForm.style.marginRight = '50px'
         // alignTypeForm.style.border = '1px solid black'
         alignTypeForm.append(this.createElementLabel('AlignType: '))
 
+        var uid = common.uuidv4()
         var alignTypeTimestamp = this.createElementRadioInput()
         alignTypeTimestamp.checked = true
-        alignTypeTimestamp.id = 'timestamp'
+        alignTypeTimestamp.id = uid
         alignTypeTimestamp.name = 'AlignType'
         alignTypeTimestamp.value = 'timestamp'
         alignTypeForm.append(alignTypeTimestamp)
-        alignTypeForm.append(this.createElementLabel('Timestamp', 'timestamp'))
+        alignTypeForm.append(this.createElementLabel('Timestamp', uid))
 
+        uid = common.uuidv4()
         var alignTypeGlobal = this.createElementRadioInput()
-        alignTypeGlobal.id = 'global'
+        alignTypeGlobal.id = uid
         alignTypeGlobal.name = 'AlignType'
         alignTypeGlobal.value = 'global'
         alignTypeForm.append(alignTypeGlobal)
-        alignTypeForm.append(this.createElementLabel('Global', 'global'))
+        alignTypeForm.append(this.createElementLabel('Global', uid))
         this.topNavigate.appendChild(alignTypeForm)
 
         // Line Type Form
@@ -97,27 +103,30 @@ class TextFileOriginalComponentSvgNavigate extends Navigate
         // LineTypeForm.style.border = '1px solid black'
         LineTypeForm.append(this.createElementLabel('LineType: '))
 
+        uid = common.uuidv4()
         var LineTypeDash = this.createElementRadioInput()
         LineTypeDash.checked = true
-        LineTypeDash.id = 'dash'
+        LineTypeDash.id = uid
         LineTypeDash.name = 'LineType'
         LineTypeDash.value = 'dash'
         LineTypeForm.append(LineTypeDash)
-        LineTypeForm.append(this.createElementLabel('Dash', 'dash'))
+        LineTypeForm.append(this.createElementLabel('Dash', uid))
 
+        uid = common.uuidv4()
         var LineTypeSolid = this.createElementRadioInput()
-        LineTypeSolid.id = 'solid'
+        LineTypeSolid.id = uid
         LineTypeSolid.name = 'LineType'
         LineTypeSolid.value = 'solid'
         LineTypeForm.append(LineTypeSolid)
-        LineTypeForm.append(this.createElementLabel('Solid', 'solid'))
+        LineTypeForm.append(this.createElementLabel('Solid', uid))
 
+        uid = common.uuidv4()
         var LineTypeDot = this.createElementRadioInput()
-        LineTypeDot.id = 'dot'
+        LineTypeDot.id = uid
         LineTypeDot.name = 'LineType'
         LineTypeDot.value = 'dot'
         LineTypeForm.append(LineTypeDot)
-        LineTypeForm.append(this.createElementLabel('Dot', 'dot'))
+        LineTypeForm.append(this.createElementLabel('Dot', uid))
 
         this.title = this.createElementLabel('Title', 'title')
         this.title.style.float = 'right'

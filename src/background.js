@@ -35,6 +35,10 @@ async function createWindow() {
     }
   })
   win.maximize()
+  win.webContents.on('did-finish-load', () => {
+    win.webContents.setZoomFactor(1.1)
+  });
+
   // auto update
   if (!process.env.WEBPACK_DEV_SERVER_URL) {
     autoUpdater.autoDownload = false

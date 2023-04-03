@@ -777,18 +777,18 @@ class TextFileCompareComponentDialog extends Dialog
         var firstFilesSelectContainer = this.createElementDiv()
         firstFilesSelectContainer.style.width = '100%'
         this.firstFilesSelect = this.createElementSelect()
-        this.files.forEach((x) => {
-            this.firstFilesSelect.options[this.firstFilesSelect.options.length] = new Option(x, x)
-        })  
+        // this.files.forEach((x) => {
+        //     this.firstFilesSelect.options[this.firstFilesSelect.options.length] = new Option(x, x)
+        // })  
         firstFilesSelectContainer.append(this.firstFilesSelect)
         firstFilesSelectContainer.append(this.createElementA(' First File Select'))
 
         var secondFilesSelectContainer = this.createElementDiv()
         secondFilesSelectContainer.style.width = '100%'
         this.secondFilesSelect = this.createElementSelect()
-        this.files.forEach((x) => {
-            this.secondFilesSelect.options[this.secondFilesSelect.options.length] = new Option(x, x)
-        })  
+        // this.files.forEach((x) => {
+        //     this.secondFilesSelect.options[this.secondFilesSelect.options.length] = new Option(x, x)
+        // })  
         secondFilesSelectContainer.append(this.secondFilesSelect)
         secondFilesSelectContainer.append(this.createElementA(' Second File Select'))
 
@@ -812,8 +812,8 @@ class TextFileCompareComponentDialog extends Dialog
         this.firstFilesSelect.innerHTML = ""
         this.secondFilesSelect.innerHTML = ""
         this.files.forEach((x) => {
-            this.firstFilesSelect.options[this.firstFilesSelect.options.length] = new Option(x, x)
-            this.secondFilesSelect.options[this.secondFilesSelect.options.length] = new Option(x, x)
+            this.firstFilesSelect.options[this.firstFilesSelect.options.length] = new Option(x.split('/')[x.split('/').length - 1], x)
+            this.secondFilesSelect.options[this.secondFilesSelect.options.length] = new Option(x.split('/')[x.split('/').length - 1], x)
         })
     }
 

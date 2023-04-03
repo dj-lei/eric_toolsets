@@ -250,7 +250,7 @@ class ListView extends View
 
     onActive(){
         this.show.display()
-        this.container.scrollIntoView({ behavior: 'smooth' })
+        // this.container.scrollIntoView({ behavior: 'smooth' })
     }
 
     onRefresh(model){
@@ -529,6 +529,7 @@ class Component extends Element
 
     createElementSelect(){
         var select = document.createElement('select')
+        select.style.width = '80%'
         return select
     }
 

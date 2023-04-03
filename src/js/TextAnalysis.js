@@ -272,7 +272,7 @@ class TextAnalysisView extends View
         if (args.class_name == 'TextFileView') {
             this.fileContainerView.textFileViews[args.namespace] = new TextFileView(args.namespace)
         }else if (args.class_name == 'TextFileOriginalView') {
-            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileOriginalView = new TextFileOriginalView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.namespace)
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileOriginalView = new TextFileOriginalView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.namespace, args.model)
         }else if (args.class_name == 'TextFileFunctionView') {
             this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView = new TextFileFunctionView(args.namespace)
         }else if (args.class_name == 'SearchFunctionView') {
@@ -473,8 +473,6 @@ class FileContainerView extends View
     }
 
     controlDeleteFile(namespace){
-        this.socket.emit("delete_file", namespace)
-
         var namespaces = Object.keys(this.show.tabs)
         var index = namespaces.indexOf(namespace)
         if((index == 0)&(namespaces.length == 1)){
@@ -488,7 +486,7 @@ class FileContainerView extends View
         }
         common.removeAll(this.show.tabs[namespace].ins)
         delete this.show.tabs[namespace]
-        
+        this.socket.emit("delete_file", namespace)
     }
 
     controlGetConfig(){
@@ -597,9 +595,10 @@ class TextFileView extends View
 
 class TextFileOriginalView extends View
 {
-    constructor(parent, namespace){
+    constructor(parent, namespace, model){
         super(namespace, common.getParentContainer(namespace))
         this.parent = parent
+        this.model = model
         this.container.style.border = '1px solid #ddd'
         this.navigate = new TextFileOriginalComponentNavigate(this)
         this.tableShow = new TextFileOriginalComponentTable(this)
@@ -844,7 +843,7 @@ class TextFileCompareView extends BatchView
     }
 
     onRefresh(model){
-        this.show.display()
+        // this.show.display()
         
         this.model = model
         var first = this.parent.fileContainerView.textFileViews[this.getTextFileViewNamespace(model.first)].textFileOriginalView

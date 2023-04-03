@@ -39,10 +39,10 @@ class PubSub(socketio.AsyncNamespace):
         self.room[namespace]['subscriber'].append(func)
         return self.room[namespace]['ins']
 
-    async def publish(self, namespace):
+    async def publish(self, namespace, publish_namespace):
         if namespace in self.room:
             for func in self.room[namespace]['subscriber']:
-                await func(namespace)
+                await func(publish_namespace)
 
     async def send_message(self, sid, namespace, origin_namespace, *args):
         if namespace in self.room:
@@ -95,7 +95,7 @@ class Model(socketio.AsyncNamespace, AsyncObject):
 
     async def publish(self, namespace): #notice subscriber refresh
         await self.parent.listener(namespace)
-        await pub.publish(self.namespace)
+        # await pub.publish(self.namespace)
 
     async def new_view_object(self):
         if self.mode == 'normal':
@@ -272,7 +272,7 @@ class Fellow(Model):
         return {}
 
     async def listener(self, publish_namespace):
-        pass
+        await self.publish(publish_namespace)
 
     async def on_load_config(self, sid, models):
         self.connected_count = 0
@@ -330,7 +330,10 @@ class Fellow(Model):
                         if index == len(roles) - 1:
                             self.text_file.roles.update_node(node, parent=parent, data = self.models[namespace].model())
                     else:
-                        self.text_file.roles.create_node(role, node, parent=parent, data = self.models[namespace].model() if index == len(roles) - 1 else None)
+                        if parent == '':
+                            self.text_file.roles.create_node(node, node, data=None)
+                        else:
+                            self.text_file.roles.create_node(role, node, parent=parent, data = self.models[namespace].model() if index == len(roles) - 1 else None)
 
         # self.text_file.roles.show()
         data_tree = convert_dict_format(self.text_file.roles.to_dict(sort=False, with_data=True))
@@ -342,6 +345,7 @@ class Fellow(Model):
 
         if self.config_count == 0:
             await super().publish(namespace)
+            await self.on_refresh_roles('')
 
     async def is_batch_able(self, namespace):
         if self.is_load_config:
@@ -355,7 +359,7 @@ class Fellow(Model):
                         func = getattr(self.models[namespace], self.__class__.__name__.split('Function')[0].lower())
                         func()
                 
-                await self.on_refresh_roles('')
+                # await self.on_refresh_roles('')
 
                 self.is_load_config = False
                 self.connected_count = 0
@@ -367,7 +371,7 @@ class Fellow(Model):
             else:
                 func = getattr(self.models[namespace], self.__class__.__name__.split('Function')[0].lower())
                 func()
-            await self.on_refresh_roles('')
+            # await self.on_refresh_roles('')
 
 
 class TextAnalysisModel(Model):
@@ -383,7 +387,7 @@ class TextAnalysisModel(Model):
         # self.global_chart = await GlobalChartModel(self, self.mode)
 
     async def listener(self, publish_namespace):
-        pass
+        await self.text_file_compare.listener(publish_namespace)
 
     async def on_display_batch_insight(self, sid):
         await self.batch_insight.on_display_dialog(sid)
@@ -539,7 +543,6 @@ class TextFileModel(Model):
             # self.lines = self.parent.parent.parallel.copy_to_shm(self.namespace, f.readlines())
 
         self.roles = Tree()
-        self.roles.create_node("root", "root", data=None)
 
         await self.new_view_object()
         self.text_file_original = await TextFileOriginalModel(self, mode)
@@ -958,14 +961,14 @@ class SearchAtomModel(ListModel):
     async def on_active(self, sid):
         await super().on_active(sid)
         if self.parent.active_search_atom is not None:
-            await self.parent.active_search_atom.on_deactive(sid)
+            if self.parent.active_search_atom.namespace != self.namespace:
+                await self.parent.active_search_atom.on_deactive(sid)
 
         self.is_active = True
         self.parent.active_search_atom = self
         await self.send_message(sid, self.get_text_file_original_namespace(), 'on_refresh_acitve')
         await self.send_message(sid, self.get_text_file_original_namespace(), 'on_scroll')
         
-
     async def on_scroll(self, sid, point):
         supple = 0
         if (self.point + point + self.range) > len(self.res_lines):
@@ -1773,13 +1776,19 @@ class TextFileCompareModel(Model):
 
     async def listener(self, subscribe_namespace):
         await self.on_update_dialog('')
+        if (self.first_file_namespace != '') & (self.second_file_namespace != ''):
+            if (self.first_file_namespace in subscribe_namespace) | (self.second_file_namespace in subscribe_namespace):
+                await self.execute()
 
     async def on_exec(self, sid, model):
         self.__dict__.update(model)
+        await self.execute()
+        await self.emit('displayShow', namespace=self.namespace)
 
+    async def execute(self):
         first_file, second_file = self.compare()
-        await first_file.text_file_function.search_function.on_refresh_roles(sid)
-        await second_file.text_file_function.search_function.on_refresh_roles(sid)
+        await first_file.text_file_function.search_function.on_refresh_roles('')
+        await second_file.text_file_function.search_function.on_refresh_roles('')
 
         m = self.model()
         m['first'] = self.file_container.text_files[self.first_file_namespace].text_file_original.namespace

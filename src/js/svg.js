@@ -255,7 +255,7 @@ class IndentedTree extends svgElement
             .selectAll("g")
             .data(nodes)
             .join("g")
-            .attr("id", d => d.id)
+            .attr("id", d => common.replaceSpecialSymbols(d.id, '_'))
             .attr("transform", d => `translate(${d.sx},${d.sy})`);
 
         node.append("circle")
@@ -266,7 +266,9 @@ class IndentedTree extends svgElement
         const text = node.append("text")
             .attr("dy", "-0.2em")
             // .attr("x", d => d.depth * nodeSize + 6)
-            .text(d => d.data.name)
+            .text(d => {
+                return d.data.name
+            })
             .attr("stroke", "white")
             .attr("fill", "white")
             .style("cursor", "pointer")
@@ -638,7 +640,7 @@ class TextFileOriginalComponentSvg extends svg
         }
 
         let that = this
-        var ls = new LineStory(this.svg.select(`#${d.id}`), d)
+        var ls = new LineStory(this.svg.select(`#${common.replaceSpecialSymbols(d.id, '_')}`), d)
         this.bindMouseEvent(ls.story, getStoryTooltipContent)
 
         if (ls.specials != '') {
@@ -818,8 +820,7 @@ class TextFileOriginalComponentSvg extends svg
             }
         })
         this.addBookmarkLine()
-
-        this.bottomTip.style("width", `${this.container.clientWidth}px`)
+        this.bottomTip.style("width", `${document.body.offsetWidth}px`)
             .style("height", '150px')
             .style("display", 'none')
             .style("position", "absolute")
@@ -832,6 +833,7 @@ class TextFileOriginalComponentSvg extends svg
             .style("border", "1px solid #aaa")
             .style("border-radius", "5px")
             .style("box-shadow", "2px 2px 2px #ccc")
+            .style("opacity", 0.8)
             .style("overflow", "auto")
         // console.log(this.svg.node())
     }
@@ -1206,8 +1208,9 @@ class TextFileCompareComponentSvgDialog extends Dialog
         this.subContainer.style.border = '1px solid #808080'
         this.subContainer.style.width = '100%' 
         this.subContainer.style.height = '100%'
+        // this.subContainer.style.pointerEvents = 'none'
         // this.subContainer.style.margin = '1% auto 1% auto'
-        this.subContainer.style.margin = '0'
+        this.subContainer.style.margin = 0
         this.subContainer.style.overflow = 'hidden'
 
         this.textFileCompareComponentSvgDialogNavigate = new TextFileCompareComponentSvgDialogNavigate(this)

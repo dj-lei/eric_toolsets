@@ -9,8 +9,8 @@ module.exports = defineConfig({
     electronBuilder: {
       nodeIntegration: true,
       builderOptions: {
-        productName: "ericsson_toolsets",
-        appId: "ericsson_toolsets",
+        productName: "narrator",
+        appId: "narrator",
         publish: [
           {
             "provider": "generic",
