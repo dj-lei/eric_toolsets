@@ -170,7 +170,7 @@ class SearchAtomComponentDialog extends Dialog
         addExpExtract.onclick = function(){that.addExpExtractItem()}
         this.expExtractUl = this.createElementUl()
         
-        header = this.createElementHeader('Extract Key Value Express(Python Parse)')
+        header = this.createElementHeader('Extract keyvalue express, describe state(Python Parse)')
         header.appendChild(this.createElementAHref(' Document', 'https://pypi.org/project/parse/'))
         this.subContainer.appendChild(header)
         this.subContainer.appendChild(this.expExtract)
@@ -188,7 +188,7 @@ class SearchAtomComponentDialog extends Dialog
         addExpMark.style.width = '15%'
         addExpMark.onclick = function(){that.addExpMarkItem()}
         this.expMarkUl = this.createElementUl()
-        this.subContainer.appendChild(this.createElementHeader('Mark Location Express(Python Regular)'))
+        this.subContainer.appendChild(this.createElementHeader('Mark Location Express, describe action(Python Regular)'))
         this.subContainer.appendChild(this.expMarkAlias)
         this.subContainer.appendChild(this.expMark)
         this.subContainer.appendChild(this.expMarkColor)
@@ -197,7 +197,7 @@ class SearchAtomComponentDialog extends Dialog
         this.subContainer.appendChild(this.createElementHr())
 
         this.rolePath = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
+        this.subContainer.appendChild(this.createElementHeader('Describe module/role hierarchy. (Optional)'))
         this.subContainer.appendChild(this.rolePath)
         this.subContainer.appendChild(this.createElementHr())
 
@@ -501,7 +501,7 @@ class StatisticAtomComponentDialog extends Dialog
         this.subContainer.appendChild(this.createElementHr())
 
         this.rolePath = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
+        this.subContainer.appendChild(this.createElementHeader('Describe module/role hierarchy. (Optional)'))
         this.subContainer.appendChild(this.rolePath)
 
         // search and cancel button
@@ -570,7 +570,12 @@ class StatisticAtomComponentDialog extends Dialog
         this.identifier.value = model.identifier
         this.desc.value = model.desc
         this.script.setValue(model.script)
-        this.script.refresh()
+        this.script.setSize(null, parseInt(document.body.offsetHeight / 2))
+        let that = this
+        setTimeout(function() {
+            that.script.refresh()
+        }, 100)
+        this.script.scrollIntoView({ line: 0, ch: 0 }, 0)
         this.rolePath.value = model.role_path
     }
 

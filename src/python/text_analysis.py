@@ -39,10 +39,10 @@ class PubSub(socketio.AsyncNamespace):
         self.room[namespace]['subscriber'].append(func)
         return self.room[namespace]['ins']
 
-    async def publish(self, namespace, publish_namespace):
+    async def publish(self, namespace):
         if namespace in self.room:
             for func in self.room[namespace]['subscriber']:
-                await func(publish_namespace)
+                await func(namespace)
 
     async def send_message(self, sid, namespace, origin_namespace, *args):
         if namespace in self.room:
@@ -336,8 +336,9 @@ class Fellow(Model):
                             self.text_file.roles.create_node(role, node, parent=parent, data = self.models[namespace].model() if index == len(roles) - 1 else None)
 
         # self.text_file.roles.show()
-        data_tree = convert_dict_format(self.text_file.roles.to_dict(sort=False, with_data=True))
-        await self.text_file.text_file_original.on_refresh_story_lines(sid, data_tree)
+        if self.text_file.roles.depth() != 0:
+            data_tree = convert_dict_format(self.text_file.roles.to_dict(sort=False, with_data=True))
+            await self.text_file.text_file_original.on_refresh_story_lines(sid, data_tree)
 
     async def is_publish_able(self, namespace): #notice subscriber refresh
         if self.config_count > 0:
@@ -345,6 +346,7 @@ class Fellow(Model):
 
         if self.config_count == 0:
             await super().publish(namespace)
+            await pub.publish(self.namespace)
             await self.on_refresh_roles('')
 
     async def is_batch_able(self, namespace):
@@ -778,10 +780,11 @@ class TextFileOriginalModel(Model):
         self.words = []
         self.marks = []
         for key in res_key_value.keys():
-            if res_key_value[key]['type'] == 'mark':
-                self.marks.append(res_key_value[key])
-            else:
-                self.words.append(key)
+            if res_key_value[key] != {}:
+                if res_key_value[key]['type'] == 'mark':
+                    self.marks.append(res_key_value[key])
+                else:
+                    self.words.append(key)
         
     async def on_refresh_story_lines(self, sid, data_tree):
         self.data_tree = data_tree
@@ -1047,11 +1050,12 @@ class SearchAtomModel(ListModel):
         self.marks = []
         self.res_marks = {}
         for key in self.res_key_value.keys():
-            if self.res_key_value[key]['type'] == 'mark':
-                self.marks.append(self.res_key_value[key])
-                self.res_marks[key] = json.loads(pd.DataFrame(self.res_key_value[key]).to_json(orient='records'))
-            else:
-                self.words.append(key)
+            if self.res_key_value[key] != {}:
+                if self.res_key_value[key]['type'] == 'mark':
+                    self.marks.append(self.res_key_value[key])
+                    self.res_marks[key] = json.loads(pd.DataFrame(self.res_key_value[key]).to_json(orient='records'))
+                else:
+                    self.words.append(key)
 
         supple = 0
         if (self.point + self.range) > len(self.res_lines):
@@ -1063,6 +1067,14 @@ class SearchAtomModel(ListModel):
             return
 
         self.res_key_value = {}
+        for exp in self.exp_extract:
+            for s in re.findall('\{(.*?)\}', exp):
+                if s == 'timestamp':
+                    continue
+                if ':' in s:
+                    self.res_key_value[s.split(':')[0]] = {}
+                else:
+                    self.res_key_value[s] = {}
         tmp_timestamps = []
         for search_index, unit in enumerate(self.res_search_units):
             string = '\n'.join(self.text_file.lines[unit['range'][0]:unit['range'][1]])
@@ -1079,7 +1091,7 @@ class SearchAtomModel(ListModel):
                     for key in r.named.keys():
                         if key == 'timestamp':
                             continue
-                        if key not in self.res_key_value:
+                        if self.res_key_value[key] == {}:
                             self.res_key_value[key] = {'identifier': self.identifier, 'name':key, 'type': type(r.named[key]).__name__, 'global_index':[], 'search_index':[], 'text':[], 'value':[], 'timestamp':[]}
                         self.res_key_value[key]['global_index'].append(unit['range'][0]+self.backward_rows)
                         self.res_key_value[key]['search_index'].append(search_index)

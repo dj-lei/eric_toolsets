@@ -3,6 +3,7 @@ import common from '@/plugins/common'
 import { Component } from './element'
 import { Dialog } from './dialog'
 import { TextFileOriginalComponentSvgNavigate, TextFileCompareComponentSvgDialogNavigate, ChartAtomComponentLineChartNavigate } from './navigate'
+import { tickFormat } from "d3"
 
 const color = ['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab', '#91ca8c','#f49f42',
 '#d87c7c','#919e8b','#d7ab82','#6e7074','#61a0a8','#efa18d','#787464','#cc7e63','#724e58','#4b565b']
@@ -57,6 +58,32 @@ class svgElement
 {
     constructor(svg){
         this.svg = svg.append("g")
+    }
+}
+
+class XAxis extends svgElement
+{
+    constructor(svg, pixelWidth, lowerBound, upperBound, tickFormatFunc=null){
+        super(svg)
+        this.tickFormatFunc = tickFormatFunc
+        this.x = d3.scaleLinear().range([0, pixelWidth])
+        this.x.domain([lowerBound, upperBound])
+        this.xAxis = svg.append("g").attr("transform", "translate(0,10)")
+        this.xAxis.call(this.updateXAxis, this.x, {'k': 1})
+    }
+
+    updateXAxis(g, x, transform){
+        let that = this
+        var xA = d3.axisBottom(x).ticks(8 * transform.k)
+        g.call(xA.tickFormat(function(d) {
+                        if (!that.tickFormatFunc) {
+                            that.tickFormatFunc(d)
+                        }
+                    }))
+                .style('stroke', "#FFF")
+                .select(".domain")
+                .style('stroke', "#FFF")
+        g.selectAll('.tick line').style('stroke', "#FFF")
     }
 }
 
@@ -234,16 +261,44 @@ class Tree extends svgElement
 
 class IndentedTree extends svgElement
 {
-    constructor(svg, d){
+    constructor(svg, data){
         super(svg)
+        this.currentHeight = 0
+        this.intervalHeight = 10
 
-        this.d = d
-        const nodes = this.d.descendants()
+        this.data = data
+        var i = 0
+        var root = d3.hierarchy(this.data).eachBefore(d => {
+            d.id = d.name
+            d.index = i++
+            d.sy = this.currentHeight
+
+            if (d.data == null) {
+                d.sx = 0
+                d.height = LineStory.getHeight()
+                this.currentHeight = this.currentHeight + LineStory.getHeight() + this.intervalHeight
+            }else{
+                d.sx = x(d.start_x)
+                d.ex = x(d.end_x)
+
+                var chartX = d3.scaleLinear().range([0, d.ex - d.sx])
+                chartX.domain([d.sx, d.ex])
+                if (d.type == 'chart') {
+                    d.height = LineChart.getHeight()
+                    this.currentHeight = this.currentHeight + LineChart.getHeight() + this.intervalHeight
+                }else if(d.data.data.type == 'search'){
+                    d.height = LineStory.getHeight()
+                    this.currentHeight = this.currentHeight + LineStory.getHeight() + this.intervalHeight
+                }
+            }
+        })
+
+        const nodes = root.descendants()
         const link = this.svg.append("g")
             .attr("fill", "none")
             .attr("stroke", "#999")
             .selectAll("path")
-            .data(this.d.links())
+            .data(root.links())
             .join("path")
             .attr("d", d => `
                 M${d.source.sx},${d.source.sy}
@@ -267,7 +322,7 @@ class IndentedTree extends svgElement
             .attr("dy", "-0.2em")
             // .attr("x", d => d.depth * nodeSize + 6)
             .text(d => {
-                return d.data.name
+                return d.name
             })
             .attr("stroke", "white")
             .attr("fill", "white")
@@ -286,19 +341,23 @@ class IndentedTree extends svgElement
 
 class LineChart extends svgElement
 {
-    constructor(svg, lines, lineType, width, height){
+    static height = 200
+    static getHeight() {
+      return LineChart.height
+    }
+
+    constructor(svg, data, lineType, width){
         super(svg)
 
         this.width = width
-        this.height = height
-        this.lines = lines
+        this.data = data
         this.lineType = lineType
         this.points = []
-        Object.keys(this.lines).forEach((name, index) =>{
-            if (this.lines[name][0].type == 'mark') {
-                this.addMark(this.lines[name], height)
+        Object.keys(this.data).forEach((name, index) =>{
+            if (this.data[name][0].type == 'mark') {
+                this.addMark(this.data[name], LineChart.height)
             }else{
-                this.addLine(this.lines[name], name, height, index)
+                this.addLine(this.data[name], name, LineChart.height, index)
             }
         })
     }
@@ -412,21 +471,26 @@ class LineChart extends svgElement
 
 class LineStory extends svgElement
 {
-    constructor(svg, d){
+    static height = 20
+    static getHeight() {
+      return LineStory.height
+    }
+
+    constructor(svg, data, topTriangles, bottomTriangles){
         super(svg)
-        this.d = d
-        this.marks = {}
-        this.specials = ''
+        this.data = data
+        this.topTriangles = {}
+        this.bottomTriangles = {}
         this.story = this.svg.append("rect")
                         .attr("x", 0)
-                        .attr("height", d.height)
-                        .attr("width", (((d.ex - d.sx < 1) & (d.ex - d.sx > 0)) | (d.data.data.count == 1)) ? 1 : d.ex - d.sx)
+                        .attr("height", data.height)
+                        .attr("width", (((data.ex - data.sx < 1) & (data.ex - data.sx > 0)) | (data.count == 1)) ? 1 : d.ex - d.sx)
                         .attr("fill", "#808080")
 
-        Object.keys(d.data.data.res_marks).forEach((key) => {
-            this.marks[key] = this.svg.append("g")
+        Object.keys(topTriangles).forEach((key) => {
+            this.topTriangles[key] = this.svg.append("g")
                                 .selectAll("path")
-                                .data(d.data.data.res_marks[key])
+                                .data(topTriangles[key])
                                 .enter()
                                     .append("path")
                                     .attr("transform", d => `translate(${d.x},0) rotate(60)`)
@@ -435,17 +499,17 @@ class LineStory extends svgElement
                                     .style("cursor", "pointer")
         })
 
-        if (d.data.data.res_compare_special_lines.length > 0) {
-            this.specials = this.svg.append("g")
+        Object.keys(bottomTriangles).forEach((key) => {
+            this.bottomTriangles[key] = this.svg.append("g")
                             .selectAll("path")
-                            .data(d.data.data.res_compare_special_lines)
+                            .data(bottomTriangles[key])
                             .enter()
                                 .append("path")
                                 .attr("transform", s => `translate(${s.x},${d.height})`)
                                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
                                 .style("fill", "#FFD700")
                                 .style("cursor", "pointer")
-        }
+        })
     }
 }
 
@@ -862,7 +926,7 @@ class ChartAtomComponentSvgDialog extends Dialog
 
         // name
         this.rolePath = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Parent Role, for story lines and hierarchy diagrams (Optional)'))
+        this.subContainer.appendChild(this.createElementHeader('Describe module/role hierarchy. (Optional)'))
         this.subContainer.appendChild(this.rolePath)
         this.subContainer.appendChild(this.createElementHr())
 
@@ -919,6 +983,7 @@ class ChartAtomComponentSvg extends svg
     constructor(dialog){
         super(dialog.subContainer)
         this.tree = new Tree(this.svg)
+        this.container.style.height = `${document.body.offsetHeight / 2}px`
     }
 
     update(data){

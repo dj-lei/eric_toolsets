@@ -826,6 +826,14 @@ class StatisticAtomView extends ListView
         this.model = model
         this.dialog.refreshTest(this.model)
     }
+
+    onDisplayDialog(){
+        super.onDisplayDialog()
+        let that = this
+        setTimeout(function() {
+            that.dialog.script.refresh()
+        }, 100)
+    }
 }
 
 class TextFileCompareView extends BatchView
