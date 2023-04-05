@@ -831,85 +831,6 @@ class TextFileCompareComponentDialog extends Dialog
     }
 }
 
-class ScriptDialog extends Dialog
-{
-    constructor(scriptView){
-        super(scriptView.container)
-        this.scriptView = scriptView
-
-        this.subContainer.style.width = '80%'
-        this.subContainer.style.overflow = 'hidden'
-        this.container.style.overflow = 'hidden'
-        this.desc = ''
-        this.script = ''
-        this.init()
-    }
-
-    model(){
-        return {script: [this.script.getValue()]}
-    }
-
-    init(){
-        let that = this
-
-        // description
-        // this.desc = this.createElementTextInput()
-        // this.subContainer.appendChild(this.createElementHeader('Script Description'))
-        // this.subContainer.appendChild(this.desc)
-        // this.subContainer.appendChild(this.createElementHr())
-
-        //  python script 
-        this.textarea = this.createElementTextarea()
-        this.subContainer.appendChild(this.createElementHeader('Python Script'))
-        this.subContainer.appendChild(this.textarea)
-        this.script = this.createPythonCodeMirror(this.textarea)
-
-        //  console
-        this.console = this.createElementTextarea()
-        this.console.style.height = '150px'
-        this.console.style.backgroundColor = 'black'
-        this.console.style.color = 'white'
-        this.console.style.fontSize = '12px'
-        this.subContainer.appendChild(this.createElementHeader('Console'))
-        this.subContainer.appendChild(this.console)
-
-        // execute and cancel button
-        this.apply = this.createElementButton('EXECUTE')
-        this.apply.style.width = '80%'
-        this.apply.onclick = function(){
-            // that.console.value = ''
-            that.run()
-        }
-        this.cancel = this.createElementButton('CANCEL')
-        this.cancel.style.backgroundColor = 'red'
-        this.cancel.style.width = '20%'
-        this.cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(this.apply)
-        this.subContainer.appendChild(this.cancel)
-    }
-
-    log(msg){
-        this.console.value = this.console.value != '' ? this.console.value + '\n' + msg : msg
-        this.console.scrollTop = this.console.scrollHeight
-    }
-
-    update(model){
-        // this.desc.value = model.desc
-        this.script.setValue(model.script[0])
-        this.script.setSize(null, parseInt(document.body.offsetHeight / 2))
-        let that = this
-        setTimeout(function() {
-            that.script.refresh()
-        }, 100)
-        this.script.scrollIntoView({ line: 0, ch: 0 }, 0)
-    }
-
-    run(){
-        this.console.value = ''
-        this.scriptView.controlExec(this.model())
-    }
-}
-
 class DCGMAnalysisDialog extends Dialog
 {
     constructor(fileContainerView){
@@ -1161,4 +1082,4 @@ class ShareDownloadDialog extends Dialog
     }
 }
 
-export {Dialog, SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, ScriptDialog, DCGMAnalysisDialog, ShareDownloadDialog}
+export {Dialog, SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, DCGMAnalysisDialog, ShareDownloadDialog}

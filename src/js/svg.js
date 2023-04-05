@@ -87,7 +87,7 @@ class XAxis extends svgElement
     }
 }
 
-class Tree extends svgElement
+class TidyTree extends svgElement
 {
     constructor(svg){
         super(svg)
@@ -513,6 +513,84 @@ class LineStory extends svgElement
     }
 }
 
+class ScatterPlot extends svgElement
+{
+    constructor(svg, data){
+        super(svg)
+        var xScale = d3.scaleLinear()
+            .domain([0, d3.max(data, function(d) { return d.x; })])
+            .range([height, 0]);
+
+        var yScale = d3.scaleLinear()
+            .domain([0, d3.max(data, function(d) { return d.y; })])
+            .range([height, 0]);
+
+        this.circles = svg.selectAll("circle")
+                        .data(data)
+                        .enter()
+                        .append("circle")
+                        .attr("cx", function(d) { return xScale(d.x); })
+                        .attr("cy", function(d) { return yScale(d.y); })
+                        .attr("r", function(d) { return rScale(d.r); })
+                        .attr("fill", function(d) { return colorScale(d.color); })
+    }
+}
+
+class SelectionRect extends svgElement
+{
+    constructor(svg){
+        super(svg)
+        var selectionRect = svg.append("rect")
+                            .attr("class", "selection")
+                            .attr("rx", 6)
+                            .attr("ry", 6)
+                            .attr("x", 0)
+                            .attr("y", 0)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .style("stroke", "#D4AF37")
+                            .style("fill", "#F8ECC2")
+                            .style("opacity", 0.5)
+                            .style("display", "none")
+        
+        svg.on("mousedown", startSelection);
+        svg.on("mousemove", moveSelection);
+        svg.on("mouseup", endSelection);
+        
+        function startSelection() {
+            selectionRect.attr("x", d3.event.pageX)
+                .attr("y", d3.event.pageY)
+                .style("display", "inline");
+        }
+        
+        function moveSelection() {
+            if (!d3.event.which) return;
+            var x = Math.min(d3.event.pageX, selectionRect.attr("x"));
+            var y = Math.min(d3.event.pageY, selectionRect.attr("y"));
+            var width = Math.abs(d3.event.pageX - selectionRect.attr("x"));
+            var height = Math.abs(d3.event.pageY - selectionRect.attr("y"));
+            selectionRect.attr("x", x)
+                .attr("y", y)
+                .attr("width", width)
+                .attr("height", height);
+            }
+            
+        function endSelection() {
+            selectionRect.style("display", "none");
+            var x0 = parseInt(selectionRect.attr("x"));
+            var y0 = parseInt(selectionRect.attr("y"));
+            var x1 = x0 + parseInt(selectionRect.attr("width"));
+            var y1 = y0 + parseInt(selectionRect.attr("height"));
+            
+            circles.classed("selected", function(d) {
+                var cx = xScale(d.x);
+                var cy = yScale(d.y);
+                return cx >= x0 && cx < x1 && cy >= y0 && cy < y1;
+            });
+        }
+    }
+}
+
 class TextFileOriginalComponentSvg extends svg
 {
     constructor(textFileOriginalView, container){
@@ -875,7 +953,7 @@ class TextFileOriginalComponentSvg extends svg
 
         const nodes = root.descendants()
         nodes.forEach(d => {
-            if (d.data.data != null){
+            if (d.data.data != null){   
                 if (d.data.data.type == 'chart') {
                     this.addLineChart(d)  
                 }else if(d.data.data.type == 'search'){
@@ -982,7 +1060,7 @@ class ChartAtomComponentSvg extends svg
 {
     constructor(dialog){
         super(dialog.subContainer)
-        this.tree = new Tree(this.svg)
+        this.tree = new TidyTree(this.svg)
         this.container.style.height = `${document.body.offsetHeight / 2}px`
     }
 
@@ -1218,48 +1296,111 @@ class ChartAtomComponentLineChart extends svg
 
 }
 
-class BatchInsightComponentSvgDialog extends Dialog
+class ScriptDialog extends Dialog
 {
-    constructor(batchInsightView){
-        super(batchInsightView.container)
-        this.batchInsightView = batchInsightView
-        this.subContainer.style.width = '90%' 
-        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
+    constructor(scriptView){
+        super(scriptView.container)
+        this.scriptView = scriptView
 
-        this.batchInsightComponentSvg = new BatchInsightComponentSvg(this)
+        this.subContainer.style.width = '80%'
+        this.subContainer.style.overflow = 'hidden'
+        this.container.style.overflow = 'hidden'
+        this.desc = ''
+        this.script = ''
+        this.init()
     }
 
-    clear(){
-        this.batchInsightComponentSvg.clear()
+    model(){
+        return {script: [this.script.getValue()]}
     }
 
-    refresh(data){
-        this.batchInsightComponentSvg.update(data)
+    init(){
+        let that = this
+
+        // description
+        // this.desc = this.createElementTextInput()
+        // this.subContainer.appendChild(this.createElementHeader('Script Description'))
+        // this.subContainer.appendChild(this.desc)
+        // this.subContainer.appendChild(this.createElementHr())
+
+        //  python script 
+        this.textarea = this.createElementTextarea()
+        this.subContainer.appendChild(this.createElementHeader('Python Script'))
+        this.subContainer.appendChild(this.textarea)
+        this.script = this.createPythonCodeMirror(this.textarea)
+
+        //  console
+        this.console = this.createElementTextarea()
+        this.console.style.height = '150px'
+        this.console.style.backgroundColor = 'black'
+        this.console.style.color = 'white'
+        this.console.style.fontSize = '12px'
+        this.subContainer.appendChild(this.createElementHeader('Console'))
+        this.subContainer.appendChild(this.console)
+
+        // execute and cancel button
+        this.apply = this.createElementButton('EXECUTE')
+        this.apply.style.width = '80%'
+        this.apply.onclick = function(){
+            // that.console.value = ''
+            that.run()
+        }
+        this.cancel = this.createElementButton('CANCEL')
+        this.cancel.style.backgroundColor = 'red'
+        this.cancel.style.width = '20%'
+        this.cancel.onclick = function(){that.hidden()}
+        this.subContainer.appendChild(this.apply)
+        this.subContainer.appendChild(this.cancel)
+    }
+
+    log(msg){
+        this.console.value = this.console.value != '' ? this.console.value + '\n' + msg : msg
+        this.console.scrollTop = this.console.scrollHeight
+    }
+
+    update(model){
+        // this.desc.value = model.desc
+        this.script.setValue(model.script[0])
+        this.script.setSize(null, parseInt(document.body.offsetHeight / 2))
+        let that = this
+        setTimeout(function() {
+            that.script.refresh()
+        }, 100)
+        this.script.scrollIntoView({ line: 0, ch: 0 }, 0)
+    }
+
+    run(){
+        this.console.value = ''
+        this.scriptView.controlExec(this.model())
     }
 }
 
-class BatchInsightComponentSvg extends Tree
+class ScriptComponentSvg extends svg
 {
-    constructor(batchInsightComponentSvgDialog){
-        super(batchInsightComponentSvgDialog.subContainer)
-        this.batchInsightComponentSvgDialog = batchInsightComponentSvgDialog
-        
-        let that = this
-        // var cancelBtn = this.createElementButton('CANCEL')
-        // cancelBtn.style.backgroundColor = 'red'
-        // cancelBtn.style.float = 'right'
-        // cancelBtn.onclick = function(){that.batchInsightComponentSvgDialog.hidden()}
-        // this.bottomBtnSets.appendChild(cancelBtn)
+    constructor(dialog){
+        super(dialog.subContainer)
     }
 
-    clickEvent(event, d){
-        if (d.depth == 1) {
-            this.batchInsightComponentSvgDialog.batchInsightView.controlGetUniversal(parseInt(d.data.name[d.data.name.length - 1]) )
-        }else if(d.depth == 2){
-            this.batchInsightComponentSvgDialog.batchInsightView.controlGetSingleInsight(d.data.namespace)
-        }
+    update(data){
+        this.data = data
+        this.data.forEach(subplot => {
+            if(subplot.type == 'XAxis'){
+                this.xAxis = new XAxis()
+            }else if(subplot.type == 'SelectionRect'){
+                this.selectionRect = new SelectionRect()
+            }else if(subplot.type == 'TidyTree'){
+                this.tidyTree = new TidyTree(subplot)
+            }else if(subplot.type == 'IndentedTree'){
+                this.indentedTree = new IndentedTree(subplot)
+            }else if(subplot.type == 'ScatterPlot'){
+                this.scatterPlots[subplot.identifier] = new ScatterPlot(subplot)
+            }else if(subplot.type == 'LineChart'){
+                this.lineCharts[subplot.identifier] = new LineChart(subplot)
+            }else if(subplot.type == 'LineStory'){
+                this.lineStorys[subplot.identifier] = new LineStory(subplot)
+            }
+        })
     }
-
 }
 
 class TextFileCompareComponentSvgDialog extends Dialog
@@ -1343,48 +1484,4 @@ class GlobalChartComponentSvgDialog extends Dialog
     }
 }
 
-class GlobalChartComponentSvg extends Tree
-{
-    constructor(dialog){
-        super(dialog.subContainer)
-
-        let that = this
-        var cancelBtn = this.createElementButton('CANCEL')
-        cancelBtn.style.backgroundColor = 'red'
-        cancelBtn.style.float = 'right'
-        cancelBtn.onclick = function(){dialog.hidden()}
-        var clearBtn = this.createElementButton('CLEAR')
-        clearBtn.style.backgroundColor = 'blue'
-        clearBtn.style.float = 'right'
-        clearBtn.onclick = function(){dialog.clear()}
-        var applyBtn = this.createElementButton('APPLY')
-        applyBtn.style.backgroundColor = 'green'
-        applyBtn.style.float = 'right'
-        applyBtn.onclick = function(){dialog.apply()}
-        // this.bottomBtnSets.appendChild(cancelBtn)
-        // this.bottomBtnSets.appendChild(clearBtn)
-        // this.bottomBtnSets.appendChild(applyBtn)
-    }
-
-    clickEvent(event, d){
-        d.children = d.children ? null : d._children;
-
-        if (d._children) {
-            return
-        }else{
-            if (d.data.check == true){
-                d.data.check = false
-                d3.select(event.target.parentNode).select('circle').attr("fill", "#999")
-                d3.select(event.target.parentNode).select('text').attr("fill", "#FFF")
-                d3.select(event.target.parentNode).select('text').attr("stroke", "#FFF")
-            }else{
-                d.data.check = true
-                d3.select(event.target.parentNode).select('circle').attr("fill", "#33CC00")
-                d3.select(event.target.parentNode).select('text').attr("fill", "#33CC00")
-                d3.select(event.target.parentNode).select('text').attr("stroke", "#33CC00")
-            }
-        }
-    }
-}
-
-export {TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog, ChartAtomComponentLineChart}
+export {ScriptDialog, TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, ChartAtomComponentSvgDialog, ChartAtomComponentLineChart}

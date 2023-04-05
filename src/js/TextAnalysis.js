@@ -3,11 +3,11 @@ import ns from '@/config/namespace.json'
 
 import { ipcRenderer } from 'electron'
 import { View, ListView, BatchView} from './element'
-import { SystemTestComponentDialog, TextFileCompareComponentDialog, BatchStatisticComponentDialog, BatchInsightComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, ScriptDialog, DCGMAnalysisDialog, TelogAnalysisDialog, ShareDownloadDialog } from './dialog'
+import { SystemTestComponentDialog, TextFileCompareComponentDialog, SearchAtomComponentDialog, InsightAtomComponentDialog, StatisticAtomComponentDialog, ShareDownloadDialog } from './dialog'
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
-import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable, BatchInsightComponentTableDialog, BatchStatisticComponentTableDialog } from './table'
+import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable} from './table'
 import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
-import { TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, BatchInsightComponentSvgDialog, ChartAtomComponentSvgDialog, GlobalChartComponentSvgDialog, ChartAtomComponentLineChart } from './svg'
+import { ScriptDialog, TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, ChartAtomComponentSvgDialog, ChartAtomComponentLineChart } from './svg'
 import { StatisticAtomComponentTextarea } from './textarea'
 import { TextFileOriginalComponentNavigate } from './navigate'
 
@@ -874,6 +874,10 @@ class ScriptView extends BatchView
 
     onConsole(msg){
         this.dialog.log(msg)
+    }
+
+    onDraw(data){
+        console.log(data)
     }
 }
 

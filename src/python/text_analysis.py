@@ -338,8 +338,11 @@ class Fellow(Model):
         # self.text_file.roles.show()
         if self.text_file.roles.depth() != 0:
             data_tree = convert_dict_format(self.text_file.roles.to_dict(sort=False, with_data=True))
-            await self.text_file.text_file_original.on_refresh_story_lines(sid, data_tree)
-
+            if self.mode == 'normal':
+                await self.text_file.text_file_original.on_refresh_story_lines(sid, data_tree)
+            else:
+                return data_tree
+            
     async def is_publish_able(self, namespace): #notice subscriber refresh
         if self.config_count > 0:
             self.config_count = self.config_count - 1
@@ -361,12 +364,12 @@ class Fellow(Model):
                         func = getattr(self.models[namespace], self.__class__.__name__.split('Function')[0].lower())
                         func()
                 
-                # await self.on_refresh_roles('')
-
                 self.is_load_config = False
                 self.connected_count = 0
                 if self.mode == 'normal':
                     await self.text_file.on_load_next_config('')
+                else:
+                    await self.on_refresh_roles('')
         else:
             if self.mode == 'normal':
                 await self.models[namespace].on_refresh('')
@@ -621,6 +624,13 @@ class TextFileModel(Model):
             self.config['statistic'].append(tmp)
 
         return self.config
+
+    def on_get_roles(self, _type='tree'):
+        if _type == 'tree':
+            data = convert_dict_format(self.roles.to_dict(sort=False, with_data=True))
+        else:
+            data = self.roles.all_nodes()
+        return data
 
     async def on_load_all_config(self, sid, path, load=['search', 'chart', 'insight', 'statistic']):
         self.path = path
@@ -1716,10 +1726,12 @@ class ScriptModel(Model):
         self.__dict__.update(model)
 
         await self.aexec()
-        # await self.emit('console', str(self.error), namespace=self.namespace)
 
     async def on_console(self, sid=None, msg=None):
         await self.emit('console', str(msg), namespace=self.namespace)
+
+    async def on_draw(self, sid, data):
+        await self.emit('draw', data, namespace=self.namespace)
 
     async def aexec(self):
         self.error = ''
