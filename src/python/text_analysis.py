@@ -333,7 +333,7 @@ class Fellow(Model):
                         if parent == '':
                             self.text_file.roles.create_node(node, node, data=None)
                         else:
-                            self.text_file.roles.create_node(role, node, parent=parent, data = self.models[namespace].model() if index == len(roles) - 1 else None)
+                            self.text_file.roles.create_node(node, node, parent=parent, data = self.models[namespace].model() if index == len(roles) - 1 else None)
 
         # self.text_file.roles.show()
         if self.text_file.roles.depth() != 0:
@@ -629,7 +629,7 @@ class TextFileModel(Model):
         if _type == 'tree':
             data = convert_dict_format(self.roles.to_dict(sort=False, with_data=True))
         else:
-            data = self.roles.all_nodes()
+            data = [{"identifier": node.identifier, "data": node.data} for node in sorted(self.roles.all_nodes(), key=lambda node: node.identifier)]
         return data
 
     async def on_load_all_config(self, sid, path, load=['search', 'chart', 'insight', 'statistic']):

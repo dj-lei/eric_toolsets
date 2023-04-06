@@ -125,9 +125,7 @@ def convert_dict_format(data):
     res = {'name': '','data': ''}
     for key in data.keys():
         res['name'] = key
-        
     res['data'] = data[res['name']]['data']
-        
     if 'children' in data[res['name']]:
         res['children'] = []
         for child in data[res['name']]['children']:

@@ -68,16 +68,18 @@ class XAxis extends svgElement
         this.tickFormatFunc = tickFormatFunc
         this.x = d3.scaleLinear().range([0, pixelWidth])
         this.x.domain([lowerBound, upperBound])
-        this.xAxis = svg.append("g").attr("transform", "translate(0,10)")
-        this.xAxis.call(this.updateXAxis, this.x, {'k': 1})
+        this.xAxis = this.svg.attr("transform", "translate(0,10)")
+        this.xAxis.call(this.updateXAxis, this.x, {'k': 1}, this.tickFormatFunc)
     }
 
-    updateXAxis(g, x, transform){
-        let that = this
+    updateXAxis(g, x, transform, func){
         var xA = d3.axisBottom(x).ticks(8 * transform.k)
         g.call(xA.tickFormat(function(d) {
-                        if (!that.tickFormatFunc) {
-                            that.tickFormatFunc(d)
+                        if (func) {
+                            return common.formatTimestamp(d)
+                            // return eval(`${func}(d)`)
+                        }else{
+                            return d
                         }
                     }))
                 .style('stroke', "#FFF")
@@ -263,55 +265,32 @@ class IndentedTree extends svgElement
 {
     constructor(svg, data){
         super(svg)
-        this.currentHeight = 0
-        this.intervalHeight = 10
+        this.data = d3.hierarchy(data)
+        const nodes = this.data.descendants()
 
-        this.data = data
-        var i = 0
-        var root = d3.hierarchy(this.data).eachBefore(d => {
-            d.id = d.name
-            d.index = i++
-            d.sy = this.currentHeight
-
-            if (d.data == null) {
-                d.sx = 0
-                d.height = LineStory.getHeight()
-                this.currentHeight = this.currentHeight + LineStory.getHeight() + this.intervalHeight
-            }else{
-                d.sx = x(d.start_x)
-                d.ex = x(d.end_x)
-
-                var chartX = d3.scaleLinear().range([0, d.ex - d.sx])
-                chartX.domain([d.sx, d.ex])
-                if (d.type == 'chart') {
-                    d.height = LineChart.getHeight()
-                    this.currentHeight = this.currentHeight + LineChart.getHeight() + this.intervalHeight
-                }else if(d.data.data.type == 'search'){
-                    d.height = LineStory.getHeight()
-                    this.currentHeight = this.currentHeight + LineStory.getHeight() + this.intervalHeight
-                }
-            }
-        })
-
-        const nodes = root.descendants()
         const link = this.svg.append("g")
             .attr("fill", "none")
             .attr("stroke", "#999")
             .selectAll("path")
-            .data(root.links())
+            .data(this.data.links())
             .join("path")
-            .attr("d", d => `
-                M${d.source.sx},${d.source.sy}
-                V${d.target.sy}
-                h${d.target.sx-d.source.sx}
-            `);
+            .attr("d", d => {
+                var p = `
+                        M${d.source.data.data.sx},${d.source.data.data.sy}
+                        V${d.target.data.data.sy}
+                        h${d.target.data.data.sx-d.source.data.data.sx}
+                    `
+                return p
+            });
 
         const node = this.svg.append("g")
             .selectAll("g")
             .data(nodes)
             .join("g")
-            .attr("id", d => common.replaceSpecialSymbols(d.id, '_'))
-            .attr("transform", d => `translate(${d.sx},${d.sy})`);
+            .attr("id", d => {
+                return d.data.name
+            })
+            .attr("transform", d => `translate(${d.data.data.sx},${d.data.data.sy})`);
 
         node.append("circle")
             // .attr("cx", d => d.depth * nodeSize)
@@ -322,7 +301,7 @@ class IndentedTree extends svgElement
             .attr("dy", "-0.2em")
             // .attr("x", d => d.depth * nodeSize + 6)
             .text(d => {
-                return d.name
+                return d.data.name
             })
             .attr("stroke", "white")
             .attr("fill", "white")
@@ -341,12 +320,7 @@ class IndentedTree extends svgElement
 
 class LineChart extends svgElement
 {
-    static height = 200
-    static getHeight() {
-      return LineChart.height
-    }
-
-    constructor(svg, data, lineType, width){
+    constructor(svg, data, lineType, width, height){
         super(svg)
 
         this.width = width
@@ -355,9 +329,9 @@ class LineChart extends svgElement
         this.points = []
         Object.keys(this.data).forEach((name, index) =>{
             if (this.data[name][0].type == 'mark') {
-                this.addMark(this.data[name], LineChart.height)
+                this.addMark(this.data[name], height)
             }else{
-                this.addLine(this.data[name], name, LineChart.height, index)
+                this.addLine(this.data[name], name, height, index)
             }
         })
     }
@@ -471,11 +445,6 @@ class LineChart extends svgElement
 
 class LineStory extends svgElement
 {
-    static height = 20
-    static getHeight() {
-      return LineStory.height
-    }
-
     constructor(svg, data, topTriangles, bottomTriangles){
         super(svg)
         this.data = data
@@ -484,7 +453,7 @@ class LineStory extends svgElement
         this.story = this.svg.append("rect")
                         .attr("x", 0)
                         .attr("height", data.height)
-                        .attr("width", (((data.ex - data.sx < 1) & (data.ex - data.sx > 0)) | (data.count == 1)) ? 1 : d.ex - d.sx)
+                        .attr("width", (((data.ex - data.sx < 1) & (data.ex - data.sx > 0)) | (data.count == 1)) ? 1 : data.ex - data.sx)
                         .attr("fill", "#808080")
 
         Object.keys(topTriangles).forEach((key) => {
@@ -1302,32 +1271,25 @@ class ScriptDialog extends Dialog
         super(scriptView.container)
         this.scriptView = scriptView
 
-        this.subContainer.style.width = '80%'
+        this.subContainer.style.display = 'flex'
+        this.subContainer.style.flexDirection = 'row'
+        this.subContainer.style.width = '100%'
         this.subContainer.style.overflow = 'hidden'
         this.container.style.overflow = 'hidden'
         this.desc = ''
         this.script = ''
-        this.init()
-    }
 
-    model(){
-        return {script: [this.script.getValue()]}
-    }
+        this.leftDiv = this.createElementDiv()
+        this.leftDiv.style.width = '50%'
+        this.leftDiv.style.height = '100%'
 
-    init(){
         let that = this
-
-        // description
-        // this.desc = this.createElementTextInput()
-        // this.subContainer.appendChild(this.createElementHeader('Script Description'))
-        // this.subContainer.appendChild(this.desc)
-        // this.subContainer.appendChild(this.createElementHr())
-
         //  python script 
         this.textarea = this.createElementTextarea()
-        this.subContainer.appendChild(this.createElementHeader('Python Script'))
-        this.subContainer.appendChild(this.textarea)
+        this.leftDiv.appendChild(this.createElementHeader('Python Script'))
+        this.leftDiv.appendChild(this.textarea)
         this.script = this.createPythonCodeMirror(this.textarea)
+        this.script.setSize(null, parseInt(document.body.offsetHeight / 2))
 
         //  console
         this.console = this.createElementTextarea()
@@ -1335,8 +1297,8 @@ class ScriptDialog extends Dialog
         this.console.style.backgroundColor = 'black'
         this.console.style.color = 'white'
         this.console.style.fontSize = '12px'
-        this.subContainer.appendChild(this.createElementHeader('Console'))
-        this.subContainer.appendChild(this.console)
+        this.leftDiv.appendChild(this.createElementHeader('Console'))
+        this.leftDiv.appendChild(this.console)
 
         // execute and cancel button
         this.apply = this.createElementButton('EXECUTE')
@@ -1349,8 +1311,20 @@ class ScriptDialog extends Dialog
         this.cancel.style.backgroundColor = 'red'
         this.cancel.style.width = '20%'
         this.cancel.onclick = function(){that.hidden()}
-        this.subContainer.appendChild(this.apply)
-        this.subContainer.appendChild(this.cancel)
+        this.leftDiv.appendChild(this.apply)
+        this.leftDiv.appendChild(this.cancel)
+
+        this.rightDiv = this.createElementDiv()
+        this.rightDiv.style.width = '50%'
+        this.rightDiv.style.height = '100%'
+        this.plotArea = new ScriptComponentSvg(this.rightDiv)
+        this.subContainer.append(this.leftDiv)
+        this.subContainer.append(this.rightDiv)
+        this.plotArea.container.style.height = `${parseInt(document.body.offsetHeight / 2 + 200)}px`
+    }
+
+    model(){
+        return {script: [this.script.getValue()]}
     }
 
     log(msg){
@@ -1369,6 +1343,10 @@ class ScriptDialog extends Dialog
         this.script.scrollIntoView({ line: 0, ch: 0 }, 0)
     }
 
+    draw(data){
+        this.plotArea.update(data)
+    }
+
     run(){
         this.console.value = ''
         this.scriptView.controlExec(this.model())
@@ -1377,27 +1355,72 @@ class ScriptDialog extends Dialog
 
 class ScriptComponentSvg extends svg
 {
-    constructor(dialog){
-        super(dialog.subContainer)
+    constructor(container){
+        super(container)
+        this.xAxis = ''
+        this.tidyTrees = {}
+        this.indentedTrees = {}
+        this.lineCharts = {}
+        this.lineStorys = {}
+    }
+
+    clear(){
+        this.svg.selectAll("*").remove()
+        if (this.xAxis != '') {
+            this.xAxis.selectAll("*").remove()
+        }
+        this.resetCoordinates()
+    }
+
+    resetCoordinates(){
+        var zoom = d3.zoom().scaleExtent([this.scaleMin, this.scaleMax]).on("zoom", zoomed)
+        d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
+        d3.select(this.svgElm).on("click", hiddenBottomTip)
+
+        let that = this
+        function zoomed(event) {
+            const {transform} = event
+            d3.select(that.svgElm).select("#canvas").attr("transform", transform)
+            that.xAxis.attr("transform", `translate(${transform.x},10)`)
+
+            that.x = d3.scaleLinear().range([0, that.viewWidth * transform.k])
+            that.x.domain(d3.extent(that.starts.concat(that.ends)))
+            that.xAxis.call(that.updateXAxis, that.x, transform, that.alignType)
+        }
+
+        // function hiddenBottomTip(){
+        //     that.bottomTip.style("display", 'none')
+        // }
     }
 
     update(data){
+        this.clear()
         this.data = data
         this.data.forEach(subplot => {
             if(subplot.type == 'XAxis'){
-                this.xAxis = new XAxis()
+                this.xAxis = new XAxis(d3.select(this.svgElm), subplot.pixel_width, subplot.lower_bound, subplot.upper_bound, 'common.formatTimestamp')
             }else if(subplot.type == 'SelectionRect'){
                 this.selectionRect = new SelectionRect()
             }else if(subplot.type == 'TidyTree'){
-                this.tidyTree = new TidyTree(subplot)
+                subplot.data.forEach(tidyTree => {
+                    this.tidyTrees[indentedTree.identifier] = new TidyTree(this.svg, tidyTree)
+                })
             }else if(subplot.type == 'IndentedTree'){
-                this.indentedTree = new IndentedTree(subplot)
+                subplot.data.forEach(indentedTree => {
+                    this.indentedTrees[indentedTree.identifier] = new IndentedTree(this.svg, indentedTree.data)
+                })
             }else if(subplot.type == 'ScatterPlot'){
-                this.scatterPlots[subplot.identifier] = new ScatterPlot(subplot)
+                subplot.data.forEach(scatterPlot => {
+                    this.scatterPlots[scatterPlot.identifier] = new ScatterPlot(this.svg, scatterPlot)
+                })
             }else if(subplot.type == 'LineChart'){
-                this.lineCharts[subplot.identifier] = new LineChart(subplot)
+                subplot.data.forEach(lineChart => {
+                    this.lineCharts[lineChart.identifier] = new LineChart(this.svg.select(`#${lineChart.identifier}`), lineChart.data.select_lines, lineChart.data.line_type, lineChart.data.width, lineChart.data.height)
+                })
             }else if(subplot.type == 'LineStory'){
-                this.lineStorys[subplot.identifier] = new LineStory(subplot)
+                subplot.data.forEach(lineStory => {
+                    this.lineStorys[lineStory.identifier] = new LineStory(this.svg.select(`#${lineStory.identifier}`), lineStory.data, lineStory.data.top_triangles, lineStory.data.bottom_triangles)
+                })
             }
         })
     }
@@ -1451,36 +1474,6 @@ class TextFileCompareComponentSvgDialog extends Dialog
 
         this.secondSvg.textFileOriginalView = second
         this.secondSvg.update(second.model.data_tree)
-    }
-}
-
-class GlobalChartComponentSvgDialog extends Dialog
-{
-    constructor(globalChartView){
-        super(globalChartView.container)
-        this.globalChartView = globalChartView
-        
-        this.subContainer.style.width = '90%' 
-        this.subContainer.style.height = `${document.body.offsetHeight - 150}px`
-
-        this.globalChartComponentSvg = new GlobalChartComponentSvg(this)
-    }
-
-    apply(){
-        let model = {
-            namespace: this.globalChartView.namespace,
-            name: "global",
-            key_value_tree: this.globalChartView.model.key_value_tree,
-        }
-        this.globalChartView.controlExec(model)
-    }
-
-    update(model){
-        this.globalChartComponentSvg.update(model.key_value_tree)
-    }
-
-    clear(){
-        this.globalChartView.controlClearKeyValueTree()
     }
 }
 

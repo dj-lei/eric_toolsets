@@ -878,6 +878,7 @@ class ScriptView extends BatchView
 
     onDraw(data){
         console.log(data)
+        this.dialog.draw(data)
     }
 }
 
