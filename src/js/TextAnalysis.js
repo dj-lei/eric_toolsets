@@ -865,7 +865,7 @@ class ScriptView extends BatchView
     constructor(textAnalysisView){
         super(`${textAnalysisView.namespace}${ns.SCRIPT}`, textAnalysisView.container)
         this.parent = textAnalysisView
-        this.dialog = new ScriptDialog(this)
+        this.dialog = new ScriptDialog(this, textAnalysisView)
     }
 
     controlExec(model){

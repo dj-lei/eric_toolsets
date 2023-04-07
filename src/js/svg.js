@@ -65,19 +65,22 @@ class XAxis extends svgElement
 {
     constructor(svg, pixelWidth, lowerBound, upperBound, tickFormatFunc=null){
         super(svg)
+
+        this.pixelWidth = pixelWidth
+        this.lowerBound = lowerBound
+        this.upperBound = upperBound
         this.tickFormatFunc = tickFormatFunc
         this.x = d3.scaleLinear().range([0, pixelWidth])
         this.x.domain([lowerBound, upperBound])
-        this.xAxis = this.svg.attr("transform", "translate(0,10)")
-        this.xAxis.call(this.updateXAxis, this.x, {'k': 1}, this.tickFormatFunc)
+        this.svg.attr("transform", "translate(0,10)")
+        this.svg.call(this.updateXAxis, this.x, {'k': 1}, this.tickFormatFunc)
     }
 
     updateXAxis(g, x, transform, func){
         var xA = d3.axisBottom(x).ticks(8 * transform.k)
         g.call(xA.tickFormat(function(d) {
                         if (func) {
-                            return common.formatTimestamp(d)
-                            // return eval(`${func}(d)`)
+                            return common[func](d)
                         }else{
                             return d
                         }
@@ -462,6 +465,7 @@ class LineStory extends svgElement
                                 .data(topTriangles[key])
                                 .enter()
                                     .append("path")
+                                    .attr("class", "topTriangles")
                                     .attr("transform", d => `translate(${d.x},0) rotate(60)`)
                                     .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
                                     .style("fill", d => d.value)
@@ -474,6 +478,7 @@ class LineStory extends svgElement
                             .data(bottomTriangles[key])
                             .enter()
                                 .append("path")
+                                .attr("class", "bottomTriangles")
                                 .attr("transform", s => `translate(${s.x},${d.height})`)
                                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
                                 .style("fill", "#FFD700")
@@ -1267,7 +1272,7 @@ class ChartAtomComponentLineChart extends svg
 
 class ScriptDialog extends Dialog
 {
-    constructor(scriptView){
+    constructor(scriptView, textAnalysisView){
         super(scriptView.container)
         this.scriptView = scriptView
 
@@ -1317,7 +1322,7 @@ class ScriptDialog extends Dialog
         this.rightDiv = this.createElementDiv()
         this.rightDiv.style.width = '50%'
         this.rightDiv.style.height = '100%'
-        this.plotArea = new ScriptComponentSvg(this.rightDiv)
+        this.plotArea = new ScriptComponentSvg(this.rightDiv, textAnalysisView)
         this.subContainer.append(this.leftDiv)
         this.subContainer.append(this.rightDiv)
         this.plotArea.container.style.height = `${parseInt(document.body.offsetHeight / 2 + 200)}px`
@@ -1355,19 +1360,47 @@ class ScriptDialog extends Dialog
 
 class ScriptComponentSvg extends svg
 {
-    constructor(container){
+    constructor(container, textAnalysisView){
         super(container)
+        this.textAnalysisView = textAnalysisView
         this.xAxis = ''
         this.tidyTrees = {}
         this.indentedTrees = {}
         this.lineCharts = {}
         this.lineStorys = {}
+
+        this.tooltip = d3.select(this.container).append("div")
+                            .style("display", 'none')
+                            .style("position", "absolute")
+                            .style("background-color", "#fff")
+                            .style("border", "1px solid #aaa")
+                            .style("border-radius", "5px")
+                            .style("box-shadow", "2px 2px 2px #ccc")
+                            .style("font-size", "12px")
+                            .style("padding", "5px")
+
+        this.bottomTip = d3.select(this.container).append("div")
+                            .style("width", `${document.body.offsetWidth / 2}px`)
+                            .style("height", '150px')
+                            .style("display", 'none')
+                            .style("position", "absolute")
+                            .style("bottom", "0")
+                            .style("left", "0")
+                            .style("background-color", "#000")
+                            .style("color", "white")
+                            .style("padding", "5px")
+                            .style("font-size", "12px")
+                            .style("border", "1px solid #aaa")
+                            .style("border-radius", "5px")
+                            .style("box-shadow", "2px 2px 2px #ccc")
+                            .style("opacity", 0.8)
+                            .style("overflow", "auto")
     }
 
     clear(){
         this.svg.selectAll("*").remove()
         if (this.xAxis != '') {
-            this.xAxis.selectAll("*").remove()
+            this.xAxis.svg.selectAll("*").remove()
         }
         this.resetCoordinates()
     }
@@ -1381,24 +1414,66 @@ class ScriptComponentSvg extends svg
         function zoomed(event) {
             const {transform} = event
             d3.select(that.svgElm).select("#canvas").attr("transform", transform)
-            that.xAxis.attr("transform", `translate(${transform.x},10)`)
-
-            that.x = d3.scaleLinear().range([0, that.viewWidth * transform.k])
-            that.x.domain(d3.extent(that.starts.concat(that.ends)))
-            that.xAxis.call(that.updateXAxis, that.x, transform, that.alignType)
+            if (that.xAxis != '') {
+                that.xAxis.svg.attr("transform", `translate(${transform.x},10)`)
+                that.xAxis.x = d3.scaleLinear().range([0, that.xAxis.pixelWidth * transform.k])
+                that.xAxis.x.domain([that.xAxis.lowerBound, that.xAxis.upperBound])
+                that.xAxis.svg.call(that.xAxis.updateXAxis, that.xAxis.x, transform, that.xAxis.tickFormatFunc)
+            }
         }
 
-        // function hiddenBottomTip(){
-        //     that.bottomTip.style("display", 'none')
-        // }
+        function hiddenBottomTip(){
+            console.log('----')
+            // that.bottomTip.style("display", 'none')
+        }
+    }
+
+    bindMouseOverOutEvent(elm, func){
+        let that = this
+        elm.on("mouseover", function(event, d) {
+            if(['path', 'text'].includes(d3.select(this).node().nodeName)){
+                d3.select(this).style('fill', "#FFF")
+            }else{
+                const currentColor = d3.color(d3.select(this).attr('fill'));
+                currentColor.opacity = 0.6;
+                d3.select(this).attr('fill', currentColor);
+            }
+            that.tooltip.html(func(d))
+                .style("left", (event.offsetX) + "px")
+                .style("top", (event.offsetY) + "px")
+                .style("display", 'block')
+            })
+        .on("mouseout", function(event, d) {
+            if(['path', 'text'].includes(d3.select(this).node().nodeName)){
+                if (d.name) {
+                    d3.select(this).style('fill', d => d.value)
+                }else{
+                    d3.select(this).style('fill', '#FFD700')
+                }
+            }else{
+                const currentColor = d3.color(d3.select(this).attr('fill'));
+                currentColor.opacity = 1;
+                d3.select(this).attr('fill', currentColor);
+            }
+            that.tooltip.style("display", 'none')
+        })
     }
 
     update(data){
+        function getTooltipContent(d) {
+            var res = ''
+            Object.keys(d).forEach(key => {
+                res = res + `<b style="color:#000">${key}: ${d[key]}</b><br/>`
+            })
+            return res
+        }
+
+        let that = this
         this.clear()
         this.data = data
         this.data.forEach(subplot => {
             if(subplot.type == 'XAxis'){
-                this.xAxis = new XAxis(d3.select(this.svgElm), subplot.pixel_width, subplot.lower_bound, subplot.upper_bound, 'common.formatTimestamp')
+                this.xAxis = new XAxis(d3.select(this.svgElm), subplot.pixel_width, subplot.lower_bound, subplot.upper_bound, subplot.tick_format_func)
             }else if(subplot.type == 'SelectionRect'){
                 this.selectionRect = new SelectionRect()
             }else if(subplot.type == 'TidyTree'){
@@ -1412,14 +1487,39 @@ class ScriptComponentSvg extends svg
             }else if(subplot.type == 'ScatterPlot'){
                 subplot.data.forEach(scatterPlot => {
                     this.scatterPlots[scatterPlot.identifier] = new ScatterPlot(this.svg, scatterPlot)
+                    
+                    this.bindMouseOverOutEvent(this.scatterPlots[scatterPlot.identifier].svg.selectAll('.dot'), getTooltipContent)
+                    this.scatterPlots[scatterPlot.identifier].svg.selectAll('.dot').on("click", function(event, d) {
+                        eval(d.api)
+                    })
                 })
             }else if(subplot.type == 'LineChart'){
                 subplot.data.forEach(lineChart => {
                     this.lineCharts[lineChart.identifier] = new LineChart(this.svg.select(`#${lineChart.identifier}`), lineChart.data.select_lines, lineChart.data.line_type, lineChart.data.width, lineChart.data.height)
+                    
+                    this.bindMouseOverOutEvent(this.lineCharts[lineChart.identifier].svg.selectAll('.dot'), getTooltipContent)
+                    this.lineCharts[lineChart.identifier].svg.selectAll('.dot').on("click", function(event, d) {
+                        // eval(`that.textAnalysisView.fileContainerView.controlNewFile(['D:\\projects\\ericsson_flow\\new_files\\ru_lock_unlock_normal1_simple.log'])`)
+                        eval(d.api)
+                    })
+                    this.bindMouseOverOutEvent(this.lineCharts[lineChart.identifier].svg.selectAll('.mark'), getTooltipContent)
+                    this.lineCharts[lineChart.identifier].svg.selectAll('.mark').on("click", function(event, d) {
+                        eval(d.api)
+                    })
                 })
             }else if(subplot.type == 'LineStory'){
                 subplot.data.forEach(lineStory => {
                     this.lineStorys[lineStory.identifier] = new LineStory(this.svg.select(`#${lineStory.identifier}`), lineStory.data, lineStory.data.top_triangles, lineStory.data.bottom_triangles)
+                
+                    this.bindMouseOverOutEvent(this.lineStorys[lineStory.identifier].story, getTooltipContent)
+                    this.bindMouseOverOutEvent(this.lineStorys[lineStory.identifier].svg.selectAll('.topTriangles'), getTooltipContent)
+                    this.bindMouseOverOutEvent(this.lineStorys[lineStory.identifier].svg.selectAll('.bottomTriangles'), getTooltipContent)
+                    this.lineStorys[lineStory.identifier].svg.selectAll('.topTriangles').on("click", function(event, d) {
+                        eval(d.api)
+                    })
+                    this.lineStorys[lineStory.identifier].svg.selectAll('.bottomTriangles').on("click", function(event, d) {
+                        eval(d.api)
+                    })
                 })
             }
         })
