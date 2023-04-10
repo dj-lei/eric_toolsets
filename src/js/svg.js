@@ -291,7 +291,7 @@ class IndentedTree extends svgElement
             .data(nodes)
             .join("g")
             .attr("id", d => {
-                return d.data.name
+                return d.data.data.id
             })
             .attr("transform", d => `translate(${d.data.data.sx},${d.data.data.sy})`);
 
@@ -330,6 +330,15 @@ class LineChart extends svgElement
         this.data = data
         this.lineType = lineType
         this.points = []
+
+        this.svg.append("line")
+            .attr("x1", 0)
+            .attr("y1", height)
+            .attr("x2", width)
+            .attr("y2", height)
+            .attr("stroke", "white")
+            .attr("stroke-width", "1");
+
         Object.keys(this.data).forEach((name, index) =>{
             if (this.data[name][0].type == 'mark') {
                 this.addMark(this.data[name], height)
@@ -491,77 +500,101 @@ class ScatterPlot extends svgElement
 {
     constructor(svg, data){
         super(svg)
-        var xScale = d3.scaleLinear()
-            .domain([0, d3.max(data, function(d) { return d.x; })])
-            .range([height, 0]);
+        this.data = data
 
-        var yScale = d3.scaleLinear()
-            .domain([0, d3.max(data, function(d) { return d.y; })])
-            .range([height, 0]);
+        this.svg.append("line")
+            .attr("x1", 0)
+            .attr("y1", 0)
+            .attr("x2", 0)
+            .attr("y2", data.height)
+            .attr("stroke", "white")
+            .attr("stroke-width", "1");
+  
+        this.svg.append("line")
+            .attr("x1", 0)
+            .attr("y1", data.height)
+            .attr("x2", data.width)
+            .attr("y2", data.height)
+            .attr("stroke", "white")
+            .attr("stroke-width", "1");
 
-        this.circles = svg.selectAll("circle")
-                        .data(data)
+        this.circles = this.svg.selectAll("circle")
+                        .data(data.elements)
                         .enter()
                         .append("circle")
-                        .attr("cx", function(d) { return xScale(d.x); })
-                        .attr("cy", function(d) { return yScale(d.y); })
-                        .attr("r", function(d) { return rScale(d.r); })
-                        .attr("fill", function(d) { return colorScale(d.color); })
+                        .attr("pointer-events", "all") 
+                        .attr("class", "dot")
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y)
+                        .attr("r", d => d.r)
+                        .attr("fill", 'green')
+                        .attr("stroke", 'gray')
+                        .style("cursor", "pointer")
+                        // .attr("fill", function(d) { return colorScale(d.color); })
     }
 }
 
-class SelectionRect extends svgElement
+class Brush extends svgElement
 {
-    constructor(svg){
+    constructor(svg, width, height, scriptComponentSvg){
         super(svg)
-        var selectionRect = svg.append("rect")
-                            .attr("class", "selection")
-                            .attr("rx", 6)
-                            .attr("ry", 6)
-                            .attr("x", 0)
-                            .attr("y", 0)
-                            .attr("width", 0)
-                            .attr("height", 0)
-                            .style("stroke", "#D4AF37")
-                            .style("fill", "#F8ECC2")
-                            .style("opacity", 0.5)
-                            .style("display", "none")
-        
-        svg.on("mousedown", startSelection);
-        svg.on("mousemove", moveSelection);
-        svg.on("mouseup", endSelection);
-        
-        function startSelection() {
-            selectionRect.attr("x", d3.event.pageX)
-                .attr("y", d3.event.pageY)
-                .style("display", "inline");
-        }
-        
-        function moveSelection() {
-            if (!d3.event.which) return;
-            var x = Math.min(d3.event.pageX, selectionRect.attr("x"));
-            var y = Math.min(d3.event.pageY, selectionRect.attr("y"));
-            var width = Math.abs(d3.event.pageX - selectionRect.attr("x"));
-            var height = Math.abs(d3.event.pageY - selectionRect.attr("y"));
-            selectionRect.attr("x", x)
-                .attr("y", y)
-                .attr("width", width)
-                .attr("height", height);
+        this.scriptComponentSvg = scriptComponentSvg
+        this.globalSvg = svg
+        this.width = width
+        this.height = height
+
+        this.brush = d3.brush()
+                        .extent([[0, 0], [0, 0]])  // 设置刷子的边界
+                        .on("end", brushed)
+
+        let that = this
+        var ctrlPressed = false;
+        d3.select("body")
+            .on("keydown", function(event) {
+                if ((event.keyCode === 17) && (!ctrlPressed)) {
+                    ctrlPressed = true;
+                    that.brush.extent([[0, 0], [that.width, that.height]])
+                    that.globalSvg
+                        .attr("pointer-events", "none")
+                        .call(that.brush)
+                }else if((event.keyCode === 17) && (ctrlPressed)){
+                    ctrlPressed = false;
+                    d3.selectAll(".brush").remove()
+                    that.brush.extent([[0, 0], [0, 0]])
+                    that.globalSvg
+                        .attr("pointer-events", "all")
+                        .call(that.brush)
+                }
+                
+            })
+
+        function brushed({selection}) {
+            let value = [];
+            if (selection) {
+                const [[x0, y0], [x1, y1]] = selection
+                Object.keys(that.scriptComponentSvg.scatterPlots).forEach(id => {
+                    var selector = "#" + id.replace(/\./g, "\\.").replace(/ /g, "\\ ")
+                    var transformAttr = that.globalSvg.select(selector).attr("transform");
+                    var transformValues = transformAttr.replace(/translate\(|\)/g, '').split(',');
+                    var translateX = +transformValues[0]
+                    var translateY = +transformValues[1]
+                    var v = that.scriptComponentSvg.scatterPlots[id].circles
+                                .style("stroke", "gray")
+                                .filter(d => {
+                                    return x0 <= (translateX + d.x) && (translateX + d.x) < x1 && y0 <= (translateY + d.y) && (translateY + d.y) < y1
+                                })
+                                .style("stroke", "green")
+                                .data()
+                    value = common.arrayExtend(value, v)
+                    that.scriptComponentSvg.displayBottomTip(value)
+                })
+            } else {
+                Object.keys(that.scriptComponentSvg.scatterPlots).forEach(id => {
+                    that.scriptComponentSvg.scatterPlots[id].circles.style("stroke", "gray")
+                })
             }
-            
-        function endSelection() {
-            selectionRect.style("display", "none");
-            var x0 = parseInt(selectionRect.attr("x"));
-            var y0 = parseInt(selectionRect.attr("y"));
-            var x1 = x0 + parseInt(selectionRect.attr("width"));
-            var y1 = y0 + parseInt(selectionRect.attr("height"));
-            
-            circles.classed("selected", function(d) {
-                var cx = xScale(d.x);
-                var cy = yScale(d.y);
-                return cx >= x0 && cx < x1 && cy >= y0 && cy < y1;
-            });
-        }
+            // that.svg.property("value", value).dispatch("input");
+          }
     }
 }
 
@@ -1325,7 +1358,7 @@ class ScriptDialog extends Dialog
         this.plotArea = new ScriptComponentSvg(this.rightDiv, textAnalysisView)
         this.subContainer.append(this.leftDiv)
         this.subContainer.append(this.rightDiv)
-        this.plotArea.container.style.height = `${parseInt(document.body.offsetHeight / 2 + 200)}px`
+        this.plotArea.container.style.height = `${parseInt(document.body.offsetHeight / 2 + 230)}px`
     }
 
     model(){
@@ -1368,6 +1401,7 @@ class ScriptComponentSvg extends svg
         this.indentedTrees = {}
         this.lineCharts = {}
         this.lineStorys = {}
+        this.scatterPlots = {}
 
         this.tooltip = d3.select(this.container).append("div")
                             .style("display", 'none')
@@ -1398,6 +1432,13 @@ class ScriptComponentSvg extends svg
     }
 
     clear(){
+        this.xAxis = ''
+        this.tidyTrees = {}
+        this.indentedTrees = {}
+        this.lineCharts = {}
+        this.lineStorys = {}
+        this.scatterPlots = {}
+        
         this.svg.selectAll("*").remove()
         if (this.xAxis != '') {
             this.xAxis.svg.selectAll("*").remove()
@@ -1406,7 +1447,9 @@ class ScriptComponentSvg extends svg
     }
 
     resetCoordinates(){
-        var zoom = d3.zoom().scaleExtent([this.scaleMin, this.scaleMax]).on("zoom", zoomed)
+        var zoom = d3.zoom().scaleExtent([this.scaleMin, this.scaleMax]).on("zoom", zoomed).filter(function(event) {
+            return event.button === 2 || event instanceof WheelEvent;
+        });
         d3.select(this.svgElm).call(zoom).on("dblclick.zoom", null)
         d3.select(this.svgElm).on("click", hiddenBottomTip)
 
@@ -1423,8 +1466,7 @@ class ScriptComponentSvg extends svg
         }
 
         function hiddenBottomTip(){
-            console.log('----')
-            // that.bottomTip.style("display", 'none')
+            that.bottomTip.style("display", 'none')
         }
     }
 
@@ -1459,11 +1501,39 @@ class ScriptComponentSvg extends svg
         })
     }
 
+    displayBottomTip(items){
+        var c = this.createElementDiv()
+        var table = this.createElementTable()
+        table.id = 'bottomTip'
+        items.forEach((item, index) => {
+            var tr = this.createElementTr()
+            var td = this.createElementTd()
+            td.innerHTML = `Index:${index} `
+            tr.appendChild(td)
+            Object.keys(item).forEach(key => {
+                if (!item.filter.includes(key)){
+                    td = this.createElementTd()
+                    td.innerHTML = `${key}:${item[key]} `
+                    tr.appendChild(td)
+                }
+            })
+            table.appendChild(tr)
+        })
+        c.appendChild(table)
+        this.bottomTip.html(c.innerHTML)
+        .style("display", 'block')
+
+        // var row = this.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
+        // row.scrollIntoView()
+    }
+
     update(data){
         function getTooltipContent(d) {
             var res = ''
             Object.keys(d).forEach(key => {
-                res = res + `<b style="color:#000">${key}: ${d[key]}</b><br/>`
+                if (!d.filter.includes(key)){
+                    res = res + `<b style="color:#000">${key}: ${d[key]}</b><br/>`
+                }
             })
             return res
         }
@@ -1471,56 +1541,53 @@ class ScriptComponentSvg extends svg
         let that = this
         this.clear()
         this.data = data
-        this.data.forEach(subplot => {
-            if(subplot.type == 'XAxis'){
-                this.xAxis = new XAxis(d3.select(this.svgElm), subplot.pixel_width, subplot.lower_bound, subplot.upper_bound, subplot.tick_format_func)
-            }else if(subplot.type == 'SelectionRect'){
-                this.selectionRect = new SelectionRect()
-            }else if(subplot.type == 'TidyTree'){
-                subplot.data.forEach(tidyTree => {
-                    this.tidyTrees[indentedTree.identifier] = new TidyTree(this.svg, tidyTree)
+        this.data.forEach(graph => {
+            var selector = ''
+            if(graph.type == 'XAxis'){
+                this.xAxis = new XAxis(d3.select(this.svgElm), graph.width, graph.lower_bound, graph.upper_bound, graph.tick_format_func)
+            }else if(graph.type == 'TidyTree'){
+                this.tidyTrees[graph.id] = new TidyTree(this.svg, tidyTree)
+            }else if(graph.type == 'IndentedTree'){
+                if (graph.id == ''){
+                    this.indentedTrees[graph.id] = new IndentedTree(this.svg, graph.data)
+                }else{
+                    selector = "#" + graph.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
+                    this.indentedTrees[graph.id] = new IndentedTree(this.svg.select(selector), graph.data)
+                }
+            }else if(graph.type == 'ScatterPlot'){
+                selector = "#" + graph.data.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
+                this.scatterPlots[graph.data.id] = new ScatterPlot(this.svg.select(selector), graph.data)
+                this.bindMouseOverOutEvent(this.scatterPlots[graph.data.id].svg.selectAll('.dot'), getTooltipContent)
+                this.scatterPlots[graph.data.id].svg.selectAll('.dot').on("click", function(event, d) {
+                    eval(d.api)
                 })
-            }else if(subplot.type == 'IndentedTree'){
-                subplot.data.forEach(indentedTree => {
-                    this.indentedTrees[indentedTree.identifier] = new IndentedTree(this.svg, indentedTree.data)
+            }else if(graph.type == 'LineChart'){
+                selector = "#" + graph.data.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
+                this.lineCharts[graph.data.id] = new LineChart(this.svg.select(selector), graph.data.elements, 'dash', graph.data.width, graph.data.height)
+                this.bindMouseOverOutEvent(this.lineCharts[graph.data.id].svg.selectAll('.dot'), getTooltipContent)
+                this.lineCharts[graph.data.id].svg.selectAll('.dot').on("click", function(event, d) {
+                    // eval(`that.textAnalysisView.fileContainerView.controlNewFile(['D:\\projects\\ericsson_flow\\new_files\\ru_lock_unlock_normal1_simple.log'])`)
+                    eval(d.api)
                 })
-            }else if(subplot.type == 'ScatterPlot'){
-                subplot.data.forEach(scatterPlot => {
-                    this.scatterPlots[scatterPlot.identifier] = new ScatterPlot(this.svg, scatterPlot)
-                    
-                    this.bindMouseOverOutEvent(this.scatterPlots[scatterPlot.identifier].svg.selectAll('.dot'), getTooltipContent)
-                    this.scatterPlots[scatterPlot.identifier].svg.selectAll('.dot').on("click", function(event, d) {
-                        eval(d.api)
-                    })
+                this.bindMouseOverOutEvent(this.lineCharts[graph.data.id].svg.selectAll('.mark'), getTooltipContent)
+                this.lineCharts[graph.data.id].svg.selectAll('.mark').on("click", function(event, d) {
+                    eval(d.api)
                 })
-            }else if(subplot.type == 'LineChart'){
-                subplot.data.forEach(lineChart => {
-                    this.lineCharts[lineChart.identifier] = new LineChart(this.svg.select(`#${lineChart.identifier}`), lineChart.data.select_lines, lineChart.data.line_type, lineChart.data.width, lineChart.data.height)
-                    
-                    this.bindMouseOverOutEvent(this.lineCharts[lineChart.identifier].svg.selectAll('.dot'), getTooltipContent)
-                    this.lineCharts[lineChart.identifier].svg.selectAll('.dot').on("click", function(event, d) {
-                        // eval(`that.textAnalysisView.fileContainerView.controlNewFile(['D:\\projects\\ericsson_flow\\new_files\\ru_lock_unlock_normal1_simple.log'])`)
-                        eval(d.api)
-                    })
-                    this.bindMouseOverOutEvent(this.lineCharts[lineChart.identifier].svg.selectAll('.mark'), getTooltipContent)
-                    this.lineCharts[lineChart.identifier].svg.selectAll('.mark').on("click", function(event, d) {
-                        eval(d.api)
-                    })
+            }else if(graph.type == 'LineStory'){
+                selector = "#" + graph.data.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
+                this.lineStorys[graph.data.id] = new LineStory(this.svg.select(selector), graph.data, graph.data.elements.top_triangles, graph.data.elements.bottom_triangles)
+            
+                this.bindMouseOverOutEvent(this.lineStorys[graph.data.id].story, getTooltipContent)
+                this.bindMouseOverOutEvent(this.lineStorys[graph.data.id].svg.selectAll('.topTriangles'), getTooltipContent)
+                this.bindMouseOverOutEvent(this.lineStorys[graph.data.id].svg.selectAll('.bottomTriangles'), getTooltipContent)
+                this.lineStorys[graph.data.id].svg.selectAll('.topTriangles').on("click", function(event, d) {
+                    eval(d.api)
                 })
-            }else if(subplot.type == 'LineStory'){
-                subplot.data.forEach(lineStory => {
-                    this.lineStorys[lineStory.identifier] = new LineStory(this.svg.select(`#${lineStory.identifier}`), lineStory.data, lineStory.data.top_triangles, lineStory.data.bottom_triangles)
-                
-                    this.bindMouseOverOutEvent(this.lineStorys[lineStory.identifier].story, getTooltipContent)
-                    this.bindMouseOverOutEvent(this.lineStorys[lineStory.identifier].svg.selectAll('.topTriangles'), getTooltipContent)
-                    this.bindMouseOverOutEvent(this.lineStorys[lineStory.identifier].svg.selectAll('.bottomTriangles'), getTooltipContent)
-                    this.lineStorys[lineStory.identifier].svg.selectAll('.topTriangles').on("click", function(event, d) {
-                        eval(d.api)
-                    })
-                    this.lineStorys[lineStory.identifier].svg.selectAll('.bottomTriangles').on("click", function(event, d) {
-                        eval(d.api)
-                    })
+                this.lineStorys[graph.data.id].svg.selectAll('.bottomTriangles').on("click", function(event, d) {
+                    eval(d.api)
                 })
+            }else if(graph.type == 'Brush'){
+                this.brush = new Brush(this.svg, graph.width, graph.height, this)
             }
         })
     }
@@ -1577,4 +1644,4 @@ class TextFileCompareComponentSvgDialog extends Dialog
     }
 }
 
-export {ScriptDialog, TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, ChartAtomComponentSvgDialog, ChartAtomComponentLineChart}
+export {ScriptDialog, ScriptComponentSvg, TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, ChartAtomComponentSvgDialog, ChartAtomComponentLineChart}

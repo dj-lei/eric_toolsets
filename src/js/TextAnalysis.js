@@ -7,7 +7,7 @@ import { SystemTestComponentDialog, TextFileCompareComponentDialog, SearchAtomCo
 import { FileContainerComponentTab, TextFileFunctionComponentTab } from './tab'
 import { TextFileOriginalComponentTable, SearchAtomComponentTable, InsightAtomComponentTable} from './table'
 import { SearchFunctionComponentList, InsightFunctionComponentList, ChartFunctionComponentList, StatisticFunctionComponentList } from './list'
-import { ScriptDialog, TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, ChartAtomComponentSvgDialog, ChartAtomComponentLineChart } from './svg'
+import { ScriptDialog, ScriptComponentSvg, TextFileOriginalComponentSvg, TextFileCompareComponentSvgDialog, ChartAtomComponentSvgDialog, ChartAtomComponentLineChart } from './svg'
 import { StatisticAtomComponentTextarea } from './textarea'
 import { TextFileOriginalComponentNavigate } from './navigate'
 
@@ -270,7 +270,7 @@ class TextAnalysisView extends View
 
     onNewObject(args){
         if (args.class_name == 'TextFileView') {
-            this.fileContainerView.textFileViews[args.namespace] = new TextFileView(args.namespace)
+            this.fileContainerView.textFileViews[args.namespace] = new TextFileView(this.fileContainerView, args.namespace)
         }else if (args.class_name == 'TextFileOriginalView') {
             this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileOriginalView = new TextFileOriginalView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.namespace, args.model)
         }else if (args.class_name == 'TextFileFunctionView') {
@@ -351,11 +351,11 @@ class FileContainerView extends View
             for (const f of event.dataTransfer.files) {
                 // Using the path attribute to get absolute file path
                 if (f.path.includes('.ecfg')) {
-                    configPath = f.path
+                    configPath = f.path.replace(/\\/g, "/")
                 }else if (f.path.includes('.escp')) {
-                    scriptPath = f.path
+                    scriptPath = f.path.replace(/\\/g, "/")
                 }else{
-                    filePaths.push(f.path)
+                    filePaths.push(f.path.replace(/\\/g, "/"))
                 }
             }
             if (filePaths.length > 0) {
@@ -566,8 +566,9 @@ class FileContainerView extends View
 
 class TextFileView extends View
 {
-    constructor(namespace){
+    constructor(parent, namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.parent = parent
         this.container.style.overflow = 'hidden'
         this.tmpSearchAtomView = ''
         this.tmpInsightAtomView = ''
@@ -602,7 +603,8 @@ class TextFileOriginalView extends View
         this.container.style.border = '1px solid #ddd'
         this.navigate = new TextFileOriginalComponentNavigate(this)
         this.tableShow = new TextFileOriginalComponentTable(this)
-        this.svgShow = new TextFileOriginalComponentSvg(this, this.container)
+        // this.svgShow = new TextFileOriginalComponentSvg(this, this.container)
+        this.svgShow = new ScriptComponentSvg(this.container, this.parent.parent.parent)
         this.svgShow.hidden()
     }
 
@@ -633,7 +635,7 @@ class TextFileOriginalView extends View
 
     onRefreshStoryLines(model){
         this.model = model
-        this.svgShow.update(model.data_tree)
+        this.svgShow.update(model.graphs)
     }
 
 }
@@ -877,7 +879,7 @@ class ScriptView extends BatchView
     }
 
     onDraw(data){
-        console.log(data)
+        // console.log(data)
         this.dialog.draw(data)
     }
 }

@@ -1,9 +1,9 @@
 from utils import *
 
-graphs_height ={
+graphs_height = {
     'LineChart': 200,
     'LineStory': 20,
-    'ScatterPlot': 200,
+    'ScatterPlot': 100,
 }
 
 def linear_scale(domain, range):
@@ -11,41 +11,116 @@ def linear_scale(domain, range):
         return np.interp(x, domain, range)
     return scale
 
-class Graph(object):
-    def __init__(self, pixel_width):
+class Glyph(object):
+    def __init__(self):
+        self.id = ''
         self.start_x = 0
         self.end_x = 0
-        self.pixel_width = pixel_width
+        self.pixel_width = 0
         self.inter = ''
+        self.filter = ['x','y','r','api','filter']
 
-class LineChart(Graph):
-    def __init__(self, pixel_width):
-        super().__init__(pixel_width)
+    def get_linear_scale(self, start_x, end_x, pixel_width):
+        self.start_x = start_x
+        self.end_x = end_x
+        self.pixel_width = pixel_width
+        return linear_scale([self.start_x, self.end_x], [0, self.pixel_width])
 
-    def calculate_position(self):
-        for key in node['data']['select_lines'].keys():
-                for dot in node['data']['select_lines'][key]:
-                    if align_type == 'timestamp':
-                        dot['x'] = inter_local(inter_global(dot['timestamp']))
-                    else:
-                        dot['x'] = inter_local(inter_global(dot['global_index']))
-            node['data']['width'] = node['data']['ex'] - node['data']['sx']
-            node['data']['height'] = line_chart_height
-            node['data']['line_type'] = line_type
-            current_height = current_height + line_chart_height + interval_height
-            line_charts.append(node)
+class LineChart(Glyph):
+    def __init__(self, id, start_x, end_x, width, elements, global_inter):
+        super().__init__()
+        self.id = id
+        self.start_x = start_x
+        self.end_x = end_x
+        self.width = width
+        self.height = graphs_height['LineChart']
+        self.inter = self.get_linear_scale(self.start_x, self.end_x, self.width)
+        self.map_locate(elements, global_inter)
 
-class IndentedTree(Graph, Tree):
-    def __init__(self, pixel_width):
-        Graph.__init__(self, pixel_width)
+    def map_locate(self, elements, global_inter):
+        for key in elements.keys():
+            for dot in elements[key]:
+                dot['x'] = self.inter(global_inter(dot['timestamp']))
+                dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
+                dot['filter'] = self.filter
+
+class LineStory(Glyph):
+    def __init__(self, id, start_x, end_x, width, elements, global_inter):
+        super().__init__()
+        self.id = id
+        self.start_x = start_x
+        self.end_x = end_x
+        self.width = width
+        self.height = graphs_height['LineStory']
+        self.inter = self.get_linear_scale(self.start_x, self.end_x, self.width)
+        self.map_locate(elements, global_inter)
+
+    def model(self):
+        return {
+            'start_x': self.start_x,
+            'end_x': self.end_x,
+            'width': self.width,
+            'height': self.height,
+            'top_triangles': self.elements['top_triangles'],
+            'bottom_triangles': self.elements['bottom_triangles'],
+        }
+
+    def map_locate(self, elements, global_inter):
+        for key in elements['top_triangles'].keys():
+            for dot in elements['top_triangles'][key]:
+                dot['x'] = self.inter(global_inter(dot['timestamp']))
+                dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
+                dot['filter'] = self.filter
+        
+        for key in elements['bottom_triangles'].keys():
+            for dot in elements['bottom_triangles'][key]:
+                dot['x'] = self.inter(global_inter(dot['timestamp']))
+                dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
+                dot['filter'] = self.filter
+
+class ScatterPlot(Glyph):
+    def __init__(self, id, start_x, end_x, width, elements, global_inter):
+        super().__init__()
+        self.id = id
+        self.r = 2
+        self.start_x = start_x
+        self.end_x = end_x
+        self.width = width
+        self.height = graphs_height['ScatterPlot']
+        self.inter = self.get_linear_scale(self.start_x, self.end_x, self.width)
+        self.elements = elements
+        self.map_locate(self.elements, global_inter)
+
+    def map_locate(self, elements, global_inter):
+        for dot in elements:
+            dot['x'] = self.inter(global_inter(dot['timestamp']))
+            dot['y'] = random.randint(0, 100)
+            dot['r'] = self.r
+            dot['filter'] = self.filter
+            dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
+
+class IndentedTree(Glyph, Tree):
+    def __init__(self, id, start_x, end_x, width, elements, global_inter):
+        Glyph.__init__(self)
+        Tree.__init__(self)
         self.common_height = 20
         self.interval_height = 10
+
+        self.id = id
+        self.start_x = start_x
+        self.end_x = end_x
+        self.width = width
+        self.height = 0
+        self.inter = self.get_linear_scale(self.start_x, self.end_x, self.width)
+        self.elements = elements
+        self.elements_to_tree(self.elements)
+        self.map_locate(global_inter)
         
-    def list_to_tree(self, items):
-        for item in items:
-            for index, s in enumerate(item['path']):
-                parent = '.'.join(item['path'][0:index])
-                node = '.'.join(item['path'][0:index+1])
+    def elements_to_tree(self, elements):
+        for element in elements:
+            for index, s in enumerate(element['path']):
+                parent = '.'.join(element['path'][0:index])
+                node = '.'.join(element['path'][0:index+1])
                 if not self.contains(node):
                     if parent == '':
                         if not self.contains(parent):
@@ -53,45 +128,43 @@ class IndentedTree(Graph, Tree):
                         else:
                             self.create_node(node, parent, data=None)
                     else:
-                        self.create_node(node, node, parent=parent, data = item['data'] if index == len(item['path']) - 1 else None)
+                        self.create_node(node, node, parent=parent, data = element if index == len(element['path']) - 1 else None)
+
+    def dict_to_list(self, data):
+        result = []
+        for key in data.keys():
+            node = {'id': key,  'data':data[key]['data']}
+            result.append(node)
+            if 'children' in data[key]:
+                for child in data[key]['children']:
+                    result.extend(self.dict_to_list(child))
+        return result
                         
     def get_all_nodes_to_list(self):
         res = []
-        for node in sorted(self.all_nodes(), key=lambda node: node.identifier):
-            if node.data is None:
-                res.append({'id': node.identifier, 'start_timestamp': 0, 'end_timestamp': 0, 'elements': None})
+        for node in self.dict_to_list(self.to_dict(sort=False, with_data=True)):
+            if node['data'] is None:
+                res.append({'id': node['id'], 'start_timestamp': 0, 'end_timestamp': 0, 'elements': None})
             else:
-                node.data['id'] = node.identifier
-                res.append(node.data)
+                node['data']['id'] = node['id']
+                res.append(node['data'])
         return res
     
-    def calculate_range(self, data_list):
-        start_x = []
-        end_x = []
-        for node in data_list:
-            if node['elements'] is not None:
-                start_x.append(node['start_timestamp'])
-                end_x.append(node['end_timestamp'])
-        self.start_x = min(start_x)
-        self.end_x = max(end_x)
-    
-    def calculate_position(self):
+    def map_locate(self, global_inter):
         data_list = self.get_all_nodes_to_list()
-        self.calculate_range(data_list)
-                
-        inter_global = linear_scale([self.start_x, self.end_x], [0, self.pixel_width])
-        # define indented tree
-        current_height = 0
+        self.height = 0
         for node in data_list:
-            node['sy'] = current_height
+            node['sy'] = self.height 
             if node['elements'] is None:
                 node['sx'] = 0
                 node['ex'] = 0
+                node['width'] = 0
                 node['height'] = self.common_height
-                current_height = current_height + self.common_height + self.interval_height
+                self.height  = self.height  + self.common_height + self.interval_height
             else:
-                node['sx'] = inter_global(node['start_timestamp'])
-                node['ex'] = inter_global(node['end_timestamp'])
+                node['sx'] = self.inter(global_inter(node['start_timestamp']))
+                node['ex'] = self.inter(global_inter(node['end_timestamp']))
+                node['width'] = node['ex'] - node['sx']
                 node['height'] = graphs_height[node['graph_type']]
-                current_height = current_height + graphs_height[node['graph_type']] + self.interval_height
+                self.height  = self.height + graphs_height[node['graph_type']] + self.interval_height
             self.update_node(node["id"], data=node)

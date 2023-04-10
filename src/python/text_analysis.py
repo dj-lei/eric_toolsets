@@ -1,5 +1,5 @@
 from utils import *
-from special import take_apart_dcgm, take_apart_telog
+from graph import *
 
 import socketio
 import asyncio
@@ -316,32 +316,6 @@ class Fellow(Model):
         ns = list(set(self.models.keys()))
         for namespace in ns:
             await self.on_delete_single(sid, namespace)
-
-    async def on_refresh_roles(self, sid):
-        for namespace in self.models.keys():
-            if self.models[namespace].role_path == '':
-                continue
-            else:
-                roles = self.models[namespace].role_path.split('.')
-                for index, role in enumerate(roles):
-                    parent = '-'.join(roles[0:index])
-                    node = '-'.join(roles[0:index+1])
-                    if self.text_file.roles.contains(node):
-                        if index == len(roles) - 1:
-                            self.text_file.roles.update_node(node, parent=parent, data = self.models[namespace].model())
-                    else:
-                        if parent == '':
-                            self.text_file.roles.create_node(node, node, data=None)
-                        else:
-                            self.text_file.roles.create_node(node, node, parent=parent, data = self.models[namespace].model() if index == len(roles) - 1 else None)
-
-        # self.text_file.roles.show()
-        if self.text_file.roles.depth() != 0:
-            data_tree = convert_dict_format(self.text_file.roles.to_dict(sort=False, with_data=True))
-            if self.mode == 'normal':
-                await self.text_file.text_file_original.on_refresh_story_lines(sid, data_tree)
-            else:
-                return data_tree
             
     async def is_publish_able(self, namespace): #notice subscriber refresh
         if self.config_count > 0:
@@ -350,7 +324,7 @@ class Fellow(Model):
         if self.config_count == 0:
             await super().publish(namespace)
             await pub.publish(self.namespace)
-            await self.on_refresh_roles('')
+            # await self.text_file.text_file_original.on_refresh_roles('')
 
     async def is_batch_able(self, namespace):
         if self.is_load_config:
@@ -368,15 +342,12 @@ class Fellow(Model):
                 self.connected_count = 0
                 if self.mode == 'normal':
                     await self.text_file.on_load_next_config('')
-                else:
-                    await self.on_refresh_roles('')
         else:
             if self.mode == 'normal':
                 await self.models[namespace].on_refresh('')
             else:
                 func = getattr(self.models[namespace], self.__class__.__name__.split('Function')[0].lower())
                 func()
-            # await self.on_refresh_roles('')
 
 
 class TextAnalysisModel(Model):
@@ -434,14 +405,17 @@ class FileContainerModel(Model):
 
         self.text_files = {}
         self.active_text_file = ''
+        self.id_map = {}
 
     async def listener(self, publish_namespace):
         await self.publish(publish_namespace)
 
     async def on_new_file(self, sid, file_paths):
         for path in file_paths:
-            new_file_namespace = self.namespace+'/'+path.split('\\')[-1]
-            # new_file_namespace = self.namespace + '/' + createUuid4()
+            # new_file_namespace = self.namespace+'/'+path.split('/')[-1]
+            uid = create_uuid4()
+            self.id_map[uid] = path.split('/')[-1]
+            new_file_namespace = self.namespace + '/' + uid
             
             self.text_files[new_file_namespace] = await TextFileModel(self, new_file_namespace, path, self.mode)
             await self.emit('newFile', self.text_files[new_file_namespace].model(), namespace=self.namespace)
@@ -538,7 +512,7 @@ class TextFileModel(Model):
 
         self.data = {}
         self.path = path
-        self.file_name = path.split('\\')[-1]
+        self.file_name = path.split('/')[-1]
         self.config = ''
         self.load = ['search', 'chart', 'insight', 'statistic']
         self.load_order = 0
@@ -546,8 +520,6 @@ class TextFileModel(Model):
         with open(self.path, 'r') as f:
             self.lines = f.readlines()
             # self.lines = self.parent.parent.parallel.copy_to_shm(self.namespace, f.readlines())
-
-        self.roles = Tree()
 
         await self.new_view_object()
         self.text_file_original = await TextFileOriginalModel(self, mode)
@@ -671,6 +643,7 @@ class TextFileModel(Model):
 
     async def on_load_next_config(self, sid):
         if self.load_order >= len(self.load):
+            await self.text_file_original.on_refresh_roles(sid)
             return
 
         load_flag = False
@@ -745,13 +718,15 @@ class TextFileOriginalModel(Model):
         self.marks = []
         self.specials = []
 
-        self.data_tree = {}
+        self.pixel_width = 5000
+        self.roles = ''
+        self.graphs = []
 
         await self.new_view_object()
         
     def model(self):
         return {'namespace': self.namespace, 'file_name': self.parent.file_name, 'point': self.point, 'rate_height': self.rate_height, 'point': self.point, 
-                'range': self.range, 'count': self.count, 'display_lines': self.display_lines, 'data_tree': self.data_tree}
+                'range': self.range, 'count': self.count, 'display_lines': self.display_lines, 'graphs': self.graphs}
 
     async def listener(self, publish_namespace):
         await self.on_set_height('', 1)
@@ -784,6 +759,77 @@ class TextFileOriginalModel(Model):
         await self.on_scroll(sid, d['global_index'])
         await self.send_message(sid, self.get_file_container_namespace(), 'on_display_file', self.get_text_file_namespace())
 
+    async def on_refresh_roles(self, sid):
+        search_models = self.parent.text_file_function.search_function.models
+        chart_models = self.parent.text_file_function.chart_function.models
+
+        items = []
+        for namespace in search_models.keys():
+            if search_models[namespace].role_path == '':
+                continue
+            else:
+                path = search_models[namespace].role_path.split('.')
+                items.append({
+                                'path': path, 
+                                'graph_type': 'LineStory',
+                                'start_timestamp': search_models[namespace].start_timestamp,
+                                'end_timestamp': search_models[namespace].end_timestamp,
+                                'elements': {'top_triangles': search_models[namespace].res_marks, 'bottom_triangles': {'compare_special' : search_models[namespace].res_compare_special_lines}},
+                            })
+                
+        for namespace in chart_models.keys():
+            if chart_models[namespace].role_path == '':
+                continue
+            else:
+                path = chart_models[namespace].role_path.split('.')
+                items.append({
+                                'path': path, 
+                                'graph_type': 'LineChart',
+                                'start_timestamp': chart_models[namespace].start_timestamp,
+                                'end_timestamp': chart_models[namespace].end_timestamp,
+                                'elements': chart_models[namespace].select_lines,
+                            })
+                
+        start_x = []
+        end_x = []
+        for item in items:
+            if (item['start_timestamp'] != 0) & (item['end_timestamp'] != 0):
+                start_x.append(item['start_timestamp'])
+                end_x.append(item['end_timestamp'])
+
+        graphs = []
+        # define xaxis
+        graphs.append({
+            'type': 'XAxis',
+            'width': self.pixel_width,
+            'lower_bound': min(start_x),
+            'upper_bound': max(end_x),
+            'tick_format_func': 'formatTimestamp'
+        })
+
+        global_inter = linear_scale([min(start_x), max(end_x)], [0, self.pixel_width])
+        self.roles = IndentedTree('', 0, self.pixel_width, self.pixel_width, items, global_inter)
+        graphs.append({'id': self.roles.id, 'type': 'IndentedTree', 'data': convert_dict_format(self.roles.to_dict(sort=False, with_data=True))})
+        # self.roles.show()
+
+        nodes = self.roles.get_all_nodes_to_list()
+        for node in nodes:
+            if node['elements'] is not None:
+                if node['graph_type'] == 'LineStory':
+                    LineStory(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter)
+                    # node['api'] = 'that.textAnalysisView.fileContainerView.controlNewFile(['+self.dir_path+'\\'+node['IP']+'])'
+                    graphs.append({'type': 'LineStory', 'data': node})
+                elif node['graph_type'] == 'LineChart':
+                    LineChart(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter)
+                    # node['api'] = 'that.textAnalysisView.fileContainerView.controlNewFile(['+self.dir_path+'\\'+node['IP']+'])'
+                    graphs.append({'type': 'LineChart', 'data': node})
+
+        self.graphs = graphs
+        if self.mode == 'normal':
+            await self.on_refresh_story_lines(sid, self.graphs)
+        else:
+            return graphs
+            
     async def on_refresh_acitve(self, sid):
         res_key_value = self.parent.text_file_function.search_function.active_search_atom.res_key_value
         self.specials = self.parent.text_file_function.search_function.active_search_atom.specials
@@ -796,8 +842,8 @@ class TextFileOriginalModel(Model):
                 else:
                     self.words.append(key)
         
-    async def on_refresh_story_lines(self, sid, data_tree):
-        self.data_tree = data_tree
+    async def on_refresh_story_lines(self, sid, graphs):
+        self.graphs = graphs
         await self.emit('refreshStoryLines', self.model(), namespace=self.namespace)
 
     def scroll(self, point, range):
@@ -1811,8 +1857,8 @@ class TextFileCompareModel(Model):
 
     async def execute(self):
         first_file, second_file = self.compare()
-        await first_file.text_file_function.search_function.on_refresh_roles('')
-        await second_file.text_file_function.search_function.on_refresh_roles('')
+        await first_file.text_file_original.on_refresh_roles('')
+        await second_file.text_file_original.on_refresh_roles('')
 
         m = self.model()
         m['first'] = self.file_container.text_files[self.first_file_namespace].text_file_original.namespace
