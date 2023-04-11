@@ -243,6 +243,10 @@ class ListView extends View
     controlActive(){
         this.socket.emit("active")
     }
+
+    controlDeactive(){
+        this.socket.emit("deactive")
+    }
     
     onDeactive(){
         this.show.hidden()

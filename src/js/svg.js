@@ -94,31 +94,23 @@ class XAxis extends svgElement
 
 class TidyTree extends svgElement
 {
-    constructor(svg){
+    constructor(svg, data){
         super(svg)
         this.nodeEnter = ''
-    }
-
-    clear(){
-        this.svg.selectAll("*").remove()
-        // this.iterationClear([this.data])
-        // this.draw(this.data)
-    }
-
-    update(data){
-        this.clear()
         this.data = data
         this.draw()
     }
 
-    // iterationClear(data){
-    //     data.forEach((item) => {
-    //         if ('children' in item){
-    //             this.iterationClear(item['children'])
-    //         }else{
-    //             item.check = false
-    //         }
-    //     })
+    // clear(){
+    //     this.svg.selectAll("*").remove()
+    //     // this.iterationClear([this.data])
+    //     // this.draw(this.data)
+    // }
+
+    // update(data){
+    //     this.clear()
+    //     this.data = data
+    //     this.draw()
     // }
 
     draw(){
@@ -488,7 +480,7 @@ class LineStory extends svgElement
                             .enter()
                                 .append("path")
                                 .attr("class", "bottomTriangles")
-                                .attr("transform", s => `translate(${s.x},${d.height})`)
+                                .attr("transform", d => `translate(${d.x},${data.height})`)
                                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(20))
                                 .style("fill", "#FFD700")
                                 .style("cursor", "pointer")
@@ -1011,12 +1003,13 @@ class ChartAtomComponentSvgDialog extends Dialog
 
         // name
         this.rolePath = this.createElementTextInput()
-        this.subContainer.appendChild(this.createElementHeader('Describe module/role hierarchy. (Optional)'))
+        this.subContainer.appendChild(this.createElementHeader('Describe module/role hierarchy (Optional)'))
         this.subContainer.appendChild(this.rolePath)
         this.subContainer.appendChild(this.createElementHr())
 
         this.subContainer.appendChild(this.createElementHeader('Key Value Tree'))
-        this.chartAtomComponentSvg = new ChartAtomComponentSvg(this)
+        this.chartAtomComponentSvg = new ScriptComponentSvg(this.subContainer, this.chartAtomView.parent.parent.parent.parent)
+        this.chartAtomComponentSvg.container.style.height = `${parseInt(document.body.offsetHeight / 2)}px`
 
         let that = this
         this.cancelBtn = this.createElementButton('CANCEL')
@@ -1034,6 +1027,25 @@ class ChartAtomComponentSvgDialog extends Dialog
         this.subContainer.appendChild(this.applyBtn)
         this.subContainer.appendChild(this.clearBtn)
         this.subContainer.appendChild(this.cancelBtn)
+    }
+
+    clickEvent(event, d){
+        d.children = d.children ? null : d._children;
+        if (d._children) {
+            return
+        }else{
+            if (d.data.check == true){
+                d.data.check = false
+                d3.select(event.target.parentNode).select('circle').attr("fill", "#999")
+                d3.select(event.target.parentNode).select('text').attr("fill", "#FFF")
+                d3.select(event.target.parentNode).select('text').attr("stroke", "#FFF")
+            }else{
+                d.data.check = true
+                d3.select(event.target.parentNode).select('circle').attr("fill", "#33CC00")
+                d3.select(event.target.parentNode).select('text').attr("fill", "#33CC00")
+                d3.select(event.target.parentNode).select('text').attr("stroke", "#33CC00")
+            }
+        }
     }
 
     model(){
@@ -1055,50 +1067,16 @@ class ChartAtomComponentSvgDialog extends Dialog
         this.identifier.value = model.identifier
         this.desc.value = model.desc
         this.rolePath.value = model.role_path
-        this.chartAtomComponentSvg.update(model.key_value_tree)
+        this.chartAtomView.collapsible.innerHTML = '+ ' + model.desc
+        this.chartAtomComponentSvg.refresh(model.key_value_tree)
+        let that = this
+        this.chartAtomComponentSvg.tidyTrees[''].nodeEnter.on("click", (event, d) => {
+            that.clickEvent(event, d)
+        })
     }
 
     clear(){
         this.chartAtomView.controlClearKeyValueTree()
-    }
-}
-
-class ChartAtomComponentSvg extends svg
-{
-    constructor(dialog){
-        super(dialog.subContainer)
-        this.tree = new TidyTree(this.svg)
-        this.container.style.height = `${document.body.offsetHeight / 2}px`
-    }
-
-    update(data){
-        let that = this
-        this.data = data
-        this.tree.update(this.data)
-        this.tree.nodeEnter.on("click", (event, d) => {
-                that.clickEvent(event, d)
-                // update(d);
-                // console.log(that.data)
-            });
-    }
-
-    clickEvent(event, d){
-        d.children = d.children ? null : d._children;
-        if (d._children) {
-            return
-        }else{
-            if (d.data.check == true){
-                d.data.check = false
-                d3.select(event.target.parentNode).select('circle').attr("fill", "#999")
-                d3.select(event.target.parentNode).select('text').attr("fill", "#FFF")
-                d3.select(event.target.parentNode).select('text').attr("stroke", "#FFF")
-            }else{
-                d.data.check = true
-                d3.select(event.target.parentNode).select('circle').attr("fill", "#33CC00")
-                d3.select(event.target.parentNode).select('text').attr("fill", "#33CC00")
-                d3.select(event.target.parentNode).select('text').attr("stroke", "#33CC00")
-            }
-        }
     }
 }
 
@@ -1382,7 +1360,7 @@ class ScriptDialog extends Dialog
     }
 
     draw(data){
-        this.plotArea.update(data)
+        this.plotArea.refresh(data)
     }
 
     run(){
@@ -1431,19 +1409,18 @@ class ScriptComponentSvg extends svg
                             .style("overflow", "auto")
     }
 
-    clear(){
+    clear(){  
+        this.svg.selectAll("*").remove()
+        if (this.xAxis != '') {
+            this.xAxis.svg.selectAll("*").remove()
+        }
+        this.resetCoordinates()
         this.xAxis = ''
         this.tidyTrees = {}
         this.indentedTrees = {}
         this.lineCharts = {}
         this.lineStorys = {}
         this.scatterPlots = {}
-        
-        this.svg.selectAll("*").remove()
-        if (this.xAxis != '') {
-            this.xAxis.svg.selectAll("*").remove()
-        }
-        this.resetCoordinates()
     }
 
     resetCoordinates(){
@@ -1527,7 +1504,7 @@ class ScriptComponentSvg extends svg
         // row.scrollIntoView()
     }
 
-    update(data){
+    refresh(data){
         function getTooltipContent(d) {
             var res = ''
             Object.keys(d).forEach(key => {
@@ -1546,44 +1523,52 @@ class ScriptComponentSvg extends svg
             if(graph.type == 'XAxis'){
                 this.xAxis = new XAxis(d3.select(this.svgElm), graph.width, graph.lower_bound, graph.upper_bound, graph.tick_format_func)
             }else if(graph.type == 'TidyTree'){
-                this.tidyTrees[graph.id] = new TidyTree(this.svg, tidyTree)
-            }else if(graph.type == 'IndentedTree'){
                 if (graph.id == ''){
-                    this.indentedTrees[graph.id] = new IndentedTree(this.svg, graph.data)
+                    this.tidyTrees[graph.id] = new TidyTree(this.svg, graph.elements)
                 }else{
                     selector = "#" + graph.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
-                    this.indentedTrees[graph.id] = new IndentedTree(this.svg.select(selector), graph.data)
+                    this.tidyTrees[graph.id] = new TidyTree(this.svg.select(selector), graph.elements)
+                }
+            }else if(graph.type == 'IndentedTree'){
+                if (graph.id == ''){
+                    this.indentedTrees[graph.id] = new IndentedTree(this.svg, graph.elements)
+                }else{
+                    selector = "#" + graph.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
+                    this.indentedTrees[graph.id] = new IndentedTree(this.svg.select(selector), graph.elements)
                 }
             }else if(graph.type == 'ScatterPlot'){
-                selector = "#" + graph.data.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
-                this.scatterPlots[graph.data.id] = new ScatterPlot(this.svg.select(selector), graph.data)
-                this.bindMouseOverOutEvent(this.scatterPlots[graph.data.id].svg.selectAll('.dot'), getTooltipContent)
-                this.scatterPlots[graph.data.id].svg.selectAll('.dot').on("click", function(event, d) {
+                selector = "#" + graph.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
+                this.scatterPlots[graph.id] = new ScatterPlot(this.svg.select(selector), graph.elements)
+                this.bindMouseOverOutEvent(this.scatterPlots[graph.id].svg.selectAll('.dot'), getTooltipContent)
+                this.scatterPlots[graph.id].svg.selectAll('.dot').on("click", function(event, d) {
                     eval(d.api)
                 })
             }else if(graph.type == 'LineChart'){
-                selector = "#" + graph.data.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
-                this.lineCharts[graph.data.id] = new LineChart(this.svg.select(selector), graph.data.elements, 'dash', graph.data.width, graph.data.height)
-                this.bindMouseOverOutEvent(this.lineCharts[graph.data.id].svg.selectAll('.dot'), getTooltipContent)
-                this.lineCharts[graph.data.id].svg.selectAll('.dot').on("click", function(event, d) {
-                    // eval(`that.textAnalysisView.fileContainerView.controlNewFile(['D:\\projects\\ericsson_flow\\new_files\\ru_lock_unlock_normal1_simple.log'])`)
+                if (graph.id == ''){
+                    this.lineCharts[graph.id] = new LineChart(this.svg, graph.elements, 'dash', graph.width, graph.height)
+                }else{
+                    selector = "#" + graph.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
+                    this.lineCharts[graph.id] = new LineChart(this.svg.select(selector), graph.elements, 'dash', graph.width, graph.height)
+                }
+                this.bindMouseOverOutEvent(this.lineCharts[graph.id].svg.selectAll('.dot'), getTooltipContent)
+                this.lineCharts[graph.id].svg.selectAll('.dot').on("click", function(event, d) {
                     eval(d.api)
                 })
-                this.bindMouseOverOutEvent(this.lineCharts[graph.data.id].svg.selectAll('.mark'), getTooltipContent)
-                this.lineCharts[graph.data.id].svg.selectAll('.mark').on("click", function(event, d) {
+                this.bindMouseOverOutEvent(this.lineCharts[graph.id].svg.selectAll('.mark'), getTooltipContent)
+                this.lineCharts[graph.id].svg.selectAll('.mark').on("click", function(event, d) {
                     eval(d.api)
                 })
             }else if(graph.type == 'LineStory'){
-                selector = "#" + graph.data.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
-                this.lineStorys[graph.data.id] = new LineStory(this.svg.select(selector), graph.data, graph.data.elements.top_triangles, graph.data.elements.bottom_triangles)
+                selector = "#" + graph.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
+                this.lineStorys[graph.id] = new LineStory(this.svg.select(selector), graph, graph.elements.top_triangles, graph.elements.bottom_triangles)
             
-                this.bindMouseOverOutEvent(this.lineStorys[graph.data.id].story, getTooltipContent)
-                this.bindMouseOverOutEvent(this.lineStorys[graph.data.id].svg.selectAll('.topTriangles'), getTooltipContent)
-                this.bindMouseOverOutEvent(this.lineStorys[graph.data.id].svg.selectAll('.bottomTriangles'), getTooltipContent)
-                this.lineStorys[graph.data.id].svg.selectAll('.topTriangles').on("click", function(event, d) {
+                // this.bindMouseOverOutEvent(this.lineStorys[graph.data.id].story, getTooltipContent)
+                this.bindMouseOverOutEvent(this.lineStorys[graph.id].svg.selectAll('.topTriangles'), getTooltipContent)
+                this.bindMouseOverOutEvent(this.lineStorys[graph.id].svg.selectAll('.bottomTriangles'), getTooltipContent)
+                this.lineStorys[graph.id].svg.selectAll('.topTriangles').on("click", function(event, d) {
                     eval(d.api)
                 })
-                this.lineStorys[graph.data.id].svg.selectAll('.bottomTriangles').on("click", function(event, d) {
+                this.lineStorys[graph.id].svg.selectAll('.bottomTriangles').on("click", function(event, d) {
                     eval(d.api)
                 })
             }else if(graph.type == 'Brush'){
@@ -1622,12 +1607,16 @@ class TextFileCompareComponentSvgDialog extends Dialog
         this.subContainer.append(this.firstDiv)
         this.subContainer.append(this.secondDiv)
 
-        this.firstSvg = new TextFileOriginalComponentSvg('', this.firstDiv)
+        this.firstSvg = new ScriptComponentSvg(this.firstDiv, this.textFileCompareView.parent)
         this.firstSvg.mode = 'compare'
         this.firstSvg.container.style.flex = 1
-        this.secondSvg = new TextFileOriginalComponentSvg('', this.secondDiv)
+        this.firstSvg.container.style.border = '2px solid orange'
+        this.firstSvg.container.style.borderBottomWidth = '5px'
+        this.secondSvg = new ScriptComponentSvg(this.secondDiv, this.textFileCompareView.parent)
         this.secondSvg.mode = 'compare'
         this.secondSvg.container.style.flex = 1
+        this.secondSvg.container.style.border = '2px solid orange'
+        this.secondSvg.container.style.borderTopWidth = '5px'
     }
 
     clear(){
@@ -1637,10 +1626,10 @@ class TextFileCompareComponentSvgDialog extends Dialog
 
     refresh(first, second){
         this.firstSvg.textFileOriginalView = first
-        this.firstSvg.update(first.model.data_tree)
+        this.firstSvg.refresh(first.model.graphs)
 
         this.secondSvg.textFileOriginalView = second
-        this.secondSvg.update(second.model.data_tree)
+        this.secondSvg.refresh(second.model.graphs)
     }
 }
 

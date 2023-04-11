@@ -99,6 +99,12 @@ class ScatterPlot(Glyph):
             dot['filter'] = self.filter
             dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
 
+class TidyTree(Glyph):
+    def __init__(self, id, elements):
+        super().__init__()
+        self.id = id
+        self.elements = elements
+
 class IndentedTree(Glyph, Tree):
     def __init__(self, id, start_x, end_x, width, elements, global_inter):
         Glyph.__init__(self)

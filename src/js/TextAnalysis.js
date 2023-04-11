@@ -223,9 +223,6 @@ class TextAnalysisView extends View
         this.scriptView = new ScriptView(this)
 
         // this.systemTest = new SystemTestView(this)
-        // this.batchInsightView = new BatchInsightView(this)
-        // this.batchStatisticView = new BatchStatisticView(this)
-        // this.globalChartView = new GlobalChartView(this)
 
         let that = this
         ipcRenderer.on('shutdown', () => {
@@ -274,20 +271,20 @@ class TextAnalysisView extends View
         }else if (args.class_name == 'TextFileOriginalView') {
             this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileOriginalView = new TextFileOriginalView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.namespace, args.model)
         }else if (args.class_name == 'TextFileFunctionView') {
-            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView = new TextFileFunctionView(args.namespace)
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView = new TextFileFunctionView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.namespace)
         }else if (args.class_name == 'SearchFunctionView') {
-            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.searchFunctionView = new SearchFunctionView(args.namespace)
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.searchFunctionView = new SearchFunctionView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView, args.namespace)
         }else if (args.class_name == 'InsightFunctionView') {
             this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.insightFunctionView = new InsightFunctionView(args.namespace)
         }else if (args.class_name == 'ChartFunctionView') {
-            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.chartFunctionView = new ChartFunctionView(args.namespace)
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.chartFunctionView = new ChartFunctionView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView, args.namespace)
         }else if (args.class_name == 'StatisticFunctionView') {
-            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.statisticFunctionView = new StatisticFunctionView(args.namespace)
+            this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.statisticFunctionView = new StatisticFunctionView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView, args.namespace)
         }else if (args.class_name == 'SearchAtomView') {
             if (args.model.namespace.split('/').length == 5) {
-                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpSearchAtomView = new SearchAtomView(args.model)
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpSearchAtomView = new SearchAtomView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.model)
             }else{
-                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.searchFunctionView.views[args.model.namespace] = new SearchAtomView(args.model)
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.searchFunctionView.views[args.model.namespace] = new SearchAtomView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.searchFunctionView, args.model)
             }
         }else if (args.class_name == 'InsightAtomView') {
             if (args.model.namespace.split('/').length == 5) {
@@ -297,15 +294,15 @@ class TextAnalysisView extends View
             }
         }else if (args.class_name == 'ChartAtomView') {
             if (args.model.namespace.split('/').length == 5) {
-                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpChartAtomView = new ChartAtomView(args.model)
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpChartAtomView = new ChartAtomView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.model)
             }else{
-                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.chartFunctionView.views[args.model.namespace] = new ChartAtomView(args.model)
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.chartFunctionView.views[args.model.namespace] = new ChartAtomView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.chartFunctionView, args.model)
             }
         }else if (args.class_name == 'StatisticAtomView') {
             if (args.model.namespace.split('/').length == 5) {
-                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpStatisticAtomView = new StatisticAtomView(args.model)
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].tmpStatisticAtomView = new StatisticAtomView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)], args.model)
             }else{
-                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.statisticFunctionView.views[args.model.namespace] = new StatisticAtomView(args.model)
+                this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.model.namespace)].textFileFunctionView.statisticFunctionView.views[args.model.namespace] = new StatisticAtomView(this.fileContainerView.textFileViews[this.getTextFileViewNamespace(args.namespace)].textFileFunctionView.statisticFunctionView, args.model)
             }
         }
     }
@@ -566,9 +563,9 @@ class FileContainerView extends View
 
 class TextFileView extends View
 {
-    constructor(parent, namespace){
+    constructor(fileContainerView, namespace){
         super(namespace, common.getParentContainer(namespace))
-        this.parent = parent
+        this.parent = fileContainerView
         this.container.style.overflow = 'hidden'
         this.tmpSearchAtomView = ''
         this.tmpInsightAtomView = ''
@@ -596,9 +593,9 @@ class TextFileView extends View
 
 class TextFileOriginalView extends View
 {
-    constructor(parent, namespace, model){
+    constructor(textFileView, namespace, model){
         super(namespace, common.getParentContainer(namespace))
-        this.parent = parent
+        this.parent = textFileView
         this.model = model
         this.container.style.border = '1px solid #ddd'
         this.navigate = new TextFileOriginalComponentNavigate(this)
@@ -635,15 +632,16 @@ class TextFileOriginalView extends View
 
     onRefreshStoryLines(model){
         this.model = model
-        this.svgShow.update(model.graphs)
+        this.svgShow.refresh(model.graphs)
     }
 
 }
 
 class TextFileFunctionView extends View
 {
-    constructor(namespace){
+    constructor(textFileView, namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.parent = textFileView
         this.searchFunctionView = ''
         this.insightFunctionView = ''
         this.chartFunctionView = ''
@@ -686,8 +684,9 @@ class TextFileFunctionView extends View
 
 class SearchFunctionView extends View
 {
-    constructor(namespace){
+    constructor(textFileFunctionView, namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.parent = textFileFunctionView
         this.views = {}
         this.show = new SearchFunctionComponentList(this)
     }
@@ -699,8 +698,9 @@ class SearchFunctionView extends View
 
 class ChartFunctionView extends View
 {
-    constructor(namespace){
+    constructor(textFileFunctionView, namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.parent = textFileFunctionView
         this.views = {}
         this.show = new ChartFunctionComponentList(this)
     }
@@ -725,8 +725,9 @@ class InsightFunctionView extends View
 
 class StatisticFunctionView extends View
 {
-    constructor(namespace){
+    constructor(textFileFunctionView, namespace){
         super(namespace, common.getParentContainer(namespace))
+        this.parent = textFileFunctionView
         this.views = {}
         this.show = new StatisticFunctionComponentList(this)
     }
@@ -738,9 +739,9 @@ class StatisticFunctionView extends View
 
 class SearchAtomView extends ListView
 {
-    constructor(model){
+    constructor(searchFunctionView, model){
         super(model.namespace, document.getElementById(model.namespace))
-
+        this.parent = searchFunctionView
         this.model = model
         this.dialog = new SearchAtomComponentDialog(this)
         this.show = new SearchAtomComponentTable(this, this.container)
@@ -771,11 +772,28 @@ class SearchAtomView extends ListView
 
 class ChartAtomView extends ListView
 {
-    constructor(model){
+    constructor(chartFunctionView, model){
         super(model.namespace, document.getElementById(model.namespace))
+        this.parent = chartFunctionView
         this.model = model
         this.dialog = new ChartAtomComponentSvgDialog(this)
-        this.show = new ChartAtomComponentLineChart(this)
+        // this.show = new ChartAtomComponentLineChart(this)
+        if (!this.namespace.includes('/Tmp')) {
+            this.show = new ScriptComponentSvg(this.container, this.parent.parent.parent.parent.parent)
+            this.show.container.style.height = `${parseInt(document.body.offsetHeight / 2 - 150)}px`
+            
+            let that = this
+            this.collapsible.addEventListener("click", function() {
+                if (that.show.container.style.display === "block") {
+                    that.controlDeactive()
+                } else {
+                    that.controlActive()
+                }
+            })
+        }else{
+            this.show = new ScriptComponentSvg(this.container, this.parent.parent.parent)
+            this.show.hidden()
+        }
     }
 
     controlClearKeyValueTree(){
@@ -787,7 +805,9 @@ class ChartAtomView extends ListView
     }
 
     onRefresh(model){
-        super.onRefresh(model)
+        this.model = model
+        this.onUpdateDialog(model)
+        this.show.refresh(this.model.graphs)
         // this.show.chart.resize({height:`${parseInt(document.body.offsetHeight / 2 - 100)}px`, width:`${document.body.offsetWidth}px`})
     }
 }
@@ -813,8 +833,9 @@ class InsightAtomView extends ListView
 
 class StatisticAtomView extends ListView
 {
-    constructor(model){
+    constructor(statisticFunctionView, model){
         super(model.namespace, document.getElementById(model.namespace))
+        this.parent = statisticFunctionView
         this.model = model
         this.dialog = new StatisticAtomComponentDialog(this)
         this.show = new StatisticAtomComponentTextarea(this)
@@ -881,88 +902,6 @@ class ScriptView extends BatchView
     onDraw(data){
         // console.log(data)
         this.dialog.draw(data)
-    }
-}
-
-class BatchInsightView extends BatchView
-{
-    constructor(textAnalysisView){
-        super(`${textAnalysisView.namespace}${ns.BATCHINSIGHT}`, textAnalysisView.container)
-        this.parent = textAnalysisView
-        this.dialog = new BatchInsightComponentDialog(this)
-        this.show = new BatchInsightComponentSvgDialog(this)
-        this.batchInsightComponentTableDialog = new BatchInsightComponentTableDialog(this)
-    }
-
-    controlGetUniversal(clusterNum){
-        this.socket.emit("get_universal", clusterNum, async (response) => {
-            this.batchInsightComponentTableDialog.batchInsightComponentTable.refreshUniversal(response)
-            this.batchInsightComponentTableDialog.display()
-        })
-    }
-
-    controlGetSingleInsight(namespace){
-        // this.socket.emit("get_single_insight", namespace, async (response) => {
-        //     console.log(response)
-        //     this.batchInsightComponentTableDialog.batchInsightComponentTable.refreshSingleInsight(response)
-        //     this.batchInsightComponentTableDialog.display()
-        // })
-    }
-
-    onRefresh(model){
-        if (model.surplus > 0) {
-            this.socket.emit("polling")
-        }
-        this.show.refresh(model.cluster_tree)
-    }
-}
-
-class BatchStatisticView extends BatchView
-{
-    constructor(textAnalysisView){
-        super(`${textAnalysisView.namespace}${ns.BATCHSTATISTIC}`, textAnalysisView.container)
-        this.parent = textAnalysisView
-        this.dialog = new BatchStatisticComponentDialog(this)
-        this.show = new BatchStatisticComponentTableDialog(this)
-    }
-
-    controlCode(code){
-        this.socket.emit("code", code)
-    }
-
-    onRefreshCode(sample){
-        this.show.refreshCode(sample)
-    }
-}
-
-class GlobalChartView extends BatchView
-{
-    constructor(textAnalysisView){
-        super(`${textAnalysisView.namespace}${ns.GLOBALCHART}`, textAnalysisView.container)
-
-        this.dialog = new GlobalChartComponentSvgDialog(this)
-        this.show = new GlobalChartComponentSequentialChartDialog(this)
-    }
-
-    controlClearKeyValueTree(){
-        this.socket.emit("clear_global_key_value_tree")
-    }
-
-    controlExec(model){
-        this.socket.emit("exec", model)
-        this.show.clear()
-        this.dialog.hidden()
-        this.show.display()
-    }
-
-    onRefresh(model){
-        super.onRefresh(model)
-        this.show.resize()
-    }
-
-    onUpdateDialog(model){
-        this.model = model
-        this.dialog.update(this.model)
     }
 }
 
