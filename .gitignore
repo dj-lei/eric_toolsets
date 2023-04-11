@@ -2,7 +2,8 @@
 node_modules
 src/python/dist/
 src/python/build/
-
+src/python/.ipynb_checkpoints/
+src/python/__pycache__/
 
 # local env files
 .env.local
@@ -22,6 +23,7 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+package-lock.json
 
 #Electron-builder output
 /dist_electron
