@@ -240,6 +240,11 @@ class TextFileCompareComponentSvgDialogNavigate extends Navigate
 {
     constructor(dialog){
         super(dialog.container)
+        this.topNavigate.style.backgroundColor = '#000'
+        this.title = this.createElementA('')
+        this.title.style.fontSize = '25px'
+        this.title.style.color = 'white'
+        this.topNavigate.append(this.title)
 
         // btn
         this.cancel = this.createElementButton('CANCEL')

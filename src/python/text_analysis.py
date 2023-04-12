@@ -798,6 +798,16 @@ class TextFileOriginalModel(Model):
         graphs.append({'id': self.roles.id, 'type': 'IndentedTree', 'elements': convert_dict_format(self.roles.to_dict(sort=False, with_data=True))})
         # self.roles.show()
 
+        code = """
+        if (that.mode) {
+            var textFileOriginalView = that.textAnalysisView.fileContainerView.textFileViews[that.namespace].textFileOriginalView
+            var searchAtom = textFileOriginalView.getSearchAtomIns(d)
+            searchAtom.controlGetAllLines(that, d.search_index)
+        }else{
+            that.textAnalysisView.fileContainerView.textFileViews[that.textAnalysisView.fileContainerView.activeTextFileView].textFileOriginalView.controlJump(d)
+        }
+        """
+
         # define LineChart and LineStory
         nodes = self.roles.get_all_nodes_to_list()
         for node in nodes:
@@ -806,11 +816,11 @@ class TextFileOriginalModel(Model):
                     LineStory(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter)
                     for key in node['elements']['top_triangles'].keys():
                         for dot in node['elements']['top_triangles'][key]:
-                            dot['api'] = 'that.textAnalysisView.fileContainerView.textFileViews[that.textAnalysisView.fileContainerView.activeTextFileView].textFileOriginalView.controlJump(d)'
+                            dot['api'] = code
                     
                     for key in node['elements']['bottom_triangles'].keys():
                         for dot in node['elements']['bottom_triangles'][key]:
-                            dot['api'] = 'that.textAnalysisView.fileContainerView.textFileViews[that.textAnalysisView.fileContainerView.activeTextFileView].textFileOriginalView.controlJump(d)'
+                            dot['api'] = code
 
                     node['type'] = 'LineStory'
                     graphs.append(node)
@@ -818,7 +828,7 @@ class TextFileOriginalModel(Model):
                     LineChart(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter)
                     for key in node['elements'].keys():
                         for dot in node['elements'][key]:
-                            dot['api'] = 'that.textAnalysisView.fileContainerView.textFileViews[that.textAnalysisView.fileContainerView.activeTextFileView].textFileOriginalView.controlJump(d)'
+                            dot['api'] = code
                     node['type'] = 'LineChart'
                     graphs.append(node)
 
@@ -1065,18 +1075,18 @@ class SearchAtomModel(ListModel):
             for mark in self.marks:
                 if index in mark['search_index']:
                     flag = False
-                    lines.append({'text': num+'<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
+                    lines.append({'text': '<td style="color:'+mark['value'][0]+';white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>'})
                     break
 
             if flag:
                 if line in self.specials:
-                    lines.append({'text': num+'<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
+                    lines.append({'text': '<td style="background-color:#FFD700;color:#000;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>'})
                     continue
         
                 if len(self.words) > 0:
-                    lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, text)+'</td>', 'global_index': line})
+                    lines.append({'text': '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, text)+'</td>'})
                 else:
-                    lines.append({'text': num + '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>', 'global_index': line})
+                    lines.append({'text': '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>'})
 
         return Response(status.SUCCESS, msg.NONE, lines).__dict__
 

@@ -519,8 +519,9 @@ class ScatterPlot extends svgElement
                         .attr("cx", d => d.x)
                         .attr("cy", d => d.y)
                         .attr("r", d => d.r)
-                        .attr("fill", 'green')
+                        .attr("fill", 'yellow')
                         .attr("stroke", 'gray')
+                        .attr("stroke-width", 0.5)
                         .style("cursor", "pointer")
                         // .attr("fill", function(d) { return colorScale(d.color); })
     }
@@ -532,8 +533,8 @@ class Brush extends svgElement
         super(svg)
         this.scriptComponentSvg = scriptComponentSvg
         this.globalSvg = svg
-        this.width = width
-        this.height = height
+        this.width = width + 500
+        this.height = height + 500
 
         this.brush = d3.brush()
                         .extent([[0, 0], [0, 0]])  // 设置刷子的边界
@@ -545,7 +546,7 @@ class Brush extends svgElement
             .on("keydown", function(event) {
                 if ((event.keyCode === 17) && (!ctrlPressed)) {
                     ctrlPressed = true;
-                    that.brush.extent([[0, 0], [that.width, that.height]])
+                    that.brush.extent([[-500, -500], [that.width, that.height]])
                     that.globalSvg
                         .attr("pointer-events", "none")
                         .call(that.brush)
@@ -571,18 +572,18 @@ class Brush extends svgElement
                     var translateX = +transformValues[0]
                     var translateY = +transformValues[1]
                     var v = that.scriptComponentSvg.scatterPlots[id].circles
-                                .style("stroke", "gray")
+                                .style("fill", "yellow")
                                 .filter(d => {
                                     return x0 <= (translateX + d.x) && (translateX + d.x) < x1 && y0 <= (translateY + d.y) && (translateY + d.y) < y1
                                 })
-                                .style("stroke", "green")
+                                .style("fill", "red")
                                 .data()
                     value = common.arrayExtend(value, v)
                     that.scriptComponentSvg.displayBottomTip(value)
                 })
             } else {
                 Object.keys(that.scriptComponentSvg.scatterPlots).forEach(id => {
-                    that.scriptComponentSvg.scatterPlots[id].circles.style("stroke", "gray")
+                    that.scriptComponentSvg.scatterPlots[id].circles.style("fill", "yellow")
                 })
             }
             // that.svg.property("value", value).dispatch("input");
@@ -1478,19 +1479,25 @@ class ScriptComponentSvg extends svg
         })
     }
 
-    displayBottomTip(items){
+    displayBottomTip(items, scrollRow=0){
         var c = this.createElementDiv()
         var table = this.createElementTable()
         table.id = 'bottomTip'
         items.forEach((item, index) => {
             var tr = this.createElementTr()
             var td = this.createElementTd()
-            td.innerHTML = `Index:${index} `
+            td.innerHTML = `${index} `
             tr.appendChild(td)
             Object.keys(item).forEach(key => {
-                if (!item.filter.includes(key)){
+                if(item.filter){
+                    if (!item.filter.includes(key)){
+                        td = this.createElementTd()
+                        td.innerHTML = `${item[key]} `
+                        tr.appendChild(td)
+                    }
+                }else{
                     td = this.createElementTd()
-                    td.innerHTML = `${key}:${item[key]} `
+                    td.innerHTML = `${item[key]} `
                     tr.appendChild(td)
                 }
             })
@@ -1500,8 +1507,10 @@ class ScriptComponentSvg extends svg
         this.bottomTip.html(c.innerHTML)
         .style("display", 'block')
 
-        // var row = this.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
-        // row.scrollIntoView()
+        if (scrollRow != 0){
+            var row = this.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
+            row.scrollIntoView()
+        }
     }
 
     refresh(data){
@@ -1538,7 +1547,7 @@ class ScriptComponentSvg extends svg
                 }
             }else if(graph.type == 'ScatterPlot'){
                 selector = "#" + graph.id.replace(/\./g, "\\.").replace(/ /g, "\\ ");
-                this.scatterPlots[graph.id] = new ScatterPlot(this.svg.select(selector), graph.elements)
+                this.scatterPlots[graph.id] = new ScatterPlot(this.svg.select(selector), graph)
                 this.bindMouseOverOutEvent(this.scatterPlots[graph.id].svg.selectAll('.dot'), getTooltipContent)
                 this.scatterPlots[graph.id].svg.selectAll('.dot').on("click", function(event, d) {
                     eval(d.api)
@@ -1626,10 +1635,16 @@ class TextFileCompareComponentSvgDialog extends Dialog
 
     refresh(first, second){
         this.firstSvg.textFileOriginalView = first
+        this.firstSvg.namespace = first.namespace.split('/').slice(0,4).join('/')
+        this.firstSvg.bottomTip.style("width", `${document.body.offsetWidth}px`)
         this.firstSvg.refresh(first.model.graphs)
 
         this.secondSvg.textFileOriginalView = second
+        this.secondSvg.namespace = second.namespace.split('/').slice(0,4).join('/')
+        this.secondSvg.bottomTip.style("width", `${document.body.offsetWidth}px`)
         this.secondSvg.refresh(second.model.graphs)
+
+        this.textFileCompareComponentSvgDialogNavigate.title.innerHTML = `${this.firstSvg.textFileOriginalView.model.file_name}   VS   ${this.secondSvg.textFileOriginalView.model.file_name}`
     }
 }
 
