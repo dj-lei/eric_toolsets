@@ -433,6 +433,7 @@ class FileContainerModel(Model):
             index = index - 1
             self.active_text_file = namespaces[index]
         await self.text_files[namespace].on_delete(sid)
+        await self.publish(self.namespace)
         
     def on_get_config(self, sid):
         config = self.text_files[self.active_text_file].on_get_config()
@@ -734,12 +735,14 @@ class TextFileOriginalModel(Model):
         await self.emit('refresh', self.model(), namespace=self.namespace)
 
     async def on_jump(self, sid, d):
-        namespace = self.parent.text_file_function.search_function.namespace + '/' + d['identifier']
-        await self.parent.text_file_function.search_function.models[namespace].on_active(sid)
-        await self.parent.text_file_function.search_function.models[namespace].on_jump(sid, d['search_index'])
+        if 'identifier' in d:
+            namespace = self.parent.text_file_function.search_function.namespace + '/' + d['identifier']
+            await self.parent.text_file_function.search_function.models[namespace].on_active(sid)
+            await self.parent.text_file_function.search_function.models[namespace].on_jump(sid, d['search_index'])
 
-        self.parent.text_file_function.search_function.active_search_atom = self.parent.text_file_function.search_function.models[namespace]
-        await self.on_refresh_acitve(sid)
+            self.parent.text_file_function.search_function.active_search_atom = self.parent.text_file_function.search_function.models[namespace]
+            await self.on_refresh_acitve(sid)
+
         await self.on_scroll(sid, d['global_index'])
         await self.send_message(sid, self.get_file_container_namespace(), 'on_display_file', self.get_text_file_namespace())
 
@@ -757,8 +760,9 @@ class TextFileOriginalModel(Model):
                 items.append({
                                 'path': path, 
                                 'graph_type': 'LineStory',
-                                'start_timestamp': search_models[namespace].start_timestamp,
-                                'end_timestamp': search_models[namespace].end_timestamp,
+                                'start_x': search_models[namespace].start_timestamp,
+                                'end_x': search_models[namespace].end_timestamp,
+                                'count': search_models[namespace].count,
                                 'elements': {'top_triangles': json.loads(json.dumps(search_models[namespace].res_marks)), 'bottom_triangles': {'compare_special' : json.loads(json.dumps(search_models[namespace].res_compare_special_lines))}},
                             })
         # organize key value data.
@@ -770,17 +774,17 @@ class TextFileOriginalModel(Model):
                 items.append({
                                 'path': path, 
                                 'graph_type': 'LineChart',
-                                'start_timestamp': chart_models[namespace].start_timestamp,
-                                'end_timestamp': chart_models[namespace].end_timestamp,
+                                'start_x': chart_models[namespace].start_timestamp,
+                                'end_x': chart_models[namespace].end_timestamp,
                                 'elements': json.loads(json.dumps(chart_models[namespace].select_lines)),
                             })
         # map all items start_x end_x
         start_x = []
         end_x = []
         for item in items:
-            if (item['start_timestamp'] != 0) & (item['end_timestamp'] != 0):
-                start_x.append(item['start_timestamp'])
-                end_x.append(item['end_timestamp'])
+            if (item['start_x'] != 0) & (item['end_x'] != 0):
+                start_x.append(item['start_x'])
+                end_x.append(item['end_x'])
 
         graphs = []
         # define xaxis
@@ -795,7 +799,7 @@ class TextFileOriginalModel(Model):
         # define IndentedTree
         global_inter = linear_scale([min(start_x), max(end_x)], [0, self.pixel_width])
         self.roles = IndentedTree('', 0, self.pixel_width, self.pixel_width, items, global_inter)
-        graphs.append({'id': self.roles.id, 'type': 'IndentedTree', 'elements': convert_dict_format(self.roles.to_dict(sort=False, with_data=True))})
+        graphs.append({'id': self.roles.id, 'type': self.roles.type, 'elements': self.roles.elements})
         # self.roles.show()
 
         code = """
@@ -813,24 +817,32 @@ class TextFileOriginalModel(Model):
         for node in nodes:
             if node['elements'] is not None:
                 if node['graph_type'] == 'LineStory':
-                    LineStory(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter)
-                    for key in node['elements']['top_triangles'].keys():
-                        for dot in node['elements']['top_triangles'][key]:
+                    ls = LineStory(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter, 'timestamp', node['count'])
+                    for key in ls.elements['top_triangles'].keys():
+                        for dot in ls.elements['top_triangles'][key]:
                             dot['api'] = code
+                            dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
                     
-                    for key in node['elements']['bottom_triangles'].keys():
-                        for dot in node['elements']['bottom_triangles'][key]:
+                    for key in ls.elements['bottom_triangles'].keys():
+                        for dot in ls.elements['bottom_triangles'][key]:
                             dot['api'] = code
+                            dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
 
-                    node['type'] = 'LineStory'
-                    graphs.append(node)
+                    graphs.append(ls.get_vars())
                 elif node['graph_type'] == 'LineChart':
-                    LineChart(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter)
-                    for key in node['elements'].keys():
-                        for dot in node['elements'][key]:
+                    lc = LineChart(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter, 'timestamp')
+                    for key in lc.elements.keys():
+                        for dot in lc.elements[key]:
                             dot['api'] = code
-                    node['type'] = 'LineChart'
-                    graphs.append(node)
+                            dot['y'] = dot['value']
+                            dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
+                    graphs.append(lc.get_vars())
+
+        # define bookmark
+        graphs.append({
+            'type': 'Bookmark',
+            'height': self.roles.height
+        })
 
         self.graphs = graphs
         if self.mode == 'normal':
@@ -1310,12 +1322,13 @@ class ChartAtomModel(ListModel):
         node = {'id': '', 'sx': 0, 'ex': self.pixel_width, 'width':self.pixel_width, 'height': graphs_height['LineChart'], 'elements':json.loads(json.dumps(self.select_lines))}
         # define LineChart
         global_inter = linear_scale([self.start_timestamp, self.end_timestamp], [0, self.pixel_width])
-        LineChart(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter)
-        for key in node['elements'].keys():
-            for dot in node['elements'][key]:
+        lc = LineChart(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter, 'timestamp')
+        for key in lc.elements.keys():
+            for dot in lc.elements[key]:
                 dot['api'] = f'that.textAnalysisView.fileContainerView.textFileViews[that.textAnalysisView.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views["{self.namespace}"].controlClickEvent(d)'
-        node['type'] = 'LineChart'
-        self.graphs.append(node)
+                dot['y'] = dot['value']
+                dot['timestamp'] = convert_timestamp_datetime(dot['timestamp'])
+        self.graphs.append(lc.get_vars())
 
     def generate_key_value_tree(self):
         self.key_value_tree = []
@@ -1327,10 +1340,9 @@ class ChartAtomModel(ListModel):
             for key in self.search_function.models[namespace].res_key_value.keys():
                 keys.append({'name': key, 'check': False})
             tree['children'].append({'namespace': namespace.split('/')[-1], 'name': self.search_function.models[namespace].identifier, 'check': False, 'children': keys})
-        node = {'id': '', 'type': 'TidyTree', 'elements':tree}
         # define TidyTree
-        TidyTree(node['id'], node['elements'])
-        self.key_value_tree.append(node)
+        tt = TidyTree('', tree)
+        self.key_value_tree.append(tt.get_vars())
 
     def reload_key_value_tree(self):
         tmp_key_value_tree = {'namespace': self.text_file.namespace.split('/')[-1], 'name': 'Key Value', 'check': False, 'children': []}

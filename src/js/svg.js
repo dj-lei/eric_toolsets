@@ -296,7 +296,7 @@ class IndentedTree extends svgElement
             .attr("dy", "-0.2em")
             // .attr("x", d => d.depth * nodeSize + 6)
             .text(d => {
-                return d.data.name
+                return d.data.name.split('.')[d.data.name.split('.').length - 1]
             })
             .attr("stroke", "white")
             .attr("fill", "white")
@@ -307,8 +307,8 @@ class IndentedTree extends svgElement
             
         text.each(function() {
             var textWidth = this.getComputedTextLength();
-            d3.select(this)
-                .attr("transform", "translate(" + -1 * textWidth + ", 0)");
+            // d3.select(this)
+            //     .attr("transform", "translate(" + -1 * textWidth + ", 0)");
         })
     }
 }
@@ -317,7 +317,6 @@ class LineChart extends svgElement
 {
     constructor(svg, data, lineType, width, height){
         super(svg)
-
         this.width = width
         this.data = data
         this.lineType = lineType
@@ -342,11 +341,11 @@ class LineChart extends svgElement
 
     addLine(line, name, height, index){
         var y = d3.scaleLinear().range([height, 0])
-        y.domain(d3.extent(line, function (d) { return d.value }))
+        y.domain(d3.extent(line, function (d) { return d.y }))
 
         var lineF = d3.line()
         .x(function (d) { return d.x })
-        .y(function (d) { return y(d.value) })
+        .y(function (d) { return y(d.y) })
         .curve(d3.curveLinear)
 
         // add x axis
@@ -407,7 +406,7 @@ class LineChart extends svgElement
                 .attr("r", 4)
                 .attr("fill", color[index])
                 .attr("cx", d => d.x)
-                .attr("cy", d => y(d.value))
+                .attr("cy", d => y(d.y))
                 .style("cursor", "pointer")
     }
 
@@ -457,7 +456,7 @@ class LineStory extends svgElement
         this.story = this.svg.append("rect")
                         .attr("x", 0)
                         .attr("height", data.height)
-                        .attr("width", (((data.ex - data.sx < 1) & (data.ex - data.sx > 0)) | (data.count == 1)) ? 1 : data.ex - data.sx)
+                        .attr("width", (((data.end_x - data.start_x <= 1) & (data.end_x - data.start_x >= 0)) | (data.count == 1)) ? 1 : data.end_x - data.start_x)
                         .attr("fill", "#808080")
 
         Object.keys(topTriangles).forEach((key) => {
@@ -588,6 +587,26 @@ class Brush extends svgElement
             }
             // that.svg.property("value", value).dispatch("input");
           }
+    }
+}
+
+class Bookmark extends svgElement
+{
+    constructor(svg, height){
+        super(svg)
+
+        function dragged(event) {
+            d3.select(this).attr("transform", `translate(${event.x} 0)`)
+        }
+        this.drag = d3.drag().on("drag", dragged)
+
+        const line = this.svg.append("line").attr("transform", `translate(0 0)`)
+                        .attr("y1", 0)
+                        .attr("y2", height)
+                        .attr("stroke", "green")
+                        .attr("stroke-width", 4)
+                        .style("cursor", "pointer")
+                        .call(this.drag)
     }
 }
 
@@ -1496,9 +1515,7 @@ class ScriptComponentSvg extends svg
                         tr.appendChild(td)
                     }
                 }else{
-                    td = this.createElementTd()
-                    td.innerHTML = `${item[key]} `
-                    tr.appendChild(td)
+                    tr.insertAdjacentHTML('beforeend', item[key])
                 }
             })
             table.appendChild(tr)
@@ -1582,6 +1599,8 @@ class ScriptComponentSvg extends svg
                 })
             }else if(graph.type == 'Brush'){
                 this.brush = new Brush(this.svg, graph.width, graph.height, this)
+            }else if(graph.type == 'Bookmark'){
+                this.bookmark = new Bookmark(this.svg, graph.height)
             }
         })
     }
