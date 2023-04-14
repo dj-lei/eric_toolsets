@@ -302,7 +302,22 @@ class IndentedTree extends svgElement
             .attr("fill", "white")
             .style("cursor", "pointer")
             .on("click", function(event, d) {
-                console.log(d)
+                // Check if the node has children
+                if (d.children) {
+                    // Hide all children
+                    d.children.forEach((child) => {
+                        child.data.hidden = true;
+                    });
+                } else {
+                    // If the node doesn't have children, do nothing
+                    return;
+                }
+
+                // Update the display of all nodes
+                node.each(function (node) {
+                    d3.select(this)
+                        .style("display", node.data.hidden ? "none" : "inherit");
+                });
             })
             
         text.each(function() {
@@ -1507,6 +1522,21 @@ class ScriptComponentSvg extends svg
             var td = this.createElementTd()
             td.innerHTML = `${index} `
             tr.appendChild(td)
+            if ((index===0)&&(item.filter)) {
+                var thead = this.createElementTr()
+                var th = this.createElementTh()
+                th.innerHTML = 'Index'
+                thead.appendChild(th)
+                Object.keys(item).forEach(key => {
+                    if (!item.filter.includes(key)){
+                        var th = this.createElementTh()
+                        th.innerHTML = `${key}`
+                        thead.appendChild(th)
+                    }
+                })
+                table.appendChild(thead)
+            }
+
             Object.keys(item).forEach(key => {
                 if(item.filter){
                     if (!item.filter.includes(key)){
