@@ -1570,7 +1570,6 @@ class ScriptComponentSvg extends svg
             })
             return res
         }
-
         let that = this
         this.clear()
         this.data = data
