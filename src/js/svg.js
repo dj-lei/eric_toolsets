@@ -54,6 +54,51 @@ class svg extends Component
     }
 }
 
+class tab extends Component
+{
+    constructor(position){
+        super(position)
+        this.tab = this.createElementDiv()
+        this.content = this.createElementDiv()
+        this.container.appendChild(this.tab)
+        this.container.appendChild(this.content)
+    }
+
+    addTab(title){
+        let that = this
+        var button = this.createElementButton(title)
+        button.id = `tablink_${title}`
+        button.className = 'tablinks'
+        button.style.border = '1px solid #000'
+        button.style.display = 'block'
+        button.addEventListener('click', function() {
+            that.openTab(button.id)
+        })
+        this.tab.appendChild(button)
+
+        var content = this.createElementDiv()
+        content.id = `tabcontent_${title}`
+        content.className = 'tabcontent'
+        content.style.display = 'none'
+        this.content.appendChild(content)
+        this.openTab(`tablink_${title}`)
+    }
+
+    openTab(tabId){
+        let tabLinks = this.tab.getElementsByClassName("tablinks");
+        for (let i = 0; i < tabLinks.length; i++) {
+            tabLinks[i].style.backgroundColor = '#555'
+        }
+
+        let tabContents = this.content.getElementsByClassName("tabcontent");
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].style.display = 'none';
+        }
+        document.getElementById(tabId.replace('tablink_','tabcontent_')).style.display = 'block';
+        document.getElementById(tabId).style.backgroundColor = '#333';
+    }
+} 
+
 class svgElement
 {
     constructor(svg){
@@ -1321,6 +1366,7 @@ class ScriptDialog extends Dialog
     constructor(scriptView, textAnalysisView){
         super(scriptView.container)
         this.scriptView = scriptView
+        this.textAnalysisView = textAnalysisView
 
         this.subContainer.style.display = 'flex'
         this.subContainer.style.flexDirection = 'row'
@@ -1368,7 +1414,8 @@ class ScriptDialog extends Dialog
         this.rightDiv = this.createElementDiv()
         this.rightDiv.style.width = '50%'
         this.rightDiv.style.height = '100%'
-        this.plotArea = new ScriptComponentSvg(this.rightDiv, textAnalysisView)
+        // this.plotArea = new ScriptComponentSvg(this.rightDiv, textAnalysisView)
+        this.plotArea = new tab(this.rightDiv)
         this.subContainer.append(this.leftDiv)
         this.subContainer.append(this.rightDiv)
         this.plotArea.container.style.height = `${parseInt(document.body.offsetHeight / 2 + 230)}px`
@@ -1395,7 +1442,13 @@ class ScriptDialog extends Dialog
     }
 
     draw(data){
-        this.plotArea.refresh(data)
+        this.plotArea.addTab('test')
+        var pic = new ScriptComponentSvg(document.getElementById('tabcontent_test'), this.textAnalysisView)
+        pic.refresh(data)
+
+        this.plotArea.addTab('test1')
+        var pic2 = new ScriptComponentSvg(document.getElementById('tabcontent_test1'), this.textAnalysisView)
+        pic2.refresh(data)
     }
 
     run(){
