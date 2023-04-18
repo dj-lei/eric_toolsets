@@ -64,13 +64,18 @@ class tab extends Component
         this.container.appendChild(this.content)
     }
 
+    clear(){
+        common.removeAllChild(this.tab)
+        common.removeAllChild(this.content)
+    }
+
     addTab(title){
         let that = this
         var button = this.createElementButton(title)
         button.id = `tablink_${title}`
         button.className = 'tablinks'
         button.style.border = '1px solid #000'
-        button.style.display = 'block'
+        button.style.display = 'inline-block'
         button.addEventListener('click', function() {
             that.openTab(button.id)
         })
@@ -638,15 +643,15 @@ class Brush extends svgElement
                                 .style("fill", "red")
                                 .data()
                     value = common.arrayExtend(value, v)
-                    that.scriptComponentSvg.displayBottomTip(value)
                 })
             } else {
                 Object.keys(that.scriptComponentSvg.scatterPlots).forEach(id => {
                     that.scriptComponentSvg.scatterPlots[id].circles.style("fill", "yellow")
                 })
             }
+            that.scriptComponentSvg.controlInteract(value)
             // that.svg.property("value", value).dispatch("input");
-          }
+        }
     }
 }
 
@@ -1418,7 +1423,9 @@ class ScriptDialog extends Dialog
         this.plotArea = new tab(this.rightDiv)
         this.subContainer.append(this.leftDiv)
         this.subContainer.append(this.rightDiv)
-        this.plotArea.container.style.height = `${parseInt(document.body.offsetHeight / 2 + 230)}px`
+
+        this.graphs = {}
+        this.activeGraph = ''
     }
 
     model(){
@@ -1442,13 +1449,21 @@ class ScriptDialog extends Dialog
     }
 
     draw(data){
-        this.plotArea.addTab('test')
-        var pic = new ScriptComponentSvg(document.getElementById('tabcontent_test'), this.textAnalysisView)
-        pic.refresh(data)
+        data.forEach(graph => {
+            this.plotArea.addTab(graph.name)
+            this.graphs[graph.name] = new ScriptComponentSvg(document.getElementById(`tabcontent_${graph.name}`), this.textAnalysisView)
+            this.graphs[graph.name].container.style.height = `${parseInt(document.body.offsetHeight / 2 + 230)}px`
+            this.graphs[graph.name].refresh(graph.content)
+            this.activeGraph = graph.name
+        })
+    }
 
-        this.plotArea.addTab('test1')
-        var pic2 = new ScriptComponentSvg(document.getElementById('tabcontent_test1'), this.textAnalysisView)
-        pic2.refresh(data)
+    interact(data){
+        this.graphs[this.activeGraph].bottomTab.clear()
+        data.forEach(tip => {
+            this.graphs[this.activeGraph].displayBottomTip(tip)
+        })
+        this.graphs[this.activeGraph].bottomTip.style("display", 'block')
     }
 
     run(){
@@ -1495,6 +1510,8 @@ class ScriptComponentSvg extends svg
                             .style("box-shadow", "2px 2px 2px #ccc")
                             .style("opacity", 0.8)
                             .style("overflow", "auto")
+
+        this.bottomTab = new tab(this.bottomTip.node())
     }
 
     clear(){  
@@ -1566,7 +1583,7 @@ class ScriptComponentSvg extends svg
         })
     }
 
-    displayBottomTip(items, scrollRow=0){
+    newTab(items){
         var c = this.createElementDiv()
         var table = this.createElementTable()
         table.id = 'bottomTip'
@@ -1604,13 +1621,30 @@ class ScriptComponentSvg extends svg
             table.appendChild(tr)
         })
         c.appendChild(table)
-        this.bottomTip.html(c.innerHTML)
-        .style("display", 'block')
+        return c
+    }
 
-        if (scrollRow != 0){
-            var row = this.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
-            row.scrollIntoView()
-        }
+    controlInteract(items){
+        this.textAnalysisView.scriptView.controlInteract(items)
+    }
+
+    displayLogic(code, items){
+        var content = this.createElementDiv()
+        eval(code)
+        return content
+    }
+
+    displayBottomTip(data){
+        this.bottomTab.addTab(data.name)
+        document.getElementById(`tabcontent_${data.name}`).appendChild(this.displayLogic(data.display_logic, data.data))
+
+        // this.bottomTip
+        // .style("display", 'block')
+
+        // if (scrollRow != 0){
+        //     var row = this.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
+        //     row.scrollIntoView()
+        // }
     }
 
     refresh(data){

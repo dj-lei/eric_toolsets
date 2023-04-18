@@ -893,13 +893,22 @@ class ScriptView extends BatchView
         this.socket.emit("exec", model)
     }
 
+    controlInteract(data){
+        // const d = JSON.stringify()
+        this.socket.emit("interact", data)
+    }
+
     onConsole(msg){
         this.dialog.log(msg)
     }
 
     onDraw(data){
         // console.log(data)
-        this.dialog.draw(JSON.parse(data))
+        this.dialog.draw(data)
+    }
+
+    onInteract(data){
+        this.dialog.interact(data)
     }
 }
 

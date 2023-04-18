@@ -20,7 +20,7 @@ class Glyph(object):
         self.inter = ''
         self.elements = []
         self.type = self.__class__.__name__
-        self.filter = ['x','y','r','api','filter']
+        self.filter = ['r','api','filter']
 
     def get_linear_scale(self, start_x, end_x, pixel_width):
         self.start_x = start_x

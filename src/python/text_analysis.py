@@ -7,9 +7,9 @@ from aiohttp import web
 from aiohttp.web_runner import GracefulExit
 from engineio.payload import Payload
 
-Payload.max_decode_packets = 40000
+Payload.max_decode_packets = 400000
 
-sio = socketio.AsyncServer(cors_allowed_origins="*")
+sio = socketio.AsyncServer(cors_allowed_origins="*", max_http_buffer_size=100000000)
 app = web.Application()
 sio.attach(app)
 
@@ -1826,6 +1826,9 @@ class ScriptModel(Model):
 
     async def on_draw(self, sid, data):
         await self.emit('draw', data, namespace=self.namespace)
+
+    async def on_interact(self, sid, data):
+        pass
 
     async def aexec(self):
         self.error = ''
