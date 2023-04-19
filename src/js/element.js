@@ -322,6 +322,11 @@ class Component extends Element
         return div
     }
 
+    createElementSpan(){
+        var span = document.createElement('span')
+        return span
+    }
+
     createElementHr(){
         var hr = document.createElement('hr')
         hr.style.borderTop = '1px solid #bbb'

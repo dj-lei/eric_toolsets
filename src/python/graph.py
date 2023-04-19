@@ -20,7 +20,7 @@ class Glyph(object):
         self.inter = ''
         self.elements = []
         self.type = self.__class__.__name__
-        self.filter = ['r','api','filter']
+        self.filter = ['x', 'y', 'r','api','filter']
 
     def get_linear_scale(self, start_x, end_x, pixel_width):
         self.start_x = start_x
@@ -39,13 +39,13 @@ class Glyph(object):
         return filtered_vars
 
 class LineStory(Glyph):
-    def __init__(self, id, start_x, end_x, width, elements, global_inter, x_name, count):
+    def __init__(self, id, start_x, end_x, width, height, elements, global_inter, count, x_name):
         super().__init__()
         self.id = id
         self.start_x = start_x
         self.end_x = end_x
         self.width = width
-        self.height = graphs_height['LineStory']
+        self.height = height
         self.elements = elements
         self.x_name = x_name
         self.count = count
@@ -64,13 +64,13 @@ class LineStory(Glyph):
                 dot['filter'] = self.filter
 
 class LineChart(Glyph):
-    def __init__(self, id, start_x, end_x, width, elements, global_inter, x_name):
+    def __init__(self, id, start_x, end_x, width, height, elements, global_inter, x_name):
         super().__init__()
         self.id = id
         self.start_x = start_x
         self.end_x = end_x
         self.width = width
-        self.height = graphs_height['LineChart']
+        self.height = height
         self.elements = elements
         self.x_name = x_name
         self.inter = self.get_linear_scale(self.start_x, self.end_x, self.width)
@@ -83,14 +83,14 @@ class LineChart(Glyph):
                 dot['filter'] = self.filter
 
 class ScatterPlot(Glyph):
-    def __init__(self, id, start_x, end_x, width, elements, global_inter, r, x_name):
+    def __init__(self, id, start_x, end_x, width, height, elements, global_inter, r, x_name):
         super().__init__()
         self.id = id
         self.r = r
         self.start_x = start_x
         self.end_x = end_x
         self.width = width
-        self.height = graphs_height['ScatterPlot']
+        self.height = height
         self.inter = self.get_linear_scale(self.start_x, self.end_x, self.width)
         self.elements = elements
         self.x_name = x_name
@@ -169,11 +169,14 @@ class IndentedTree(Glyph, Tree):
                 node['ex'] = 0
                 node['width'] = 0
                 node['height'] = self.common_height
-                self.height  = self.height  + self.common_height + self.interval_height
+                self.height  = self.height  + node['height'] + self.interval_height
             else:
                 node['sx'] = self.inter(global_inter(node['start_x']))
                 node['ex'] = self.inter(global_inter(node['end_x']))
                 node['width'] = node['ex'] - node['sx']
-                node['height'] = graphs_height[node['graph_type']]
-                self.height  = self.height + graphs_height[node['graph_type']] + self.interval_height
+                if (node['elements'] == []) | (node['elements'] == {}):
+                    node['height'] = self.common_height
+                else:
+                    node['height'] = graphs_height[node['graph_type']]
+                self.height  = self.height + node['height'] + self.interval_height
             self.update_node(node["id"], data=node)

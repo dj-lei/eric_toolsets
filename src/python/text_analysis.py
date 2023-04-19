@@ -817,7 +817,7 @@ class TextFileOriginalModel(Model):
         for node in nodes:
             if node['elements'] is not None:
                 if node['graph_type'] == 'LineStory':
-                    ls = LineStory(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter, 'timestamp', node['count'])
+                    ls = LineStory(node['id'],node['sx'],node['ex'],node['width'],node['height'],node['elements'],global_inter, node['count'], 'timestamp')
                     for key in ls.elements['top_triangles'].keys():
                         for dot in ls.elements['top_triangles'][key]:
                             dot['api'] = code
@@ -830,7 +830,7 @@ class TextFileOriginalModel(Model):
 
                     graphs.append(ls.get_vars())
                 elif node['graph_type'] == 'LineChart':
-                    lc = LineChart(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter, 'timestamp')
+                    lc = LineChart(node['id'],node['sx'],node['ex'],node['width'],node['height'],node['elements'],global_inter, 'timestamp')
                     for key in lc.elements.keys():
                         for dot in lc.elements[key]:
                             dot['api'] = code
@@ -1322,7 +1322,7 @@ class ChartAtomModel(ListModel):
         node = {'id': '', 'sx': 0, 'ex': self.pixel_width, 'width':self.pixel_width, 'height': graphs_height['LineChart'], 'elements':json.loads(json.dumps(self.select_lines))}
         # define LineChart
         global_inter = linear_scale([self.start_timestamp, self.end_timestamp], [0, self.pixel_width])
-        lc = LineChart(node['id'],node['sx'],node['ex'],node['width'],node['elements'],global_inter, 'timestamp')
+        lc = LineChart(node['id'],node['sx'],node['ex'],node['width'],node['height'],node['elements'],global_inter, 'timestamp')
         for key in lc.elements.keys():
             for dot in lc.elements[key]:
                 dot['api'] = f'that.textAnalysisView.fileContainerView.textFileViews[that.textAnalysisView.fileContainerView.activeTextFileView].textFileFunctionView.chartFunctionView.views["{self.namespace}"].controlClickEvent(d)'
@@ -1824,10 +1824,13 @@ class ScriptModel(Model):
     async def on_console(self, sid=None, msg=None):
         await self.emit('console', str(msg), namespace=self.namespace)
 
-    async def on_draw(self, sid, data):
-        await self.emit('draw', data, namespace=self.namespace)
+    async def on_new_graphs(self, sid, data):
+        await self.emit('newGraphs', data, namespace=self.namespace)
 
-    async def on_interact(self, sid, data):
+    async def on_new_tips(self, sid, data):
+        await self.emit('newTips', data, namespace=self.namespace)
+
+    async def on_interact(self, sid, switch, data):
         pass
 
     async def aexec(self):
@@ -1841,44 +1844,6 @@ class ScriptModel(Model):
         except Exception as e:
             self.error = e
             await self.on_console(msg=f'{str(e)}')
-
-    async def batch_handle(self, dir_path, config_path):
-        table = pd.DataFrame()
-        for index, file_name in enumerate(iterate_files_in_directory(dir_path)):
-            new_file_namespace = self.text_analysis.file_container.namespace+'/'+file_name
-
-            text_file = await TextFileModel(self.text_analysis.file_container, new_file_namespace, dir_path+'\\'+file_name, mode = 'batch')
-            await text_file.on_load_all_config('', config_path)
-            sample = {'index': index, 'file_path':text_file.path, 'config_path':self.config_path, 'file_name': text_file.file_name}
-            
-            search_function = text_file.text_file_function.search_function
-            search_res = []
-            for search_namespace in search_function.models.keys():
-                search_res.append(search_function.models[search_namespace].model())
-            sample['search_atoms'] = search_res
-                
-            chart_function = text_file.text_file_function.chart_function
-            chart_res = []
-            for chart_namespace in chart_function.models.keys():
-                chart_res.append(chart_function.models[chart_namespace].model())
-            sample['chart_atoms'] = chart_res
-            
-            statistic_function = text_file.text_file_function.statistic_function
-            statistic_res = []
-            for statistic_namespace in statistic_function.models.keys():
-                statistic_res.append(statistic_function.models[statistic_namespace].model())
-            sample['statistic_atoms'] = statistic_res
-            
-            statistic_function = text_file.text_file_function.statistic_function
-            for statistic_namespace in statistic_function.models.keys():
-                atom = statistic_function.models[statistic_namespace]
-                sample[atom.identifier] = atom.result
-                
-            table = table.append(sample, ignore_index=True)
-            await text_file.on_delete('')
-            # print('Finish :', text_file.file_name, ' Index :', index)
-            await self.on_console(msg=f'Finish :{text_file.file_name} Index :{index}')
-        return table
 
 
 class TextFileCompareModel(Model):

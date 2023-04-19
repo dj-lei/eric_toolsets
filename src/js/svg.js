@@ -58,15 +58,38 @@ class tab extends Component
 {
     constructor(position){
         super(position)
-        this.tab = this.createElementDiv()
-        this.content = this.createElementDiv()
-        this.container.appendChild(this.tab)
-        this.container.appendChild(this.content)
+        this.tabContainer = this.createElementDiv()
+        this.contentContainer = this.createElementDiv()
+        this.tabs = []
+        this.contents = []
+        this.activeTab = ''
+        this.container.appendChild(this.tabContainer)
+        this.container.appendChild(this.contentContainer)
     }
 
     clear(){
-        common.removeAllChild(this.tab)
-        common.removeAllChild(this.content)
+        common.removeAllChild(this.tabContainer)
+        common.removeAllChild(this.contentContainer)
+        this.tabs = {}
+        this.contents = {}
+    }
+
+    close(title){
+        var titles = Object.keys(this.tabs)
+        var index = titles.indexOf(title)
+        if((index == 0)&(titles.length == 1)){
+            null
+        }else if (index == 0){
+            index = index + 1
+            this.openTab(`tablink_${titles[index]}`)
+        }else{
+            index = index - 1
+            this.openTab(`tablink_${titles[index]}`)
+        }
+        common.removeAll(this.tabs[title])
+        common.removeAll(this.contents[title])
+        delete this.tabs[title]
+        delete this.contents[title]
     }
 
     addTab(title){
@@ -76,31 +99,41 @@ class tab extends Component
         button.className = 'tablinks'
         button.style.border = '1px solid #000'
         button.style.display = 'inline-block'
-        button.addEventListener('click', function() {
-            that.openTab(button.id)
+        button.addEventListener('click', function(event) {
+            if (event.path[0].tagName != 'SPAN') {
+                that.openTab(button.id)
+            }
         })
-        this.tab.appendChild(button)
+        var close = this.createElementSpan()
+        close.innerHTML = 'X'
+        close.style.backgroundColor = 'red'
+        close.addEventListener('click', function() {
+            that.close(title)
+        })
+        button.appendChild(close)
+        this.tabContainer.appendChild(button)
+        this.tabs[title] = button
 
         var content = this.createElementDiv()
         content.id = `tabcontent_${title}`
         content.className = 'tabcontent'
         content.style.display = 'none'
-        this.content.appendChild(content)
+        this.contentContainer.appendChild(content)
+        this.contents[title] = content
+
         this.openTab(`tablink_${title}`)
     }
 
     openTab(tabId){
-        let tabLinks = this.tab.getElementsByClassName("tablinks");
-        for (let i = 0; i < tabLinks.length; i++) {
-            tabLinks[i].style.backgroundColor = '#555'
-        }
-
-        let tabContents = this.content.getElementsByClassName("tabcontent");
-        for (let i = 0; i < tabContents.length; i++) {
-            tabContents[i].style.display = 'none';
-        }
-        document.getElementById(tabId.replace('tablink_','tabcontent_')).style.display = 'block';
-        document.getElementById(tabId).style.backgroundColor = '#333';
+        Object.keys(this.tabs).forEach(title => {
+            this.tabs[title].style.backgroundColor = '#555'
+        })
+        Object.keys(this.contents).forEach(title => {
+            this.contents[title].style.display = 'none'
+        })
+        this.contentContainer.querySelector(`#${tabId.replace('tablink_','tabcontent_').replace(/\./g, "\\.").replace(/ /g, "\\ ")}`).style.display = 'block';
+        this.tabContainer.querySelector(`#${tabId.replace(/\./g, "\\.").replace(/ /g, "\\ ")}`).style.backgroundColor = '#333';
+        this.activeTab = tabId.replace('tablink_','')
     }
 } 
 
@@ -593,13 +626,13 @@ class ScatterPlot extends svgElement
 
 class Brush extends svgElement
 {
-    constructor(svg, width, height, scriptComponentSvg){
+    constructor(svg, width, height, scriptComponentSvg, interactLogic){
         super(svg)
         this.scriptComponentSvg = scriptComponentSvg
         this.globalSvg = svg
         this.width = width + 500
         this.height = height + 500
-
+        this.interactLogic = interactLogic
         this.brush = d3.brush()
                         .extent([[0, 0], [0, 0]])  // 设置刷子的边界
                         .on("end", brushed)
@@ -649,7 +682,8 @@ class Brush extends svgElement
                     that.scriptComponentSvg.scatterPlots[id].circles.style("fill", "yellow")
                 })
             }
-            that.scriptComponentSvg.controlInteract(value)
+            eval(that.interactLogic)
+            // that.scriptComponentSvg.controlInteract(value)
             // that.svg.property("value", value).dispatch("input");
         }
     }
@@ -1391,7 +1425,7 @@ class ScriptDialog extends Dialog
         this.leftDiv.appendChild(this.createElementHeader('Python Script'))
         this.leftDiv.appendChild(this.textarea)
         this.script = this.createPythonCodeMirror(this.textarea)
-        this.script.setSize(null, parseInt(document.body.offsetHeight / 2))
+        this.script.setSize(null, parseInt(document.body.offsetHeight / 2 + 100))
 
         //  console
         this.console = this.createElementTextarea()
@@ -1419,13 +1453,29 @@ class ScriptDialog extends Dialog
         this.rightDiv = this.createElementDiv()
         this.rightDiv.style.width = '50%'
         this.rightDiv.style.height = '100%'
-        // this.plotArea = new ScriptComponentSvg(this.rightDiv, textAnalysisView)
         this.plotArea = new tab(this.rightDiv)
         this.subContainer.append(this.leftDiv)
         this.subContainer.append(this.rightDiv)
 
+
+        this.rightDiv.style.borderLeft = 'solid 6px #ccc'
+        const BORDER_SIZE = 4;
+        
+        function resize(e){
+            that.rightDiv.style.width = `${document.body.offsetWidth - e.clientX}px`
+            that.leftDiv.style.width = `${e.clientX}px`
+        }
+        
+        this.rightDiv.addEventListener("mousedown", function(e){
+            if (e.offsetX < BORDER_SIZE) {
+                document.addEventListener("mousemove", resize, false);
+            }
+        }, false);
+        document.addEventListener("mouseup", function(){
+            document.removeEventListener("mousemove", resize, false);
+        }, false)
+
         this.graphs = {}
-        this.activeGraph = ''
     }
 
     model(){
@@ -1448,27 +1498,28 @@ class ScriptDialog extends Dialog
         this.script.scrollIntoView({ line: 0, ch: 0 }, 0)
     }
 
-    draw(data){
-        data.forEach(graph => {
-            this.plotArea.addTab(graph.name)
-            this.graphs[graph.name] = new ScriptComponentSvg(document.getElementById(`tabcontent_${graph.name}`), this.textAnalysisView)
-            this.graphs[graph.name].container.style.height = `${parseInt(document.body.offsetHeight / 2 + 230)}px`
-            this.graphs[graph.name].refresh(graph.content)
-            this.activeGraph = graph.name
-        })
-    }
-
-    interact(data){
-        this.graphs[this.activeGraph].bottomTab.clear()
-        data.forEach(tip => {
-            this.graphs[this.activeGraph].displayBottomTip(tip)
-        })
-        this.graphs[this.activeGraph].bottomTip.style("display", 'block')
-    }
-
     run(){
         this.console.value = ''
         this.scriptView.controlExec(this.model())
+    }
+
+    newGraphs(data){
+        data.forEach(graph => {
+            this.plotArea.addTab(graph.name)
+            var selector = `#tabcontent_${graph.name}`.replace(/\./g, "\\.").replace(/ /g, "\\ ")
+            this.graphs[graph.name] = new ScriptComponentSvg(this.plotArea.contentContainer.querySelector(selector), this.textAnalysisView)
+            this.graphs[graph.name].container.style.height = `${parseInt(document.body.offsetHeight / 2 + 300)}px`
+            this.graphs[graph.name].container.style.width = '100%'
+            this.graphs[graph.name].refresh(graph.content)
+        })
+    }
+
+    newTips(data){
+        this.graphs[this.plotArea.activeTab].bottomTab.clear()
+        data.forEach(tip => {
+            this.graphs[this.plotArea.activeTab].displayBottomTip(tip)
+        })
+        this.graphs[this.plotArea.activeTab].bottomTip.style("display", 'block')
     }
 }
 
@@ -1618,17 +1669,27 @@ class ScriptComponentSvg extends svg
                     tr.insertAdjacentHTML('beforeend', item[key])
                 }
             })
+            var btnTd = this.createElementTd()
+            var btn = this.createElementButton('CANCEL')
+            btn.style.backgroundColor = 'green'
+            btn.onclick = function(){
+                console.log('----')
+            }
+            btnTd.appendChild(btn)
+            tr.appendChild(btnTd)
+
             table.appendChild(tr)
         })
         c.appendChild(table)
         return c
     }
 
-    controlInteract(items){
-        this.textAnalysisView.scriptView.controlInteract(items)
+    controlInteract(_switch, data){
+        this.textAnalysisView.scriptView.controlInteract(_switch, data)
     }
 
-    displayLogic(code, items){
+    displayLogic(code, data){
+        let that = this
         var content = this.createElementDiv()
         eval(code)
         return content
@@ -1636,11 +1697,7 @@ class ScriptComponentSvg extends svg
 
     displayBottomTip(data){
         this.bottomTab.addTab(data.name)
-        document.getElementById(`tabcontent_${data.name}`).appendChild(this.displayLogic(data.display_logic, data.data))
-
-        // this.bottomTip
-        // .style("display", 'block')
-
+        this.bottomTab.contentContainer.querySelector(`#tabcontent_${data.name}`.replace(/\./g, "\\.").replace(/ /g, "\\ ")).appendChild(this.displayLogic(data.display_logic, data.data))
         // if (scrollRow != 0){
         //     var row = this.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
         //     row.scrollIntoView()
@@ -1714,7 +1771,7 @@ class ScriptComponentSvg extends svg
                     eval(d.api)
                 })
             }else if(graph.type == 'Brush'){
-                this.brush = new Brush(this.svg, graph.width, graph.height, this)
+                this.brush = new Brush(this.svg, graph.width, graph.height, this, graph.interact_logic)
             }else if(graph.type == 'Bookmark'){
                 this.bookmark = new Bookmark(this.svg, graph.height)
             }
