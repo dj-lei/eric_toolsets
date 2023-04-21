@@ -1099,8 +1099,22 @@ class SearchAtomModel(ListModel):
                     lines.append({'text': '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+re.sub(reg, word_color_replace, text)+'</td>'})
                 else:
                     lines.append({'text': '<td style="color:#FFFFFF;white-space:nowrap;font-size:12px;text-align:left">'+text+'</td>'})
-
-        return Response(status.SUCCESS, msg.NONE, lines).__dict__
+        display_logic = """
+            var items = data
+            var table = this.createElementTable()
+            items.forEach((item, index) => {
+                var tr = this.createElementTr()
+                var td = this.createElementTd()
+                td.innerHTML = index
+                tr.appendChild(td)
+                Object.keys(item).forEach(key => {
+                    tr.insertAdjacentHTML('beforeend', item[key])
+                })
+                table.appendChild(tr)
+            })
+            content.appendChild(table)
+        """
+        return Response(status.SUCCESS, msg.NONE, [{'name':self.identifier, 'data':lines, 'display_logic':display_logic}]).__dict__
 
     def search(self):
         self.res_lines = []

@@ -758,7 +758,16 @@ class SearchAtomView extends ListView
     controlGetAllLines(ins, scrollRow){
         this.socket.emit("get_all_lines", async (response) => {
             if(response.status == status.SUCCESS){
-                ins.displayBottomTip(response.model, scrollRow)
+                ins.bottomTab.clear()
+                response.model.forEach(tip => {
+                    ins.displayBottomTip(tip)
+                })
+                ins.bottomTip.style("display", 'block')
+                if (scrollRow != 0){
+                    var row = ins.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
+                    row.scrollIntoView()
+                }
+                // ins.displayBottomTip(response.model, scrollRow)
             }else{
                 alert(response.msg)
             }

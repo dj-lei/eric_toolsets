@@ -381,33 +381,29 @@ class IndentedTree extends svgElement
             .text(d => {
                 return d.data.name.split('.')[d.data.name.split('.').length - 1]
             })
-            .attr("stroke", "white")
-            .attr("fill", "white")
+            .attr("stroke", "#7CFC00")
+            .attr("fill", "#7CFC00")
             .style("cursor", "pointer")
             .on("click", function(event, d) {
-                // Check if the node has children
-                if (d.children) {
-                    // Hide all children
-                    d.children.forEach((child) => {
-                        child.data.hidden = true;
-                    });
-                } else {
-                    // If the node doesn't have children, do nothing
-                    return;
+                console.log(d)
+                if (!d.children){
+                    if (d3.select(this.parentNode).select('g').style("display") === 'inline'){
+                        d3.select(this.parentNode).select('g').style("display", 'none')
+                        d3.select(this).attr("stroke", "#FF0000")
+                                        .attr("fill", "#FF0000")
+                    }else{
+                        d3.select(this.parentNode).select('g').style("display", 'inline')
+                        d3.select(this).attr("stroke", "#7CFC00")
+                                        .attr("fill", "#7CFC00")
+                    }
                 }
-
-                // Update the display of all nodes
-                node.each(function (node) {
-                    d3.select(this)
-                        .style("display", node.data.hidden ? "none" : "inherit");
-                });
             })
             
-        text.each(function() {
-            var textWidth = this.getComputedTextLength();
-            // d3.select(this)
-            //     .attr("transform", "translate(" + -1 * textWidth + ", 0)");
-        })
+        // text.each(function() {
+        //     var textWidth = this.getComputedTextLength();
+        //     // d3.select(this)
+        //     //     .attr("transform", "translate(" + -1 * textWidth + ", 0)");
+        // })
     }
 }
 
@@ -591,21 +587,23 @@ class ScatterPlot extends svgElement
         super(svg)
         this.data = data
 
+        if (data.elements.length > 0) {
+            this.svg.append("line")
+                .attr("x1", 0)
+                .attr("y1", 0)
+                .attr("x2", 0)
+                .attr("y2", data.height)
+                .attr("stroke", "white")
+                .attr("stroke-width", "1");
+        }
+
         this.svg.append("line")
-            .attr("x1", 0)
-            .attr("y1", 0)
-            .attr("x2", 0)
-            .attr("y2", data.height)
-            .attr("stroke", "white")
-            .attr("stroke-width", "1");
-  
-        this.svg.append("line")
-            .attr("x1", 0)
-            .attr("y1", data.height)
-            .attr("x2", data.width)
-            .attr("y2", data.height)
-            .attr("stroke", "white")
-            .attr("stroke-width", "1");
+        .attr("x1", 0)
+        .attr("y1", data.height)
+        .attr("x2", data.width)
+        .attr("y2", data.height)
+        .attr("stroke", "white")
+        .attr("stroke-width", "1");
 
         this.circles = this.svg.selectAll("circle")
                         .data(data.elements)
@@ -637,6 +635,7 @@ class Brush extends svgElement
                         .extent([[0, 0], [0, 0]])  // 设置刷子的边界
                         .on("end", brushed)
 
+
         let that = this
         var ctrlPressed = false;
         d3.select("body")
@@ -649,7 +648,6 @@ class Brush extends svgElement
                         .call(that.brush)
                 }else if((event.keyCode === 17) && (ctrlPressed)){
                     ctrlPressed = false;
-                    d3.selectAll(".brush").remove()
                     that.brush.extent([[0, 0], [0, 0]])
                     that.globalSvg
                         .attr("pointer-events", "all")
@@ -664,18 +662,20 @@ class Brush extends svgElement
                 const [[x0, y0], [x1, y1]] = selection
                 Object.keys(that.scriptComponentSvg.scatterPlots).forEach(id => {
                     var selector = "#" + id.replace(/\./g, "\\.").replace(/ /g, "\\ ")
-                    var transformAttr = that.globalSvg.select(selector).attr("transform");
-                    var transformValues = transformAttr.replace(/translate\(|\)/g, '').split(',');
-                    var translateX = +transformValues[0]
-                    var translateY = +transformValues[1]
-                    var v = that.scriptComponentSvg.scatterPlots[id].circles
-                                .style("fill", "yellow")
-                                .filter(d => {
-                                    return x0 <= (translateX + d.x) && (translateX + d.x) < x1 && y0 <= (translateY + d.y) && (translateY + d.y) < y1
-                                })
-                                .style("fill", "red")
-                                .data()
-                    value = common.arrayExtend(value, v)
+                    if (that.globalSvg.select(selector).select('g').style("display") == 'inline'){
+                        var transformAttr = that.globalSvg.select(selector).attr("transform");
+                        var transformValues = transformAttr.replace(/translate\(|\)/g, '').split(',');
+                        var translateX = +transformValues[0]
+                        var translateY = +transformValues[1]
+                        var v = that.scriptComponentSvg.scatterPlots[id].circles
+                                    .style("fill", "yellow")
+                                    .filter(d => {
+                                        return x0 <= (translateX + d.x) && (translateX + d.x) < x1 && y0 <= (translateY + d.y) && (translateY + d.y) < y1
+                                    })
+                                    .style("fill", "red")
+                                    .data()
+                        value = common.arrayExtend(value, v)
+                    }
                 })
             } else {
                 Object.keys(that.scriptComponentSvg.scatterPlots).forEach(id => {
@@ -1465,7 +1465,6 @@ class ScriptDialog extends Dialog
             that.rightDiv.style.width = `${document.body.offsetWidth - e.clientX}px`
             that.leftDiv.style.width = `${e.clientX}px`
         }
-        
         this.rightDiv.addEventListener("mousedown", function(e){
             if (e.offsetX < BORDER_SIZE) {
                 document.addEventListener("mousemove", resize, false);
@@ -1490,7 +1489,7 @@ class ScriptDialog extends Dialog
     update(model){
         // this.desc.value = model.desc
         this.script.setValue(model.script[0])
-        this.script.setSize(null, parseInt(document.body.offsetHeight / 2))
+        this.script.setSize(null, parseInt(document.body.offsetHeight / 2 + 100))
         let that = this
         setTimeout(function() {
             that.script.refresh()
@@ -1500,6 +1499,7 @@ class ScriptDialog extends Dialog
 
     run(){
         this.console.value = ''
+        this.plotArea.clear()
         this.scriptView.controlExec(this.model())
     }
 
@@ -1698,10 +1698,6 @@ class ScriptComponentSvg extends svg
     displayBottomTip(data){
         this.bottomTab.addTab(data.name)
         this.bottomTab.contentContainer.querySelector(`#tabcontent_${data.name}`.replace(/\./g, "\\.").replace(/ /g, "\\ ")).appendChild(this.displayLogic(data.display_logic, data.data))
-        // if (scrollRow != 0){
-        //     var row = this.bottomTip.select(`tr:nth-child(${scrollRow + 1})`).node()
-        //     row.scrollIntoView()
-        // }
     }
 
     refresh(data){
