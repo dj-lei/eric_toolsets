@@ -9,7 +9,7 @@ from engineio.payload import Payload
 
 Payload.max_decode_packets = 400000
 
-sio = socketio.AsyncServer(cors_allowed_origins="*", max_http_buffer_size=100000000)
+sio = socketio.AsyncServer(cors_allowed_origins="*", max_http_buffer_size=1000000000)
 app = web.Application()
 sio.attach(app)
 
@@ -407,6 +407,9 @@ class FileContainerModel(Model):
         self.active_text_file = ''
         self.id_map = {}
 
+    def model(self):
+        return {'namespace': self.namespace, 'active_text_file':self.active_text_file, 'id_map': self.id_map}
+    
     async def listener(self, publish_namespace):
         await self.publish(publish_namespace)
 
